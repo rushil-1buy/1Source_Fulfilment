@@ -40,6 +40,39 @@ npm run dev               # http://localhost:4100
 
 ---
 
+## The hosted demo
+
+**https://1source-fulfilment.vercel.app** — no login, seeded, fully clickable.
+Start at `DEMO-ORDER`, which sits at **B3 · Supplier Proforma Invoice received**
+with 30 stages still ahead of it. **Reset demo** on that page puts it back.
+
+It runs **without a provisioned database**. The seeded SQLite file is committed
+as `prisma/demo.db`, pulled into every function bundle by
+`outputFileTracingIncludes` (`next.config.ts`), and copied to `/tmp` at cold
+start by `lib/db.ts` — `/tmp` being the only writable path in a Vercel function.
+
+So the demo **reads and writes normally**, including document uploads. What it
+does not do is *persist*: each function instance gets its own copy, and changes
+go when that instance recycles. Two browser tabs can land on different
+instances. That is a deliberate trade for a prototype, not a design for users.
+
+### Giving it a real database
+
+Three sites, all commented where they sit:
+
+1. `prisma/schema.prisma` — `provider = "postgresql"`
+2. `lib/queries/search.ts` — restore `mode: 'insensitive'` on the `like` filter.
+   Postgres `LIKE` is case-sensitive and the failure is **silent**: an empty
+   result, not an error.
+3. Set `DATABASE_URL` in the Vercel project. `lib/db.ts` then skips the `/tmp`
+   branch entirely — no code change needed there.
+
+Then `npx prisma db push && npm run seed` against it. Uploads still need real
+object storage (Vercel Blob or S3) to survive; that is the four functions in
+`lib/storage.ts` and nothing else.
+
+---
+
 ## Read this before writing code
 
 **[`CONTEXT.md`](CONTEXT.md)** — §3 is fourteen rules, each of which exists
