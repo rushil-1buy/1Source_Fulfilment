@@ -13,23 +13,30 @@ import path from 'node:path';
  * external service, survives a restart, and swapping it for object storage means
  * replacing these four functions and nothing else.
  *
- * ON A SERVERLESS HOST IT IS NOT DURABLE. Vercel's filesystem is ephemeral and
- * per-invocation, so a written file is gone by the next request. Rather than
- * accept an upload and lose it — which looks like success and is not — uploads
- * are refused there with an explanation. Silent data loss on a signed inspection
- * report is far worse than an honest refusal.
+ * ON A SERVERLESS HOST IT IS NOT DURABLE. `/tmp` is the only writable path in a
+ * Vercel function and it belongs to one instance, so an upload survives for that
+ * instance's lifetime and no longer. We accept the upload anyway — matching what
+ * lib/db.ts does with the database — because a prototype you can drive end to
+ * end is worth more than one that refuses at the first document. The UI says so
+ * plainly via DURABLE_STORAGE rather than letting anyone assume it persisted.
+ *
+ * This is a demo posture, NOT a production one. Real storage means pointing
+ * these four functions at Vercel Blob or S3, and nothing else changes.
  */
-const ROOT = path.join(process.cwd(), '.uploads');
+const ROOT = process.env.VERCEL ? '/tmp/1buy-uploads' : path.join(process.cwd(), '.uploads');
 
 /**
- * True where the filesystem does not survive the request. Vercel sets VERCEL=1
- * in every runtime; other serverless hosts would need adding here.
+ * True where a written file survives the request. Vercel sets VERCEL=1 in every
+ * runtime; other serverless hosts would need adding here.
+ *
+ * Uploads are still ACCEPTED when this is false — it drives the warning, not a
+ * refusal.
  */
 export const DURABLE_STORAGE = !process.env.VERCEL;
 
-/** Why uploads are unavailable, for the message the operator actually sees. */
+/** Shown alongside an upload on a host where the file will not survive. */
 export const NO_STORAGE_REASON =
-  'This deployment has no document storage configured. Its filesystem is ephemeral, so an uploaded file would be lost between requests. Connect object storage (Vercel Blob or S3) to enable uploads — everything else on the order works as normal.';
+  'This demo deployment has no permanent document storage. Uploads work and are readable straight away, but they live on a temporary disk and are cleared when the instance recycles. Connect object storage (Vercel Blob or S3) to make them permanent.';
 
 /** 20 MB. A scanned purchase order is well under this; a video is not a document. */
 export const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
@@ -72,7 +79,6 @@ export async function storeFile(
   bytes: ArrayBuffer | Uint8Array,
   opts: { documentId: string; extension: string },
 ): Promise<StoredFile> {
-  if (!DURABLE_STORAGE) throw new Error(NO_STORAGE_REASON);
   // One directory per document id, so a superseding upload of the same slot
   // cannot collide with the version it replaces.
   const dir = path.join(ROOT, opts.documentId);

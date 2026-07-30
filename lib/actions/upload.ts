@@ -44,17 +44,19 @@ function safeRevalidate(path: string) {
   }
 }
 
+/**
+ * Appends the impermanence note on a host where the file will not survive the
+ * instance. It rides on `detail` rather than `message` so the confirmation the
+ * operator reads first stays short, and so a successful upload still reads as a
+ * success — which it is; it is just not permanent.
+ */
+function withStorageNote(detail: string | undefined): string | undefined {
+  if (DURABLE_STORAGE) return detail;
+  return detail ? `${detail} ${NO_STORAGE_REASON}` : NO_STORAGE_REASON;
+}
+
 /** Shared checks, so both entry points refuse the same things for the same reasons. */
 function validate(file: File | null): { ok: true; extension: string } | { ok: false; result: UploadResult } {
-  // Checked before anything else: refusing up front is honest, whereas validating
-  // the file and then failing on the write reads as a bug rather than as a
-  // deployment that has no storage attached.
-  if (!DURABLE_STORAGE) {
-    return {
-      ok: false,
-      result: { ok: false, message: 'Uploads are not available here.', detail: NO_STORAGE_REASON },
-    };
-  }
   if (!file || file.size === 0) {
     return { ok: false, result: { ok: false, message: 'No file was selected.' } };
   }
@@ -224,11 +226,13 @@ export async function uploadStageDocument(formData: FormData): Promise<UploadRes
     documentId: created.id,
     complete: assessment.complete,
     message: `${slot.label} uploaded.`,
-    detail: prior
-      ? `This replaces the previous file, which is kept as revision ${prior.version}.`
-      : assessment.complete
-        ? 'That was the last thing outstanding — this stage is now signed off.'
-        : undefined,
+    detail: withStorageNote(
+      prior
+        ? `This replaces the previous file, which is kept as revision ${prior.version}.`
+        : assessment.complete
+          ? 'That was the last thing outstanding — this stage is now signed off.'
+          : undefined,
+    ),
   };
 }
 
@@ -329,7 +333,7 @@ export async function uploadRecordDocument(formData: FormData): Promise<UploadRe
     ok: true,
     documentId: created.id,
     message: `${file!.name} attached.`,
-    detail: `Filed as ${title.toLowerCase()} and viewable from the order.`,
+    detail: withStorageNote(`Filed as ${title.toLowerCase()} and viewable from the order.`),
   };
 }
 

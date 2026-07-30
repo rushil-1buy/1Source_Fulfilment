@@ -31,8 +31,18 @@ generator client {
   output = "../lib/generated/prisma"
 }
 
+// SQLite, including on the Vercel deployment.
+//
+// The hosted build ships the seeded database file inside the deployment bundle
+// and copies it to /tmp at cold start — see lib/db.ts. /tmp is the one writable
+// path in a Vercel function, so the demo reads AND writes normally; the writes
+// simply do not outlive the instance. That is the correct trade for a prototype
+// nobody has provisioned a database for.
+//
+// Moving to Postgres later is this block plus `mode: 'insensitive'` in
+// lib/queries/search.ts, and nothing else.
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 

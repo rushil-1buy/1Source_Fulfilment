@@ -29,7 +29,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import * as Icons from 'lucide-react';
 import { ArrowRight, CornerDownLeft, Loader2, Search } from 'lucide-react';
 import { searchEverything } from '@/lib/actions/search';
-import { MIN_QUERY, type SearchOutcome } from '@/lib/queries/search';
+import { MIN_QUERY, type SearchOutcome } from '@/lib/queries/search-contract';
 import { NAV_GROUPS } from '@/lib/nav';
 import { usePreferences } from '@/components/providers/Preferences';
 

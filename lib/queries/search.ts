@@ -1,5 +1,7 @@
 import { db } from '@/lib/db';
 import { getStage } from '@/lib/domain/stages';
+import { MIN_QUERY, PER_GROUP } from './search-contract';
+import type { SearchGroup, SearchHit, SearchOutcome } from './search-contract';
 
 /**
  * GLOBAL SEARCH — what the ⌘K bar actually looks through.
@@ -17,60 +19,33 @@ import { getStage } from '@/lib/domain/stages';
  * the operator did not happen to type first.
  */
 
-export type SearchGroupId =
-  | 'orders'
-  | 'purchaseOrders'
-  | 'proformas'
-  | 'parts'
-  | 'parties'
-  | 'documents';
-
-export interface SearchHit {
-  id: string;
-  /** Where selecting it goes. */
-  href: string;
-  /** The thing itself — a number, a part, a name. */
-  label: string;
-  /** What it is and where it sits, so two similar numbers are told apart. */
-  sublabel: string;
-  /** Extra right-aligned context: a stage, a status, a manufacturer. */
-  meta?: string;
-  /** Why this row matched, when it was not the label. */
-  matchedOn?: string;
-}
-
-export interface SearchGroup {
-  id: SearchGroupId;
-  label: string;
-  hits: SearchHit[];
-}
-
-export interface SearchOutcome {
-  query: string;
-  groups: SearchGroup[];
-  total: number;
-  /** True when a group was cut short, so the UI can say so rather than imply completeness. */
-  truncated: boolean;
-}
-
-/** Per group. Small on purpose: a palette is for finding one thing, not browsing. */
-const PER_GROUP = 6;
-
-/** Below this a search matches half the database and helps nobody. */
-export const MIN_QUERY = 2;
+/**
+ * The result shape and its two bounds live in ./search-contract, which imports
+ * nothing — so the command palette can read MIN_QUERY without pulling the
+ * database into the browser bundle. Re-exported here so server callers still
+ * have one import site.
+ */
+export { MIN_QUERY, PER_GROUP } from './search-contract';
+export type {
+  SearchGroup,
+  SearchGroupId,
+  SearchHit,
+  SearchOutcome,
+} from './search-contract';
 
 export async function globalSearch(raw: string): Promise<SearchOutcome> {
   const q = raw.trim();
   if (q.length < MIN_QUERY) return { query: q, groups: [], total: 0, truncated: false };
 
   /**
-   * Explicitly case-insensitive.
+   * Case-insensitive by virtue of the engine: SQLite's LIKE folds case for
+   * ASCII, so "stm32" matches STM32F407VGT6 without further help.
    *
-   * Postgres LIKE is case-SENSITIVE, unlike SQLite's, so without `mode` a search
-   * for "stm32" would stop matching STM32F407VGT6 — and it would fail silently,
-   * returning an empty result rather than an error. Prisma maps this to ILIKE.
+   * ON POSTGRES THIS LINE MUST GAIN `mode: 'insensitive'`. Postgres LIKE is
+   * case-SENSITIVE, and the failure is silent — an empty result, not an error.
+   * Prisma maps that flag to ILIKE. It is omitted here because SQLite rejects it.
    */
-  const like = { contains: q, mode: 'insensitive' as const };
+  const like = { contains: q };
   const take = PER_GROUP + 1; // one extra, purely to detect truncation
 
   const [orders, customerPos, supplierPos, proformas, parts, customers, suppliers, documents] =
