@@ -9,11 +9,27 @@ import path from 'node:path';
  * to whoever guesses the URL. They are read back through a route handler
  * instead, which is where an access check belongs once roles are enforced.
  *
- * A local directory is the right call for this build: it needs no external
- * service, survives a restart, and swapping it for object storage later means
+ * A local directory is the right call for a self-hosted build: it needs no
+ * external service, survives a restart, and swapping it for object storage means
  * replacing these four functions and nothing else.
+ *
+ * ON A SERVERLESS HOST IT IS NOT DURABLE. Vercel's filesystem is ephemeral and
+ * per-invocation, so a written file is gone by the next request. Rather than
+ * accept an upload and lose it — which looks like success and is not — uploads
+ * are refused there with an explanation. Silent data loss on a signed inspection
+ * report is far worse than an honest refusal.
  */
 const ROOT = path.join(process.cwd(), '.uploads');
+
+/**
+ * True where the filesystem does not survive the request. Vercel sets VERCEL=1
+ * in every runtime; other serverless hosts would need adding here.
+ */
+export const DURABLE_STORAGE = !process.env.VERCEL;
+
+/** Why uploads are unavailable, for the message the operator actually sees. */
+export const NO_STORAGE_REASON =
+  'This deployment has no document storage configured. Its filesystem is ephemeral, so an uploaded file would be lost between requests. Connect object storage (Vercel Blob or S3) to enable uploads — everything else on the order works as normal.';
 
 /** 20 MB. A scanned purchase order is well under this; a video is not a document. */
 export const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
@@ -56,6 +72,7 @@ export async function storeFile(
   bytes: ArrayBuffer | Uint8Array,
   opts: { documentId: string; extension: string },
 ): Promise<StoredFile> {
+  if (!DURABLE_STORAGE) throw new Error(NO_STORAGE_REASON);
   // One directory per document id, so a superseding upload of the same slot
   // cannot collide with the version it replaces.
   const dir = path.join(ROOT, opts.documentId);

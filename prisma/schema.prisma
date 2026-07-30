@@ -1,6 +1,6 @@
 // ============================================================================
 // 1BUY Fulfilment Platform — data model
-// Master prompt §9. SQLite via Prisma.
+// Master prompt §9. Postgres via Prisma (SQLite in earlier revisions).
 //
 // CONVENTIONS
 //  * MONEY: every field named *Amount, *Value, *Total, *Price, *Cost, *Duty,
@@ -10,8 +10,10 @@
 //    Exception: unitPrice* fields are Float, because component prices carry up
 //    to 4 decimals. They are rounded to integer minor units at the line level
 //    immediately, so float error never accumulates.
-//  * ENUMS: SQLite has no native enum. Enum-ish columns are String, with the
-//    authoritative union types + Zod schemas in lib/domain/enums.ts.
+//  * ENUMS: enum-ish columns are String, with the authoritative union types +
+//    Zod schemas in lib/domain/enums.ts. Kept as String rather than a native
+//    Postgres enum because the permitted values change with business rules, and
+//    a migration per value is a poor trade for a check the app already makes.
 //  * PROVENANCE (§11A.0 rule 3): records that can be populated by an external
 //    API carry provenance / provenanceActor / provenanceAt / provenanceRef.
 // ============================================================================
@@ -30,7 +32,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 

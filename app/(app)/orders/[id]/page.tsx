@@ -4,6 +4,17 @@ import { getOrderDetail } from '@/lib/queries/order-detail';
 import { ROLE_META, type Role } from '@/lib/domain/enums';
 import { OrderDetailView } from './OrderDetailView';
 
+/**
+ * Never prerendered.
+ *
+ * Every screen here reads live operational data. Without this, Next prerenders
+ * at build time and serves a snapshot of the database taken during CI — an
+ * orders list frozen at deploy, and on a serverless host with no build-time
+ * database, a build that fails outright.
+ */
+export const dynamic = 'force-dynamic';
+
+
 /** Next 16: `params` is a Promise and must be awaited. */
 export default async function OrderPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

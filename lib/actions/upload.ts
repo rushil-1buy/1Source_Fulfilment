@@ -19,7 +19,9 @@ import { getStage, ladderPosition, resolveRailAnchor } from '@/lib/domain/stages
 import { STAGE_CONTEXT_INCLUDE, stageContextFrom } from '@/lib/domain/stage-context';
 import {
   ALLOWED_MIME,
+  DURABLE_STORAGE,
   MAX_UPLOAD_BYTES,
+  NO_STORAGE_REASON,
   deleteStoredFile,
   extensionFor,
   storeFile,
@@ -44,6 +46,15 @@ function safeRevalidate(path: string) {
 
 /** Shared checks, so both entry points refuse the same things for the same reasons. */
 function validate(file: File | null): { ok: true; extension: string } | { ok: false; result: UploadResult } {
+  // Checked before anything else: refusing up front is honest, whereas validating
+  // the file and then failing on the write reads as a bug rather than as a
+  // deployment that has no storage attached.
+  if (!DURABLE_STORAGE) {
+    return {
+      ok: false,
+      result: { ok: false, message: 'Uploads are not available here.', detail: NO_STORAGE_REASON },
+    };
+  }
   if (!file || file.size === 0) {
     return { ok: false, result: { ok: false, message: 'No file was selected.' } };
   }

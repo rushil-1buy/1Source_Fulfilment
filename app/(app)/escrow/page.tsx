@@ -3,6 +3,17 @@ import { RecordTable, type ColumnSpec } from '@/components/ui/RecordTable';
 import { Money } from '@/components/ui/Layout';
 import { listEscrowAccounts } from '@/lib/queries/modules';
 
+/**
+ * Never prerendered.
+ *
+ * Every screen here reads live operational data. Without this, Next prerenders
+ * at build time and serves a snapshot of the database taken during CI — an
+ * orders list frozen at deploy, and on a serverless host with no build-time
+ * database, a build that fails outright.
+ */
+export const dynamic = 'force-dynamic';
+
+
 export const metadata = { title: 'Escrow' };
 
 const COLUMNS: ColumnSpec[] = [

@@ -6,6 +6,17 @@ import { dashboardSummary } from '@/lib/queries/orders';
 import { PHASES, PHASE_DEFS } from '@/lib/domain/stages';
 import { humanDuration } from '@/lib/utils';
 
+/**
+ * Never prerendered.
+ *
+ * Every screen here reads live operational data. Without this, Next prerenders
+ * at build time and serves a snapshot of the database taken during CI — an
+ * orders list frozen at deploy, and on a serverless host with no build-time
+ * database, a build that fails outright.
+ */
+export const dynamic = 'force-dynamic';
+
+
 export const metadata = { title: 'Reports & Analytics' };
 
 const COLUMNS: ColumnSpec[] = [

@@ -63,10 +63,14 @@ export async function globalSearch(raw: string): Promise<SearchOutcome> {
   const q = raw.trim();
   if (q.length < MIN_QUERY) return { query: q, groups: [], total: 0, truncated: false };
 
-  // SQLite's LIKE is case-insensitive for ASCII, which is all these identifiers
-  // are. Prisma's `mode: 'insensitive'` is not supported on SQLite, so relying on
-  // that would silently do nothing here.
-  const like = { contains: q };
+  /**
+   * Explicitly case-insensitive.
+   *
+   * Postgres LIKE is case-SENSITIVE, unlike SQLite's, so without `mode` a search
+   * for "stm32" would stop matching STM32F407VGT6 — and it would fail silently,
+   * returning an empty result rather than an error. Prisma maps this to ILIKE.
+   */
+  const like = { contains: q, mode: 'insensitive' as const };
   const take = PER_GROUP + 1; // one extra, purely to detect truncation
 
   const [orders, customerPos, supplierPos, proformas, parts, customers, suppliers, documents] =

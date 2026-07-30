@@ -1,6 +1,17 @@
 import { db } from '@/lib/db';
 import { ConnectorHealth, type ConnectorView } from './ConnectorHealth';
 
+/**
+ * Never prerendered.
+ *
+ * Every screen here reads live operational data. Without this, Next prerenders
+ * at build time and serves a snapshot of the database taken during CI — an
+ * orders list frozen at deploy, and on a serverless host with no build-time
+ * database, a build that fails outright.
+ */
+export const dynamic = 'force-dynamic';
+
+
 export const metadata = { title: 'Integrations' };
 
 export default async function IntegrationsPage() {
