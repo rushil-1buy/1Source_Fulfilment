@@ -3,13 +3,13 @@ import { PHASES, PHASE_DEFS, STAGE_DEFS } from '@/lib/domain/stages';
 import { STAGE_EVIDENCE } from '@/lib/domain/stage-evidence';
 import { subTasksFor, TESTING_STANDARDS } from '@/lib/domain/stage-tasks';
 import { NAV_GROUPS } from '@/lib/nav';
-import { INCOTERMS } from '@/lib/domain/incoterms';
+import { INCOTERM_DEFS } from '@/lib/domain/incoterms';
 import { STAKEHOLDER_META, PAYMENT_METHOD_META, TEST_SCOPE_META } from '@/lib/domain/enums';
 
 const ev = new Map(STAGE_EVIDENCE.map((e) => [e.stageId, e]));
 
 const out = {
-  phases: PHASES.map((p) => ({ id: p, ...PHASE_DEFS[p] })),
+  phases: PHASES.map((p) => ({ ...PHASE_DEFS[p] })),
   stages: STAGE_DEFS.map((s) => {
     const e = ev.get(s.id);
     return {
@@ -25,7 +25,7 @@ const out = {
     };
   }),
   nav: NAV_GROUPS.map((g) => ({ id: g.id, label: g.label, items: g.items.map((i) => ({ href: i.href, label: i.label, plainLabel: i.plainLabel, hint: i.hint, children: i.children ?? [] })) })),
-  incoterms: INCOTERMS.map((i) => ({ code: i.code, name: i.name, mode: i.mode, deliveryPoint: i.deliveryPoint, riskTransfersAt: i.riskTransfersAt, carriage: i.carriage, insurance: i.insurance, exportClearance: i.exportClearance, importClearance: i.importClearance, implies: i.implies, watchOut: i.watchOut })),
+  incoterms: Object.values(INCOTERM_DEFS).map((i) => ({ code: i.code, name: i.name, mode: i.mode, deliveryPoint: i.deliveryPoint, riskTransfersAt: i.riskTransfersAt, carriage: i.carriage, insurance: i.insurance, exportClearance: i.exportClearance, importClearance: i.importClearance, implies: i.implies, watchOut: i.watchOut })),
   standards: TESTING_STANDARDS,
   stakeholders: STAKEHOLDER_META,
   paymentMethods: PAYMENT_METHOD_META,
