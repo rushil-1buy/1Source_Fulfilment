@@ -27,6 +27,8 @@ import {
   FileText,
   FileUp,
   FlaskConical,
+  // Aliased: the bare name would shadow the DOM's `History` type in this module.
+  History as HistoryIcon,
   Landmark,
   LayoutList,
   MessageSquare,
@@ -803,31 +805,66 @@ export function OrderDetailView({
         <Tabs.Content value="overview" className="min-w-0 outline-none">
           <OverviewTab order={order} />
         </Tabs.Content>
-        <Tabs.Content value="flow" className="min-w-0 space-y-3 outline-none">
-          {/* What each step consists of comes first; the history of what has
-              already happened sits underneath it. Somebody opening this tab is
-              far more often asking "what does this stage involve" than "when did
-              we pass stage four". */}
-          <FlowStepsPanel
-            currentStage={order.stage}
-            ctx={rail.ctx}
-            completedStageIds={order.computed.completedStageIds}
-            evidence={evidenceRecords.map((r) => ({
-              stageId: r.stageId,
-              values: r.values as Record<string, unknown>,
-              documents: r.documents.map((d) => ({ docType: d.docType })),
-            }))}
-            documents={order.documents.map((d) => ({
-              id: d.id,
-              docType: d.docType,
-              title: d.title,
-              fileName: d.fileName,
-              stageId: d.stageId,
-              createdAt: d.createdAt,
-            }))}
-            manualSteps={order.customStages}
-          />
-          <FlowTab order={order} />
+        <Tabs.Content value="flow" className="min-w-0 outline-none">
+          {/*
+            Two sub-tabs rather than one stacked scroll, the same split Logistics
+            makes and for the same reason: these answer two different questions.
+
+            "What does this stage involve, and what is still outstanding" is a
+            forward-looking question asked while working the order. "When did we
+            pass stage four, who recorded it and how long did it sit" is a
+            backward-looking audit question. Stacked, the reader had to scroll
+            past all 36 steps — each with its sub-tasks and filed documents — to
+            reach the history table.
+
+            Steps leads because opening Flow is far more often the first question
+            than the second.
+          */}
+          <Tabs.Root defaultValue="steps" className="grid min-w-0 grid-cols-1 gap-4">
+            <Tabs.List
+              aria-label="Flow views"
+              className="border-line-subtle bg-surface-2 flex min-w-0 flex-wrap gap-0.5 self-start rounded-[9px] border p-0.5"
+            >
+              <SubTabTrigger
+                value="steps"
+                icon={LayoutList}
+                label="Steps"
+                count={applicableStages(rail.ctx).length}
+              />
+              <SubTabTrigger
+                value="history"
+                icon={HistoryIcon}
+                label="Stage history"
+                count={order.transitions.length}
+              />
+            </Tabs.List>
+
+            <Tabs.Content value="steps" className="min-w-0 outline-none">
+              <FlowStepsPanel
+                currentStage={order.stage}
+                ctx={rail.ctx}
+                completedStageIds={order.computed.completedStageIds}
+                evidence={evidenceRecords.map((r) => ({
+                  stageId: r.stageId,
+                  values: r.values as Record<string, unknown>,
+                  documents: r.documents.map((d) => ({ docType: d.docType })),
+                }))}
+                documents={order.documents.map((d) => ({
+                  id: d.id,
+                  docType: d.docType,
+                  title: d.title,
+                  fileName: d.fileName,
+                  stageId: d.stageId,
+                  createdAt: d.createdAt,
+                }))}
+                manualSteps={order.customStages}
+              />
+            </Tabs.Content>
+
+            <Tabs.Content value="history" className="min-w-0 outline-none">
+              <FlowTab order={order} />
+            </Tabs.Content>
+          </Tabs.Root>
         </Tabs.Content>
         <Tabs.Content value="lines" className="min-w-0 outline-none">
           <LineItemsTab order={order} />
@@ -2746,13 +2783,13 @@ function LogisticsTab({ order }: { order: OrderDetail }) {
         aria-label="Logistics views"
         className="border-line-subtle bg-surface-2 flex min-w-0 flex-wrap gap-0.5 self-start rounded-[9px] border p-0.5"
       >
-        <LogisticsTabTrigger
+        <SubTabTrigger
           value="tracking"
           icon={Truck}
           label="Tracking"
           count={legs > 0 ? legs : undefined}
         />
-        <LogisticsTabTrigger value="terms" icon={ShieldCheck} label="Delivery Terms" />
+        <SubTabTrigger value="terms" icon={ShieldCheck} label="Delivery Terms" />
       </Tabs.List>
 
       <Tabs.Content value="tracking" className="grid min-w-0 grid-cols-1 gap-4 outline-none">
@@ -2884,7 +2921,15 @@ function LogisticsTab({ order }: { order: OrderDetail }) {
 }
 
 /** One sub-tab trigger, styled like the segmented controls used elsewhere. */
-function LogisticsTabTrigger({
+/**
+ * One segment of a sub-tab strip, inside an already-selected top-level tab.
+ *
+ * Shared by Logistics and Flow. Both had the same problem — two jobs stacked
+ * into one long scroll — and the answer has to look identical in both places,
+ * or a second row of tabs reads as a different kind of control rather than the
+ * same one applied twice.
+ */
+function SubTabTrigger({
   value,
   icon: Icon,
   label,
