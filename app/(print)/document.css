@@ -1,0 +1,478 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   PRINTED DOCUMENTS — Purchase Order · Proforma Invoice · Work Order
+
+   Deliberately NOT written in design tokens. These sheets are legal/commercial
+   paper: they must render identically regardless of theme, and the reference
+   layouts are specified in points, not in a type scale. Everything here is
+   self-contained black-on-white.
+
+   On screen the sheet sits on a grey desk so what you see is the page you get.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.doc-desk {
+  background: #e8e8e8;
+  min-height: 100vh;
+  padding: 24px 16px 64px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
+/* One A4 page. Height is a minimum so content may run longer and paginate. */
+.doc-sheet {
+  background: #ffffff;
+  color: #000000;
+  width: 210mm;
+  min-height: 297mm;
+  padding: 16mm 14mm;
+  box-sizing: border-box;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.18),
+    0 8px 28px rgba(0, 0, 0, 0.16);
+  font-family: var(--font-geist-sans), -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 9.5pt;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Narrower viewports: let the sheet shrink rather than bleed off the side.
+   The aspect ratio is preserved by scaling, so the preview stays truthful. */
+@media (max-width: 232mm) {
+  .doc-desk {
+    padding: 12px 8px 40px;
+  }
+  .doc-sheet {
+    width: 100%;
+    min-height: 0;
+    padding: 10mm 8mm;
+    font-size: 9pt;
+  }
+}
+
+.doc-mono {
+  font-family: var(--font-jetbrains-mono), ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 0.96em;
+  letter-spacing: -0.01em;
+}
+
+/* ── Letterhead (proforma invoice) ──────────────────────────────────────── */
+.doc-letterhead {
+  border-bottom: 1.6px solid #000;
+  padding-bottom: 7px;
+  margin-bottom: 14px;
+}
+.doc-letterhead-name {
+  font-size: 15pt;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 1.15;
+}
+.doc-letterhead-addr {
+  font-size: 10pt;
+  margin-top: 3px;
+}
+.doc-letterhead-contact {
+  font-size: 8.5pt;
+  color: #555;
+  margin-top: 2px;
+}
+
+/* ── Title ─────────────────────────────────────────────────────────────── */
+.doc-title {
+  text-align: center;
+  font-size: 15pt;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0 0 14px;
+}
+.doc-title-ruled {
+  border-bottom: 1.6px solid #000;
+  padding-bottom: 9px;
+}
+
+/* ── Label / value ladder (proforma invoice body) ───────────────────────── */
+.doc-ladder {
+  width: 100%;
+  border-collapse: collapse;
+  border-top: 1.6px solid #000;
+}
+.doc-ladder tr {
+  border-bottom: 0.7px solid #c9c9c9;
+}
+.doc-ladder tr:last-child {
+  border-bottom: 1.6px solid #000;
+}
+.doc-ladder th {
+  text-align: left;
+  vertical-align: top;
+  font-weight: 400;
+  font-size: 7.5pt;
+  color: #666;
+  padding: 5px 10px 5px 0;
+  width: 26%;
+  white-space: nowrap;
+}
+.doc-ladder td {
+  text-align: right;
+  vertical-align: top;
+  font-size: 10pt;
+  font-weight: 700;
+  padding: 5px 0;
+}
+/* A ladder row whose value is a multi-line party block reads left-aligned. */
+.doc-ladder tr.doc-ladder-block th {
+  padding-bottom: 1px;
+  width: auto;
+}
+.doc-ladder tr.doc-ladder-block th,
+.doc-ladder tr.doc-ladder-block td {
+  display: block;
+  text-align: left;
+}
+.doc-ladder tr.doc-ladder-block td {
+  font-weight: 400;
+  font-size: 9.5pt;
+  padding-top: 0;
+  padding-bottom: 7px;
+}
+.doc-ladder tr.doc-ladder-block td .doc-party-name {
+  font-weight: 700;
+  font-size: 10.5pt;
+}
+
+/* ── Voucher grid (Tally purchase order header) ─────────────────────────── */
+.doc-voucher {
+  width: 100%;
+  border-collapse: collapse;
+  border: 0.9px solid #000;
+  table-layout: fixed;
+}
+.doc-voucher td {
+  border: 0.9px solid #000;
+  vertical-align: top;
+  padding: 6px 8px 8px;
+}
+
+/* A cell that only hosts a nested stack contributes no padding of its own, so
+   the inner rows' rules meet the outer frame cleanly. */
+.doc-voucher td.doc-nested {
+  padding: 0;
+}
+.doc-substack {
+  width: 100%;
+  height: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.doc-substack td {
+  border: 0;
+  border-bottom: 0.9px solid #000;
+  vertical-align: top;
+  padding: 6px 8px 8px;
+}
+/* The two columns rarely have equal row counts; the last row in each stack
+   stretches instead, so both sides finish flush with the outer frame. */
+.doc-substack tr:last-child td {
+  border-bottom: 0;
+}
+.doc-substack td + td {
+  border-left: 0.9px solid #000;
+}
+.doc-field-label {
+  font-size: 7.5pt;
+  color: #666;
+  line-height: 1.3;
+  margin-bottom: 2px;
+}
+.doc-field-value {
+  font-size: 10pt;
+  font-weight: 700;
+  line-height: 1.28;
+}
+.doc-party-name {
+  font-size: 10.5pt;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.doc-party-line {
+  font-size: 9.5pt;
+  line-height: 1.42;
+}
+
+/* ── Goods table ───────────────────────────────────────────────────────── */
+.doc-goods {
+  width: 100%;
+  border-collapse: collapse;
+  border: 0.9px solid #000;
+  margin-top: -0.9px; /* share the rule with the block above */
+}
+.doc-goods th {
+  border: 0.9px solid #000;
+  font-size: 9pt;
+  font-weight: 700;
+  padding: 6px 8px;
+  text-align: center;
+}
+.doc-goods td {
+  border-left: 0.9px solid #000;
+  border-right: 0.9px solid #000;
+  font-size: 9.5pt;
+  padding: 7px 8px;
+  vertical-align: top;
+}
+.doc-goods .doc-goods-num {
+  text-align: right;
+  white-space: nowrap;
+}
+.doc-goods .doc-goods-mid {
+  text-align: center;
+  white-space: nowrap;
+}
+.doc-goods-desc-main {
+  font-weight: 700;
+  line-height: 1.35;
+}
+.doc-goods-desc-sub {
+  color: #555;
+  font-size: 8.5pt;
+  line-height: 1.45;
+  margin-top: 1px;
+}
+/* Reserves the open space a voucher traditionally leaves under the lines. */
+.doc-goods-filler td {
+  height: 78px;
+  border-bottom: 0.9px solid #000;
+}
+.doc-goods-total td {
+  border-top: 0.9px solid #000;
+  border-bottom: 0.9px solid #000;
+  font-weight: 700;
+  padding: 7px 8px;
+}
+
+/* ── Amount in words ───────────────────────────────────────────────────── */
+.doc-words {
+  width: 100%;
+  border-collapse: collapse;
+  border: 0.9px solid #000;
+  border-top: 0;
+}
+.doc-words td {
+  padding: 6px 8px 7px;
+  vertical-align: middle;
+}
+.doc-words .doc-words-label {
+  font-size: 7.5pt;
+  color: #666;
+  white-space: nowrap;
+  width: 1%;
+}
+.doc-words .doc-words-value {
+  font-size: 10pt;
+  font-weight: 700;
+  text-align: right;
+}
+.doc-words .doc-words-eoe {
+  font-size: 8.5pt;
+  font-style: italic;
+  text-align: right;
+  white-space: nowrap;
+  width: 1%;
+  padding-left: 14px;
+}
+
+/* ── Numbered notes (terms / remarks) ──────────────────────────────────── */
+.doc-notes {
+  margin-top: 12px;
+}
+.doc-notes-label {
+  font-size: 7.5pt;
+  color: #666;
+  margin-bottom: 4px;
+}
+.doc-notes ol {
+  margin: 0;
+  padding-left: 20px;
+  /* Stated explicitly: the framework's preflight resets list-style to none, and
+     a numbered condition on a purchase order must actually carry its number —
+     the supplier quotes "clause 3" back at us. */
+  list-style: decimal outside;
+}
+.doc-notes li {
+  font-size: 9pt;
+  line-height: 1.55;
+  padding-left: 2px;
+  margin-bottom: 3px;
+}
+
+/* ── Bank block ────────────────────────────────────────────────────────── */
+.doc-bank {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 4px;
+}
+.doc-bank tr {
+  border-bottom: 0.7px dashed #bdbdbd;
+}
+.doc-bank tr:last-child {
+  border-bottom: 0;
+}
+.doc-bank th {
+  text-align: left;
+  font-weight: 400;
+  font-size: 8pt;
+  color: #666;
+  padding: 4px 12px 4px 0;
+  width: 25%;
+  vertical-align: top;
+  white-space: nowrap;
+}
+.doc-bank td {
+  font-size: 9pt;
+  padding: 4px 0;
+  vertical-align: top;
+}
+.doc-bank td.doc-bank-strong {
+  font-weight: 700;
+}
+
+/* ── Signatures ────────────────────────────────────────────────────────── */
+.doc-signoff {
+  margin-top: 22px;
+  text-align: right;
+}
+.doc-signoff-for {
+  font-size: 10pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+}
+.doc-signoff-rule {
+  margin-top: 42px;
+  font-size: 9pt;
+}
+
+.doc-sigblock {
+  border-top: 1.6px solid #000;
+  padding: 10px 0 22px;
+}
+.doc-sigblock:last-of-type {
+  border-bottom: 1.6px solid #000;
+}
+.doc-sigblock-name {
+  font-size: 10.5pt;
+  font-weight: 700;
+}
+.doc-sigblock-stamp {
+  font-size: 9pt;
+  color: #555;
+  margin-top: 30px;
+}
+
+.doc-footnote {
+  text-align: center;
+  font-size: 8.5pt;
+  color: #555;
+  margin-top: 10px;
+}
+.doc-jurisdiction {
+  text-align: center;
+  font-size: 8.5pt;
+  letter-spacing: 0.02em;
+  margin-top: 20px;
+  padding-top: 8px;
+  border-top: 0.7px solid #c9c9c9;
+}
+
+/* A hard page break — the proforma invoice signs on its own sheet. */
+.doc-pagebreak {
+  break-before: page;
+}
+
+/* ── Screen-only toolbar ───────────────────────────────────────────────── */
+.doc-toolbar {
+  width: 210mm;
+  max-width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.doc-toolbar-title {
+  margin-right: auto;
+  font-size: 12.5px;
+  color: #3a3a3a;
+  font-family: var(--font-geist-sans), sans-serif;
+  min-width: 0;
+}
+.doc-toolbar-title strong {
+  display: block;
+  font-size: 14px;
+  color: #111;
+}
+.doc-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #b6b6b6;
+  background: #fff;
+  color: #1a1a1a;
+  border-radius: 7px;
+  padding: 6px 11px;
+  font-size: 12.5px;
+  font-family: var(--font-geist-sans), sans-serif;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.doc-btn:hover {
+  background: #f4f4f4;
+}
+.doc-btn-primary {
+  background: #111;
+  border-color: #111;
+  color: #fff;
+}
+.doc-btn-primary:hover {
+  background: #2c2c2c;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   PRINT
+   ═══════════════════════════════════════════════════════════════════════ */
+@page {
+  size: A4;
+  margin: 14mm 12mm;
+}
+
+@media print {
+  .doc-desk {
+    background: #fff;
+    padding: 0;
+    display: block;
+    min-height: 0;
+  }
+  .doc-sheet {
+    width: auto;
+    min-height: 0;
+    padding: 0;
+    box-shadow: none;
+    font-size: 9.5pt;
+  }
+  .doc-toolbar {
+    display: none !important;
+  }
+  /* Never split a row, a party box or a note across two sheets. */
+  .doc-voucher,
+  .doc-goods tr,
+  .doc-notes li,
+  .doc-sigblock,
+  .doc-bank tr {
+    break-inside: avoid;
+  }
+  .doc-goods thead {
+    display: table-header-group;
+  }
+}

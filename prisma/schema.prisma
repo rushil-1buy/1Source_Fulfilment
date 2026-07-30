@@ -1,0 +1,1586 @@
+// ============================================================================
+// 1BUY Fulfilment Platform — data model
+// Master prompt §9. SQLite via Prisma.
+//
+// CONVENTIONS
+//  * MONEY: every field named *Amount, *Value, *Total, *Price, *Cost, *Duty,
+//    *Fee, *Tax, *Freight is an INTEGER in MINOR UNITS (paise for INR, cents
+//    for USD). Never a float. The GST engine consumes and returns minor units
+//    so rounding is explicit and testable (§11A.5a).
+//    Exception: unitPrice* fields are Float, because component prices carry up
+//    to 4 decimals. They are rounded to integer minor units at the line level
+//    immediately, so float error never accumulates.
+//  * ENUMS: SQLite has no native enum. Enum-ish columns are String, with the
+//    authoritative union types + Zod schemas in lib/domain/enums.ts.
+//  * PROVENANCE (§11A.0 rule 3): records that can be populated by an external
+//    API carry provenance / provenanceActor / provenanceAt / provenanceRef.
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+  /**
+   * Generated INSIDE the project, not into node_modules.
+   *
+   * The dev server's file watcher does not cover node_modules, so a regenerated
+   * client there stayed invisible until a full restart — every schema change
+   * produced a "Unknown argument" crash on a field that genuinely existed.
+   * Emitting here puts the client in the watched module graph, so it reloads.
+   */
+  output = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Identity & access ──────────────────────────────────────────────────────
+
+/// 1BUY's own people. Only two individuals represent 1BUY on paper and in
+/// correspondence — Ankit Sharma and Akash Dwivedi — so `title` carries the
+/// designation documents print ("VP", "MGR") while `role` stays the access
+/// dimension that gates the flow.
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  role      String // Admin | SalesOps | Procurement | Finance | QCWarehouse | Compliance | Viewer
+  /// Designation as printed on documents, e.g. "Vice President", "Manager".
+  title     String?
+  initials  String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  transitions     StageTransition[]
+  tasksOwned      Task[]              @relation("TaskOwner")
+  auditEntries    AuditLogEntry[]
+  communications  Communication[]     @relation("LoggedBy")
+  inspections     InspectionReport[]
+  escrowApprovals EscrowApproval[]
+}
+
+// ─── Organisation / configuration ───────────────────────────────────────────
+
+model OrgSetting {
+  id                   String  @id @default("org")
+  legalName            String
+  brandName            String
+  gstin                String
+  stateCode            String // place of business, drives place-of-supply logic
+  stateName            String
+  addressLine1         String
+  addressLine2         String?
+  city                 String
+  pincode              String
+  country              String  @default("India")
+  /// Consignee / ship-to address on the supplier PO — a different dock to the
+  /// registered billing address.
+  shipAddressLine1     String?
+  shipAddressLine2     String?
+  shipCity             String?
+  shipPincode          String?
+  cin                  String?
+  phone                String?
+  email                String?
+  /// "Attn" line printed on documents the supplier replies to.
+  contactAttn          String?
+  /// Legal jurisdiction footer on the PO.
+  jurisdiction         String?
+  /// Voucher-number prefix for supplier POs, e.g. "PO/SGSPL/26-27/".
+  poVoucherPrefix      String?
+  lutNumber            String?
+  lutValidUpto         DateTime?
+  eInvoiceThreshold    Int // minor units — configurable, never hardcoded (§11A.5b)
+  eWayBillThreshold    Int
+  baseCurrency         String  @default("INR")
+  reportingCurrency    String  @default("INR")
+  marginFloorPct       Float   @default(5)
+  plainEnglishDefault  Boolean @default(false)
+  reduceMotionDefault  Boolean @default(false)
+}
+
+model NumberingSeries {
+  id         String @id @default(cuid())
+  docType    String @unique // CUSTOMER_PO | CUSTOMER_PI | SUPPLIER_PO | SUPPLIER_PI | TAX_INVOICE | CREDIT_NOTE | GRN | WORK_ORDER | TEST_REQUEST
+  prefix     String
+  padding    Int    @default(4)
+  nextNumber Int    @default(1)
+  resetYearly Boolean @default(false)
+  label      String
+}
+
+/// Tooltip + glossary text lives in the DB so ops leads can edit it without a
+/// developer (§8.2). Nothing in the UI hardcodes a column tooltip.
+model GlossaryTerm {
+  id            String  @id @default(cuid())
+  key           String  @unique // e.g. "hsnCode"
+  term          String // "HSN Code"
+  plainTerm     String? // Plain-English-mode label, e.g. "Customs product code"
+  whatItIs      String
+  whyItMatters  String
+  example       String
+  whoFillsItIn  String?
+  category      String // po | pi | order | tax | logistics | customs | escrow | testing | inspection | general
+}
+
+model SavedView {
+  id       String  @id @default(cuid())
+  name     String
+  scope    String // orders | customerPos | supplierPos | escrow | testing | logistics | customs | tax
+  filters  String // JSON
+  columns  String? // JSON — visibility/order/width
+  density  String  @default("comfortable")
+  isShared Boolean @default(false)
+  ownerId  String?
+}
+
+// ─── Integrations (§11A) ────────────────────────────────────────────────────
+
+model IntegrationConnector {
+  id            String   @id // WHL | DHL | ICEGATE | ESCROW | GST_GSP
+  label         String
+  mode          String   @default("MOCK") // MOCK | MANUAL | SANDBOX | LIVE | NOT_CONFIGURED
+  vendorName    String?
+  vendorStatus  String   @default("CONFIRMED") // CONFIRMED | NOT_FINALISED
+  syncSeconds   Int      @default(300)
+  credentialsOk Boolean  @default(false)
+  lastSuccessAt DateTime?
+  lastFailureAt DateTime?
+  lastFailureMsg String?
+  forceFailure  Boolean  @default(false) // drives AC#28 resilience demo
+  updatedAt     DateTime @updatedAt
+
+  calls IntegrationCallLog[]
+}
+
+model IntegrationCallLog {
+  id            String   @id @default(cuid())
+  connectorId   String
+  connector     IntegrationConnector @relation(fields: [connectorId], references: [id])
+  workOrderId   String?
+  workOrder     WorkOrder? @relation(fields: [workOrderId], references: [id])
+  operation     String
+  direction     String // OUTBOUND | INBOUND_WEBHOOK
+  requestBody   String?
+  responseBody  String?
+  statusCode    Int?
+  ok            Boolean
+  errorMessage  String?
+  latencyMs     Int
+  attempt       Int      @default(1)
+  idempotencyKey String?
+  correlationId String
+  mode          String
+  createdAt     DateTime @default(now())
+
+  @@index([connectorId, createdAt])
+}
+
+// ─── Masters ────────────────────────────────────────────────────────────────
+
+model Customer {
+  id           String  @id @default(cuid())
+  code         String  @unique
+  name         String
+  gstin        String?
+  stateCode    String
+  stateName    String
+  addressLine1 String
+  city         String
+  pincode      String
+  country      String  @default("India")
+  isSez        Boolean @default(false)
+  isExport     Boolean @default(false)
+  contactName  String
+  contactEmail String
+  contactPhone String?
+  paymentTerms String  @default("30 days")
+  creditLimit  Int     @default(0)
+  createdAt    DateTime @default(now())
+
+  purchaseOrders CustomerPO[]
+  taxInvoices    TaxInvoice[]
+}
+
+model Supplier {
+  id           String  @id @default(cuid())
+  code         String  @unique
+  name         String
+  gstin        String?
+  isForeign    Boolean @default(false)
+  stateCode    String?
+  stateName    String?
+  addressLine1 String
+  addressLine2 String?
+  city         String
+  postcode     String?
+  country      String
+  contactName  String
+  contactEmail String
+  contactPhone String?
+  contactFax   String?
+  currency     String  @default("USD")
+  incoterms    String  @default("FOB")
+  /// TT beneficiary details, printed on the supplier's proforma invoice.
+  bankName     String?
+  bankAddress  String?
+  bankAccount  String?
+  swiftCode    String?
+  beneficiaryName String?
+  /// How wire charges are split, printed under the bank block.
+  bankFeeNote  String?
+  createdAt    DateTime @default(now())
+
+  avl          AVLRecord?
+  purchaseOrders SupplierPO[]
+  aggregations DemandAggregation[]
+}
+
+/// Approved Vendor List. A supplier may only be selected on a Supplier PO when
+/// status = APPROVED and approvedUpto is in the future (§3.1b, AC#3).
+model AVLRecord {
+  id           String   @id @default(cuid())
+  supplierId   String   @unique
+  supplier     Supplier @relation(fields: [supplierId], references: [id])
+  status       String // APPROVED | PENDING | SUSPENDED | EXPIRED
+  approvedOn   DateTime
+  approvedUpto DateTime
+  categories   String // JSON array
+  certifications String // JSON array
+  qualityRating Float   @default(0)
+  deliveryRating Float  @default(0)
+  riskScore    Int      @default(0) // 0 low – 100 high
+  notes        String?
+}
+
+model MpnCatalogueItem {
+  id            String  @id @default(cuid())
+  mpn           String  @unique
+  manufacturer  String
+  description   String
+  hsnCode       String
+  defaultGstRate Float
+  uom           String  @default("PCS")
+  msl           String?
+  rohs          Boolean @default(true)
+  packaging     String?
+  countryOfOrigin String?
+  createdAt     DateTime @default(now())
+}
+
+/// Date-effective GST rate master. The engine must look rates up by HSN + date
+/// and never hardcode 18% (§11A.5a).
+model HsnRate {
+  id            String   @id @default(cuid())
+  hsnCode       String
+  description   String
+  cgstRate      Float
+  sgstRate      Float
+  igstRate      Float
+  cessRate      Float    @default(0)
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+
+  @@index([hsnCode, effectiveFrom])
+}
+
+model TestParameterMaster {
+  id       String @id @default(cuid())
+  code     String @unique
+  name     String
+  category String // ELECTRICAL | FUNCTIONAL | XRAY | DECAP | SOLDERABILITY | MARKING | MSL_BAKE | VISUAL
+  method   String?
+  unit     String?
+  isDefault Boolean @default(false)
+}
+
+model Carrier {
+  id        String  @id @default(cuid())
+  code      String  @unique // DHL | FEDEX | BLUEDART | OTHER
+  name      String
+  isIntegrated Boolean @default(false)
+  supportsPod  Boolean @default(true)
+}
+
+model TestingLab {
+  id        String  @id @default(cuid())
+  code      String  @unique
+  name      String
+  isForeign Boolean @default(false)
+  gstin     String?
+  country   String  @default("India")
+  addressLine1 String?
+  city      String?
+  contactEmail String?
+  accreditations String? // JSON array
+}
+
+// ─── Sell-side documents ────────────────────────────────────────────────────
+
+model CustomerPO {
+  id            String   @id @default(cuid())
+  poNumber      String
+  customerId    String
+  customer      Customer @relation(fields: [customerId], references: [id])
+  poDate        DateTime
+  currency      String
+  incoterms     String
+  paymentTerms  String
+  requestedDeliveryDate DateTime?
+  shipToAddress String
+  billToAddress String
+  contactName   String?
+  notes         String?
+  /// The enquiry or sourcing reference this came from — the RFQ / Sourcing ID
+  /// carried over from the sourcing step, which lives upstream of this platform.
+  /// Free text on purpose: the format belongs to that system, not this one, and
+  /// guessing a pattern would reject valid references.
+  sourcingRef   String?
+  totalValue    Int      @default(0)
+  status        String   @default("RECEIVED") // RECEIVED | PARTIALLY_LINKED | FULLY_LINKED | CLOSED | CANCELLED
+  createdAt     DateTime @default(now())
+  createdById   String?
+
+  lines       CustomerPOLine[]
+  proformas   ProformaInvoice[]
+  workOrders  WorkOrder[]
+  documents   Document[]
+
+  @@unique([customerId, poNumber])
+}
+
+model CustomerPOLine {
+  id              String     @id @default(cuid())
+  customerPoId    String
+  customerPo      CustomerPO @relation(fields: [customerPoId], references: [id], onDelete: Cascade)
+  lineNo          Int
+  mpn             String
+  manufacturer    String
+  description     String
+  hsnCode         String
+  quantity        Int
+  uom             String     @default("PCS")
+  unitPrice       Float
+  lineTotal       Int
+  requestedDate   DateTime?
+  /// What the customer was promised, per line. Held on the line rather than the
+  /// order because a mixed order can have one part on the shelf and another on a
+  /// twelve-week lead.
+  leadTimeDays    Int?
+  /// The date code or lot the customer requires, e.g. "2419+". This is a hard
+  /// acceptance criterion on electronic components — the wrong date code is a
+  /// rejected delivery, not a negotiation — so it is captured on their order and
+  /// carried through to what we ask the supplier for.
+  dateCodeLot     String?
+  testingRequired Boolean    @default(false)
+  remarks         String?
+
+  mappings POLinkMapping[]
+
+  /// Slices of this line contributed to a demand-aggregation pool.
+  aggregationLines DemandAggregationLine[]
+}
+
+model ProformaInvoice {
+  id            String   @id @default(cuid())
+  piNumber      String   @unique
+  direction     String // CUSTOMER_PI (1BUY→Customer) | SUPPLIER_PI (Supplier→1BUY)
+  customerPoId  String?
+  customerPo    CustomerPO? @relation(fields: [customerPoId], references: [id])
+  supplierPoId  String?
+  supplierPo    SupplierPO? @relation(fields: [supplierPoId], references: [id])
+  piDate        DateTime
+  validUntil    DateTime?
+  currency      String
+  subtotal      Int      @default(0)
+  freightAmount Int      @default(0)
+  insuranceAmount Int    @default(0)
+  taxAmount     Int      @default(0)
+  totalValue    Int      @default(0)
+  bankDetails   String?
+  terms         String?
+
+  // ─── Printed-document fields (the proforma invoice) ────────────────────────
+  /// "Attn" line — the named people at the receiving entity.
+  attention      String?
+  /// e.g. "By air or courier nominated and paid by the buyer".
+  shipmentMethod String?
+  /// Where the goods ship from, printed as "From".
+  originLocation String?
+  /// Where they are going, printed as "Destination".
+  destination    String?
+  /// Free text, because it is usually conditional on payment
+  /// ("Within agreed 2–4 days after the seller's receipt of TT payment").
+  deliveryTime   String?
+  /// The payment term as written on the document, e.g.
+  /// "100% TT in advance from the buyer to the seller before shipping."
+  paymentTerm    String?
+  /// One remark per line, printed as a numbered list.
+  remarks        String?
+  status        String   @default("DRAFT") // DRAFT | ISSUED | SENT | ACCEPTED | EXPIRED | SUPERSEDED
+  issuedAt      DateTime?
+  sentAt        DateTime?
+  acceptedAt    DateTime?
+  acceptanceRef String?
+  supersededById String?
+  externalRef   String? // supplier's own PI number when direction = SUPPLIER_PI
+  /// The enquiry or sourcing reference this came from — the RFQ / Sourcing ID
+  /// carried over from the sourcing step, which lives upstream of this platform.
+  /// Free text on purpose: the format belongs to that system, not this one, and
+  /// guessing a pattern would reject valid references.
+  sourcingRef   String?
+  leadTimeDays  Int?
+  createdAt     DateTime @default(now())
+
+  lines        PILine[]
+  documents    Document[]
+  woAsCustomerPi WorkOrder[] @relation("WoCustomerPi")
+  woAsSupplierPi WorkOrder[] @relation("WoSupplierPi")
+}
+
+model PILine {
+  id          String          @id @default(cuid())
+  piId        String
+  pi          ProformaInvoice @relation(fields: [piId], references: [id], onDelete: Cascade)
+  lineNo      Int
+  mpn         String
+  description String
+  hsnCode     String
+  quantity    Int
+  uom         String          @default("PCS")
+  unitPrice   Float
+  lineTotal   Int
+  gstRate     Float?
+  taxAmount   Int             @default(0)
+  leadTimeDays Int?
+}
+
+// ─── Buy-side documents ─────────────────────────────────────────────────────
+
+model SupplierPO {
+  id            String   @id @default(cuid())
+  poNumber      String   @unique
+  supplierId    String
+  supplier      Supplier @relation(fields: [supplierId], references: [id])
+  poDate        DateTime
+  currency      String
+  fxRate        Float    @default(1)
+  incoterms     String
+  paymentMethod String // ADVANCE | ESCROW | CREDIT
+  creditDays    Int?
+  shipToAddress String
+  requiredDeliveryDate DateTime?
+  notes         String?
+
+  // ─── Printed-voucher fields (the Tally-style Purchase Order) ──────────────
+  /// Accounting voucher number, e.g. PO/SGSPL/26-27/0234. Distinct from poNumber:
+  /// this is what the finance team quotes and what the supplier sees.
+  voucherNo         String?
+  /// The enquiry or quote bundle this order answers, printed as "Reference No. & Date".
+  referenceNo       String?
+  referenceDate     DateTime?
+  /// The enquiry or sourcing reference this came from — the RFQ / Sourcing ID
+  /// carried over from the sourcing step, which lives upstream of this platform.
+  /// Free text on purpose: the format belongs to that system, not this one, and
+  /// guessing a pattern would reject valid references.
+  sourcingRef   String?
+
+  /// Registered billing address of the buying entity. Held per order because the
+  /// entity may bill from a different registration than it ships to.
+  billToAddress     String?
+  /// Carrier or hand-off named on the voucher; "—" when not yet nominated.
+  dispatchedThrough String?
+  /// Final delivery point, e.g. "Bengaluru, KA · DAP".
+  destination       String?
+  /// The delivery term itself, e.g. CIP. Separate from `incoterms` because the
+  /// voucher prints the agreed carriage term alongside the destination's own.
+  termsOfDelivery   String?
+  /// One condition per line, printed as a numbered list.
+  termsAndConditions String?
+  totalValue    Int      @default(0)
+  status        String   @default("DRAFT") // DRAFT | ISSUED | ACKNOWLEDGED | CLOSED | CANCELLED
+  issuedAt      DateTime?
+  createdAt     DateTime @default(now())
+
+  lines      SupplierPOLine[]
+  proformas  ProformaInvoice[]
+  workOrders WorkOrder[]
+  documents  Document[]
+  /// Set when this order was raised from a pooled demand aggregation.
+  aggregation DemandAggregation?
+}
+
+model SupplierPOLine {
+  id              String     @id @default(cuid())
+  supplierPoId    String
+  supplierPo      SupplierPO @relation(fields: [supplierPoId], references: [id], onDelete: Cascade)
+  lineNo          Int
+  mpn             String
+  manufacturer    String
+  description     String
+  hsnCode         String
+  quantity        Int
+  uom             String     @default("PCS")
+  unitPrice       Float
+  lineTotal       Int
+  leadTimeDays    Int?
+  countryOfOrigin String?
+  dateCodeLot     String?
+  msl             String?
+  rohs            Boolean    @default(true)
+  packaging       String?
+  testingRequired Boolean    @default(false)
+  testScope       String? // LOT_SAMPLE | FULL_BATCH
+  sampleSize      Int?
+  aql             String?
+  remarks         String?
+
+  mappings POLinkMapping[]
+}
+
+/// Customer PO line ↔ Supplier PO line allocation. Supports 1:1, partial
+/// allocation and split sourcing (§3.2).
+model POLinkMapping {
+  id               String         @id @default(cuid())
+  workOrderId      String
+  workOrder        WorkOrder      @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  customerPoLineId String
+  customerPoLine   CustomerPOLine @relation(fields: [customerPoLineId], references: [id])
+  supplierPoLineId String
+  supplierPoLine   SupplierPOLine @relation(fields: [supplierPoLineId], references: [id])
+  allocatedQty     Int
+  sellUnitPrice    Float
+  buyUnitPrice     Float
+  createdAt        DateTime       @default(now())
+}
+
+// ─── The Internal Work Order ────────────────────────────────────────────────
+
+model WorkOrder {
+  id             String   @id @default(cuid())
+  /// CustomerPO_1BUYPI_1BUYPO_SupplierPI — 4th segment is SPI-PENDING until the
+  /// supplier PI is captured, then auto-completes and locks (§3.4).
+  canonicalName  String   @unique
+  alias          String   @unique // WO-2026-0107
+  provisionalName String? // retained as a searchable alias after completion
+  nameLocked     Boolean  @default(false)
+
+  customerPoId   String
+  customerPo     CustomerPO @relation(fields: [customerPoId], references: [id])
+  customerPiId   String?
+  customerPi     ProformaInvoice? @relation("WoCustomerPi", fields: [customerPiId], references: [id])
+  supplierPoId   String
+  supplierPo     SupplierPO @relation(fields: [supplierPoId], references: [id])
+  supplierPiId   String?
+  supplierPi     ProformaInvoice? @relation("WoSupplierPi", fields: [supplierPiId], references: [id])
+
+  stage          String // one of the 34 stage ids
+  phase          String // A..G
+  status         String   @default("ACTIVE") // ACTIVE | BLOCKED | CLOSED | CANCELLED
+  stageEnteredAt DateTime @default(now())
+
+  paymentMethod  String // ADVANCE | ESCROW | CREDIT
+  creditDays     Int?
+  /// Who funds the escrow and on what basis is NEGOTIATED per order in the terms
+  /// between 1BUY and the supplier — it is not a platform-wide constant.
+  escrowFundedBy String? // SUPPLIER | ONE_BUY | BOTH — see ESCROW_FUNDERS
+  escrowBasis    String? // SELL_VALUE | BUY_VALUE | CUSTOM
+  /// Set when escrowBasis = CUSTOM. Minor units.
+  escrowAgreedAmount Int?
+  testingRequired Boolean @default(false)
+  testScope      String? // LOT_SAMPLE | FULL_BATCH
+  incoterms      String
+  buyCurrency    String
+  sellCurrency   String
+  fxRate         Float    @default(1)
+  termsLockedAt  DateTime?
+
+  // Commercials — all minor units, all recomputed, never hand-entered (§9)
+  sellValue        Int @default(0)
+  buyValue         Int @default(0)
+  freightCost      Int @default(0)
+  insuranceCost    Int @default(0)
+  testingCost      Int @default(0)
+  repackCost       Int @default(0)
+  clearanceCost    Int @default(0)
+  escrowFee        Int @default(0)
+  dutyBcd          Int @default(0)
+  dutySws          Int @default(0)
+  dutyIgst         Int @default(0) // creditable — EXCLUDED from landed cost
+  dutyCess         Int @default(0)
+  creditableGstOther Int @default(0)
+
+  createdAt DateTime @default(now())
+  closedAt  DateTime?
+
+  mappings        POLinkMapping[]
+  transitions     StageTransition[]
+  escrowAccount   EscrowAccount?
+  testRequests    TestRequest[]
+  shipments       Shipment[]
+  customsEntry    CustomsEntry?
+  grns            Grn[]
+  inspections     InspectionReport[]
+  repackJobs      RepackJob[]
+  pods            ProofOfDelivery[]
+  taxInvoices     TaxInvoice[]
+  itcEntries      InputTaxCredit[]
+  rcSelfInvoices  ReverseChargeSelfInvoice[]
+  documents       Document[]
+  communications  Communication[]
+  tasks           Task[]
+  exceptions      ExceptionRecord[]
+  auditEntries    AuditLogEntry[]
+  integrationCalls IntegrationCallLog[]
+  stageEvidence   StageEvidence[]
+  customStages    CustomStage[]
+  phasePlan       OrderPhasePlan[]
+}
+
+/// Immutable ledger of every stage change — powers the rail's hover detail,
+/// SLA ageing and the audit trail.
+model StageTransition {
+  id           String    @id @default(cuid())
+  workOrderId  String
+  workOrder    WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  fromStage    String?
+  toStage      String
+  actorId      String?
+  actor        User?     @relation(fields: [actorId], references: [id])
+  actorLabel   String // e.g. "ICEGATE status sync" when system-driven
+  reason       String?
+  provenance   String    @default("MANUAL") // MANUAL | API | MOCK
+  durationSecondsInPrevious Int?
+  createdAt    DateTime  @default(now())
+
+  @@index([workOrderId, createdAt])
+}
+
+// ─── Escrow (§11A.4) ────────────────────────────────────────────────────────
+
+model EscrowAccount {
+  id            String    @id @default(cuid())
+  workOrderId   String    @unique
+  workOrder     WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  escrowRef     String    @unique
+  provider      String    @default("TBD")
+  currency      String
+  virtualAccount String?
+  agreedAmount  Int
+  fundedAmount  Int       @default(0)
+  releasedAmount Int      @default(0)
+  refundedAmount Int      @default(0)
+  feeAmount     Int       @default(0)
+  status        String    @default("OPENED") // OPENED | FUNDED | PARTIALLY_RELEASED | SETTLED | DISPUTED | REFUNDED
+  openedAt      DateTime  @default(now())
+  settledAt     DateTime?
+  provenance    String    @default("MANUAL")
+  provenanceActor String?
+  provenanceAt  DateTime?
+  provenanceRef String?
+
+  transactions EscrowTransaction[]
+  disputes     EscrowDispute[]
+}
+
+model EscrowTransaction {
+  id          String        @id @default(cuid())
+  escrowId    String
+  escrow      EscrowAccount @relation(fields: [escrowId], references: [id], onDelete: Cascade)
+  type        String // FUND | PARTIAL_RELEASE | FINAL_RELEASE | REFUND | FEE
+  milestone   String? // TEST_ENABLEMENT | FINAL_SETTLEMENT
+  amount      Int
+  currency    String
+  beneficiary String?
+  reference   String?
+  status      String        @default("SETTLED") // INSTRUCTED | SETTLED | FAILED
+  valueDate   DateTime
+  reason      String?
+  provenance  String        @default("MANUAL")
+  provenanceActor String?
+  provenanceAt DateTime?
+  provenanceRef String?
+  createdAt   DateTime      @default(now())
+
+  approvals EscrowApproval[]
+  /// Proof of the movement — a bank advice for a deposit, a release instruction
+  /// or signed authority for a payout. Tied to the transaction rather than the
+  /// order, because "which payment does this prove" is the whole question.
+  documents Document[]
+}
+
+/// Final release requires two distinct Finance-role approvers (§11A.4, AC#23).
+model EscrowApproval {
+  id            String            @id @default(cuid())
+  transactionId String
+  transaction   EscrowTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  approverId    String
+  approver      User              @relation(fields: [approverId], references: [id])
+  approvedAt    DateTime          @default(now())
+  note          String?
+
+  @@unique([transactionId, approverId])
+}
+
+model EscrowDispute {
+  id         String        @id @default(cuid())
+  escrowId   String
+  escrow     EscrowAccount @relation(fields: [escrowId], references: [id], onDelete: Cascade)
+  disputeRef String        @unique
+  reason     String
+  status     String        @default("OPEN") // OPEN | UNDER_REVIEW | RESOLVED | WITHDRAWN
+  raisedAt   DateTime      @default(now())
+  resolvedAt DateTime?
+  resolution String?
+}
+
+// ─── Testing / WHL (§11A.1) ─────────────────────────────────────────────────
+
+model TestRequest {
+  id            String    @id @default(cuid())
+  workOrderId   String
+  workOrder     WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  requestNo     String    @unique
+  labId         String?
+  labRequestRef String?
+  scope         String // LOT_SAMPLE | FULL_BATCH
+  sampleSize    Int?
+  aql           String?
+  parameters    String // JSON array of TestParameterMaster codes
+  status        String    @default("DRAFT") // DRAFT | SUBMITTED | RECEIVED | SCOPE_CONFIRMED | IN_PROGRESS | COMPLETED | ON_HOLD
+  submittedAt   DateTime?
+  receivedAt    DateTime?
+  receivedQty   Int?
+  discrepancies String?
+  testCost      Int       @default(0)
+  labIsForeign  Boolean   @default(false)
+  provenance    String    @default("MANUAL")
+  provenanceActor String?
+  provenanceAt  DateTime?
+  provenanceRef String?
+  createdAt     DateTime  @default(now())
+
+  result    TestResult?
+  documents Document[]
+}
+
+model TestResult {
+  id            String      @id @default(cuid())
+  testRequestId String      @unique
+  testRequest   TestRequest @relation(fields: [testRequestId], references: [id], onDelete: Cascade)
+  verdict       String // PASS | FAIL | PARTIAL
+  reportNo      String
+  signedBy      String
+  testedAt      DateTime
+  summary       String?
+  provenance    String      @default("MANUAL")
+  provenanceActor String?
+  provenanceAt  DateTime?
+  provenanceRef String?
+  createdAt     DateTime    @default(now())
+
+  lineResults TestLineResult[]
+}
+
+model TestLineResult {
+  id           String     @id @default(cuid())
+  testResultId String
+  testResult   TestResult @relation(fields: [testResultId], references: [id], onDelete: Cascade)
+  mpn          String
+  lotRef       String?
+  testedQty    Int
+  passedQty    Int
+  failedQty    Int
+  verdict      String // PASS | FAIL
+  parameterResults String? // JSON: [{code,name,observed,spec,pass}]
+  failureMode  String?
+}
+
+// ─── Logistics (§11A.2) ─────────────────────────────────────────────────────
+
+model Shipment {
+  id            String    @id @default(cuid())
+  workOrderId   String
+  workOrder     WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  legType       String // TEST_OUT | TEST_RETURN | IMPORT | OUTBOUND
+  carrierCode   String
+  serviceName   String?
+  awb           String?
+  originName    String
+  originCountry String
+  destName      String
+  destCountry   String
+  pieces        Int       @default(1)
+  grossWeightKg Float?
+  chargeableWeightKg Float?
+  dimensions    String? // JSON [{l,w,h,count}]
+  declaredValue Int       @default(0)
+  currency      String    @default("INR")
+  freightAmount Int       @default(0)
+  freightGst    Int       @default(0)
+  incoterms     String?
+  pickupRef     String?
+  pickupWindow  String?
+  status        String    @default("DRAFT") // DRAFT | BOOKED | IN_TRANSIT | CUSTOMS | OUT_FOR_DELIVERY | DELIVERED | EXCEPTION
+  dispatchedAt  DateTime?
+  estimatedDelivery DateTime?
+  deliveredAt   DateTime?
+  labelDocId    String?
+  rateQuotes    String? // JSON — rate-shop results shown to the operator
+  provenance    String    @default("MANUAL")
+  provenanceActor String?
+  provenanceAt  DateTime?
+  provenanceRef String?
+  createdAt     DateTime  @default(now())
+
+  events    TrackingEvent[]
+  pod       ProofOfDelivery?
+  documents Document[]
+}
+
+model TrackingEvent {
+  id          String   @id @default(cuid())
+  shipmentId  String
+  shipment    Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  occurredAt  DateTime
+  code        String
+  description String
+  location    String?
+  provenance  String   @default("MANUAL")
+  createdAt   DateTime @default(now())
+
+  @@index([shipmentId, occurredAt])
+}
+
+model ProofOfDelivery {
+  id          String    @id @default(cuid())
+  workOrderId String
+  workOrder   WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  shipmentId  String?   @unique
+  shipment    Shipment? @relation(fields: [shipmentId], references: [id])
+  podNumber   String    @unique
+  signedBy    String
+  deliveredAt DateTime
+  remarks     String?
+  documentId  String?
+  sharedWithCustomerAt DateTime?
+  provenance  String    @default("MANUAL")
+  provenanceActor String?
+  provenanceAt DateTime?
+  provenanceRef String?
+  createdAt   DateTime  @default(now())
+}
+
+// ─── Customs / ICEGATE (§11A.3) ─────────────────────────────────────────────
+
+model CustomsEntry {
+  id             String    @id @default(cuid())
+  workOrderId    String    @unique
+  workOrder      WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  boeNumber      String?
+  filingAckNo    String?
+  filedAt        DateTime?
+  portCode       String?
+  whaAgentName   String?
+  assessableValue Int      @default(0)
+  /// Customs FX differs from the PO's locked rate — variance is surfaced (§11A.3)
+  exchangeRateUsed Float?
+  dutyBcd        Int       @default(0)
+  dutySws        Int       @default(0)
+  dutyIgst       Int       @default(0)
+  dutyCess       Int       @default(0)
+  dutyOther      Int       @default(0)
+  totalDuty      Int       @default(0)
+  challanRef     String?
+  dutyPaidAt     DateTime?
+  status         String    @default("NOT_FILED") // NOT_FILED | FILED | UNDER_ASSESSMENT | QUERY_RAISED | ASSESSED | DUTY_PAID | OUT_OF_CHARGE
+  outOfChargeAt  DateTime?
+  provenance     String    @default("MANUAL")
+  provenanceActor String?
+  provenanceAt   DateTime?
+  provenanceRef  String?
+  createdAt      DateTime  @default(now())
+
+  statusHistory CustomsStatusEvent[]
+  queries       CustomsQuery[]
+  documents     Document[]
+}
+
+model CustomsStatusEvent {
+  id             String       @id @default(cuid())
+  customsEntryId String
+  customsEntry   CustomsEntry @relation(fields: [customsEntryId], references: [id], onDelete: Cascade)
+  status         String
+  occurredAt     DateTime
+  note           String?
+  provenance     String       @default("MANUAL")
+}
+
+model CustomsQuery {
+  id             String       @id @default(cuid())
+  customsEntryId String
+  customsEntry   CustomsEntry @relation(fields: [customsEntryId], references: [id], onDelete: Cascade)
+  queryRef       String
+  raisedAt       DateTime
+  queryText      String
+  responseText   String?
+  respondedAt    DateTime?
+  status         String       @default("OPEN") // OPEN | RESPONDED | CLOSED
+  demurrageCost  Int          @default(0)
+}
+
+// ─── Warehouse ──────────────────────────────────────────────────────────────
+
+model Grn {
+  id          String    @id @default(cuid())
+  workOrderId String
+  workOrder   WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  grnNumber   String    @unique
+  receivedAt  DateTime
+  cartons     Int
+  receivedBy  String
+  variance    String? // JSON [{mpn, expectedQty, receivedQty}]
+  hasShortfall Boolean  @default(false)
+  remarks     String?
+  createdAt   DateTime  @default(now())
+
+  lines GrnLine[]
+}
+
+model GrnLine {
+  id          String @id @default(cuid())
+  grnId       String
+  grn         Grn    @relation(fields: [grnId], references: [id], onDelete: Cascade)
+  mpn         String
+  expectedQty Int
+  receivedQty Int
+  dateCodeLot String?
+  condition   String @default("OK") // OK | DAMAGED | SUSPECT
+}
+
+model InspectionReport {
+  id           String    @id @default(cuid())
+  workOrderId  String
+  workOrder    WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  reportNo     String    @unique
+  startedAt    DateTime
+  completedAt  DateTime?
+  inspectorId  String?
+  inspector    User?     @relation(fields: [inspectorId], references: [id])
+  verdict      String    @default("IN_PROGRESS") // IN_PROGRESS | PASSED | FAILED
+  signedOffAt  DateTime?
+  ncrRef       String?
+  remarks      String?
+  createdAt    DateTime  @default(now())
+
+  checklist InspectionChecklistItem[]
+  documents Document[]
+}
+
+model InspectionChecklistItem {
+  id           String           @id @default(cuid())
+  reportId     String
+  report       InspectionReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  sequence     Int
+  category     String // COUNT | CONDITION | MPN_VERIFY | DATE_CODE_LOT | PACKAGING | MSL | DOCUMENTATION
+  label        String
+  plainLabel   String?
+  expected     String?
+  observed     String?
+  result       String           @default("PENDING") // PENDING | PASS | FAIL | NA
+  evidenceCount Int             @default(0)
+  note         String?
+}
+
+model RepackJob {
+  id           String    @id @default(cuid())
+  workOrderId  String
+  workOrder    WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  jobNo        String    @unique
+  startedAt    DateTime
+  completedAt  DateTime?
+  status       String    @default("IN_PROGRESS") // IN_PROGRESS | QC_PENDING | COMPLETED
+  cartonCount  Int       @default(0)
+  labelTemplate String   @default("1BUY-STD")
+  repackCost   Int       @default(0)
+  repackGst    Int       @default(0)
+  serialsCaptured Int    @default(0)
+  beforePhotos Int       @default(0)
+  afterPhotos  Int       @default(0)
+  qcBy         String?
+  remarks      String?
+  createdAt    DateTime  @default(now())
+}
+
+// ─── Tax (§11A.5) ───────────────────────────────────────────────────────────
+
+model TaxInvoice {
+  id            String    @id @default(cuid())
+  invoiceNumber String    @unique
+  workOrderId   String
+  workOrder     WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  customerId    String
+  customer      Customer  @relation(fields: [customerId], references: [id])
+  invoiceDate   DateTime
+  dueDate       DateTime?
+  placeOfSupply String // state code
+  placeOfSupplyName String
+  /// INTRA_STATE (CGST+SGST) | INTER_STATE (IGST) | ZERO_RATED_SEZ | ZERO_RATED_EXPORT
+  taxTreatment  String
+  reverseCharge Boolean   @default(false)
+  lutApplied    Boolean   @default(false)
+  currency      String    @default("INR")
+  taxableValue  Int       @default(0)
+  cgstAmount    Int       @default(0)
+  sgstAmount    Int       @default(0)
+  igstAmount    Int       @default(0)
+  cessAmount    Int       @default(0)
+  roundingAdjustment Int  @default(0)
+  totalAmount   Int       @default(0)
+  amountInWords String?
+  // e-invoicing
+  irn           String?
+  ackNo         String?
+  ackDate       DateTime?
+  signedQrCode  String?
+  eInvoiceStatus String   @default("NOT_APPLICABLE") // NOT_APPLICABLE | PENDING | GENERATED | CANCELLED | FAILED
+  eInvoiceError String?
+  status        String    @default("DRAFT") // DRAFT | ISSUED | SENT | PAID | CANCELLED
+  paidAt        DateTime?
+  provenance    String    @default("MANUAL")
+  provenanceActor String?
+  provenanceAt  DateTime?
+  provenanceRef String?
+  createdAt     DateTime  @default(now())
+
+  lines       TaxInvoiceLine[]
+  creditNotes CreditNote[]
+  eWayBills   EWayBill[]
+  documents   Document[]
+}
+
+model TaxInvoiceLine {
+  id           String     @id @default(cuid())
+  invoiceId    String
+  invoice      TaxInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  lineNo       Int
+  mpn          String
+  description  String
+  hsnCode      String
+  quantity     Int
+  uom          String     @default("PCS")
+  unitPrice    Float
+  taxableValue Int
+  cgstRate     Float      @default(0)
+  cgstAmount   Int        @default(0)
+  sgstRate     Float      @default(0)
+  sgstAmount   Int        @default(0)
+  igstRate     Float      @default(0)
+  igstAmount   Int        @default(0)
+  cessRate     Float      @default(0)
+  cessAmount   Int        @default(0)
+  lineTotal    Int
+  /// Which HsnRate row produced these rates — powers "why is this number what
+  /// it is" traceability (§11A.5 UI requirements).
+  rateSourceId String?
+}
+
+model CreditNote {
+  id            String     @id @default(cuid())
+  noteNumber    String     @unique
+  invoiceId     String
+  invoice       TaxInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  noteDate      DateTime
+  reason        String // RETURN | REJECTION | PRICE_CORRECTION | SHORT_SHIPMENT
+  taxableValue  Int
+  cgstAmount    Int        @default(0)
+  sgstAmount    Int        @default(0)
+  igstAmount    Int        @default(0)
+  cessAmount    Int        @default(0)
+  totalAmount   Int
+  irn           String?
+  originalIrn   String?
+  status        String     @default("ISSUED")
+  createdAt     DateTime   @default(now())
+}
+
+model EWayBill {
+  id            String     @id @default(cuid())
+  /// Null until the number is obtained. The obligation to carry a way bill is
+  /// created by the movement of goods, not by a portal being reachable, so the
+  /// row exists from dispatch and the number is filled in after (Rule 138).
+  ewbNumber     String?    @unique
+  invoiceId     String
+  invoice       TaxInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  generatedAt   DateTime
+  /// Validity runs from generation, so it is unknown while the number is.
+  validUntil    DateTime?
+  transportMode String // ROAD | RAIL | AIR | SHIP
+  vehicleNumber String?
+  transporterId String?
+  transporterName String?
+  distanceKm    Int
+  status        String     @default("ACTIVE") // AWAITING_NUMBER | ACTIVE | EXPIRED | CANCELLED | EXTENDED
+  generatedBy   String
+  provenance    String     @default("MANUAL")
+}
+
+/// Input Tax Credit ledger. Import IGST lands here and is EXCLUDED from landed
+/// cost; BCD/SWS never appear here and ARE included in landed cost (§9, AC#26).
+model InputTaxCredit {
+  id           String    @id @default(cuid())
+  workOrderId  String?
+  workOrder    WorkOrder? @relation(fields: [workOrderId], references: [id])
+  source       String // IMPORT_IGST | FREIGHT | TESTING | REPACK | CLEARANCE | OTHER
+  documentRef  String
+  documentDate DateTime
+  supplierName String
+  supplierGstin String?
+  taxableValue Int       @default(0)
+  cgstAmount   Int       @default(0)
+  sgstAmount   Int       @default(0)
+  igstAmount   Int       @default(0)
+  cessAmount   Int       @default(0)
+  totalCredit  Int
+  eligible     Boolean   @default(true)
+  ineligibleReason String?
+  gstr2bStatus String    @default("UNMATCHED") // MATCHED | UNMATCHED | MISMATCH | NOT_IN_2B
+  gstr2bNote   String?
+  taxPeriod    String // YYYY-MM
+  createdAt    DateTime  @default(now())
+}
+
+/// Self-invoice for import of services (foreign lab / foreign freight agent) —
+/// records both the RCM liability and the corresponding credit (§11A.5a).
+model ReverseChargeSelfInvoice {
+  id            String    @id @default(cuid())
+  invoiceNumber String    @unique
+  workOrderId   String?
+  workOrder     WorkOrder? @relation(fields: [workOrderId], references: [id])
+  invoiceDate   DateTime
+  vendorName    String
+  vendorCountry String
+  serviceType   String // TESTING | FREIGHT | OTHER
+  hsnSacCode    String
+  taxableValue  Int
+  igstRate      Float
+  igstAmount    Int
+  liabilityBooked Boolean @default(true)
+  creditClaimed Boolean   @default(true)
+  taxPeriod     String
+  createdAt     DateTime  @default(now())
+}
+
+model TaxPeriodSummary {
+  id             String @id @default(cuid())
+  taxPeriod      String @unique // YYYY-MM
+  outputTaxable  Int    @default(0)
+  outputCgst     Int    @default(0)
+  outputSgst     Int    @default(0)
+  outputIgst     Int    @default(0)
+  outputCess     Int    @default(0)
+  zeroRatedValue Int    @default(0)
+  itcCgst        Int    @default(0)
+  itcSgst        Int    @default(0)
+  itcIgst        Int    @default(0)
+  itcCess        Int    @default(0)
+  rcmLiability   Int    @default(0)
+  netPayable     Int    @default(0)
+  invoiceCount   Int    @default(0)
+  status         String @default("DRAFT") // DRAFT | FINALISED
+}
+
+// ─── Documents, communication, tasks, exceptions, audit ─────────────────────
+
+model Document {
+  id           String   @id @default(cuid())
+  /// Where the uploaded bytes live on disk, relative to the storage root. Null
+  /// for generated documents, which are rendered on demand rather than stored.
+  storagePath  String?
+  /// Set when the file was attached as evidence for a particular stage.
+  stageId      String?
+  evidenceId   String?
+  evidence     StageEvidence? @relation(fields: [evidenceId], references: [id], onDelete: SetNull)
+  docType      String // CUSTOMER_PO | CUSTOMER_PI | SUPPLIER_PO | SUPPLIER_PI | TEST_REQUEST | TEST_REPORT | AWB_LABEL | PACKING_LIST | COO | BOE | DUTY_CHALLAN | OUT_OF_CHARGE | GRN | INSPECTION_REPORT | REPACK_SHEET | POD | TAX_INVOICE | CREDIT_NOTE | ESCROW_AGREEMENT | RELEASE_INSTRUCTION | NCR | OTHER
+  title        String
+  fileName     String
+  mimeType     String   @default("application/pdf")
+  sizeBytes    Int      @default(0)
+  version      Int      @default(1)
+  contentHash  String?
+  /// Documents in the MVP are generated/simulated rather than uploaded binaries;
+  /// bodyText holds renderable content so every doc opens to something real.
+  bodyText     String?
+  uploadedBy   String
+  provenance   String   @default("MANUAL")
+  createdAt    DateTime @default(now())
+
+  workOrderId      String?
+  workOrder        WorkOrder? @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  customerPoId     String?
+  customerPo       CustomerPO? @relation(fields: [customerPoId], references: [id])
+  supplierPoId     String?
+  supplierPo       SupplierPO? @relation(fields: [supplierPoId], references: [id])
+  piId             String?
+  pi               ProformaInvoice? @relation(fields: [piId], references: [id])
+  testRequestId    String?
+  testRequest      TestRequest? @relation(fields: [testRequestId], references: [id])
+  shipmentId       String?
+  shipment         Shipment? @relation(fields: [shipmentId], references: [id])
+  escrowTxId       String?
+  escrowTx         EscrowTransaction? @relation(fields: [escrowTxId], references: [id], onDelete: Cascade)
+  customsEntryId   String?
+  customsEntry     CustomsEntry? @relation(fields: [customsEntryId], references: [id])
+  inspectionId     String?
+  inspection       InspectionReport? @relation(fields: [inspectionId], references: [id])
+  taxInvoiceId     String?
+  taxInvoice       TaxInvoice? @relation(fields: [taxInvoiceId], references: [id])
+  communicationId  String?
+  communication    Communication? @relation(fields: [communicationId], references: [id])
+}
+
+model Communication {
+  id          String    @id @default(cuid())
+  workOrderId String
+  workOrder   WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  entryClass  String // SYSTEM | HUMAN
+  channel     String // EMAIL | WHATSAPP | PHONE | PORTAL | MEETING | COURIER | SYSTEM
+  direction   String // INBOUND | OUTBOUND | INTERNAL
+  subject     String
+  body        String
+  quotedHistory String?
+  visibility  String    @default("INTERNAL") // INTERNAL | SHARED
+  sharedWith  String? // stakeholder code when visibility = SHARED
+  status      String    @default("CLOSED") // AWAITING_REPLY | REPLIED | ACTION_REQUIRED | CLOSED
+  isPinned    Boolean   @default(false)
+  isUnread    Boolean   @default(false)
+  occurredAt  DateTime
+  loggedById  String?
+  loggedBy    User?     @relation("LoggedBy", fields: [loggedById], references: [id])
+  externalRef String?
+  systemIcon  String? // lucide icon name for SYSTEM entries
+  createdAt   DateTime  @default(now())
+
+  participants CommunicationParticipant[]
+  contextChips CommunicationContext[]
+  attachments  Document[]
+
+  @@index([workOrderId, occurredAt])
+}
+
+model CommunicationParticipant {
+  id              String        @id @default(cuid())
+  communicationId String
+  communication   Communication @relation(fields: [communicationId], references: [id], onDelete: Cascade)
+  role            String // FROM | TO | CC
+  stakeholder     String // ONE_BUY | CUSTOMER | SUPPLIER | ESCROW | WHL | WHA | LOGISTICS
+  name            String
+  email           String?
+}
+
+/// The "context" requirement — no message floats without knowing which part of
+/// the order it concerns (§7.2).
+model CommunicationContext {
+  id              String        @id @default(cuid())
+  communicationId String
+  communication   Communication @relation(fields: [communicationId], references: [id], onDelete: Cascade)
+  kind            String // STAGE | LINE_ITEM | DOCUMENT | SHIPMENT_LEG | EXCEPTION
+  refId           String?
+  label           String
+}
+
+model Task {
+  id          String    @id @default(cuid())
+  workOrderId String?
+  workOrder   WorkOrder? @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  ownerId     String?
+  owner       User?     @relation("TaskOwner", fields: [ownerId], references: [id])
+  ownerRole   String?
+  linkedStage String?
+  exceptionId String?
+  priority    String    @default("NORMAL") // LOW | NORMAL | HIGH | URGENT
+  dueAt       DateTime?
+  status      String    @default("OPEN") // OPEN | IN_PROGRESS | DONE | CANCELLED
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+}
+
+model ExceptionRecord {
+  id           String    @id @default(cuid())
+  workOrderId  String
+  workOrder    WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  type         String // TEST_FAIL | CUSTOMS_HOLD | SHORT_SHIPMENT | DAMAGED_INBOUND | ESCROW_DISPUTE | SUPPLIER_DELAY | CHANGE_ORDER | DELIVERY_FAILURE
+  offStage     String
+  reason       String
+  severity     String    @default("HIGH") // LOW | MEDIUM | HIGH | CRITICAL
+  status       String    @default("OPEN") // OPEN | IN_PROGRESS | RESOLVED | CANCELLED
+  chosenRoute  String?
+  resolutionNote String?
+  openedAt     DateTime  @default(now())
+  resolvedAt   DateTime?
+  costImpact   Int       @default(0)
+}
+
+model AuditLogEntry {
+  id          String    @id @default(cuid())
+  workOrderId String?
+  workOrder   WorkOrder? @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  entity      String
+  entityId    String
+  action      String // CREATE | UPDATE | DELETE | TRANSITION | AUTHORISE | SYNC | LOGIN
+  field       String?
+  beforeValue String?
+  afterValue  String?
+  /// Why the change was made, when a justification was required — a correction
+  /// to a signed-off record, or an amendment to locked terms. Carried on EVERY
+  /// row it justifies, because reading one row alone must explain itself.
+  reason      String?
+  actorId     String?
+  actor       User?     @relation(fields: [actorId], references: [id])
+  actorLabel  String
+  provenance  String    @default("MANUAL")
+  createdAt   DateTime  @default(now())
+
+  @@index([workOrderId, createdAt])
+}
+
+// ─── Stage gate evidence (§ operator-recorded proof) ────────────────────────
+
+/// What the team recorded to show a stage was genuinely fulfilled, before the
+/// order was allowed to move on. One row per work order per stage.
+///
+/// Evidence stays editable after the fact: a figure mistyped under time pressure
+/// has to be correctable, and the honest way to allow that is to keep every
+/// version rather than to lock the record. `revisions` is that history.
+model StageEvidence {
+  id          String    @id @default(cuid())
+  workOrderId String
+  workOrder   WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  /// One of the stage ids in lib/domain/stages.ts.
+  stageId     String
+  /// The declared fields for this stage, as captured. Keyed by field id.
+  values      String    @default("{}")
+  /// SUBMITTED once every required field is answered; DRAFT while incomplete.
+  status      String    @default("DRAFT")
+  /// Set when the record first became complete.
+  completedAt DateTime?
+  completedById String?
+  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime  @default(now())
+
+  revisions StageEvidenceRevision[]
+  documents Document[]
+
+  @@unique([workOrderId, stageId])
+  @@index([workOrderId])
+}
+
+/// Every save of a stage's evidence, kept in full. Corrections are visible as
+/// corrections — what changed, who changed it, and why.
+model StageEvidenceRevision {
+  id         String        @id @default(cuid())
+  evidenceId String
+  evidence   StageEvidence @relation(fields: [evidenceId], references: [id], onDelete: Cascade)
+  /// 1 for the first save, incrementing thereafter.
+  revision   Int
+  /// The complete set of values as at this revision.
+  values     String
+  /// Human-readable list of what changed from the previous revision.
+  changeSummary String
+  /// Required when correcting an already-complete record.
+  reason     String?
+  actorId    String?
+  actorLabel String
+  createdAt  DateTime      @default(now())
+
+  @@index([evidenceId, revision])
+}
+
+// ─── Manually inserted steps ────────────────────────────────────────────────
+
+/// A step someone added to ONE work order's flow, between two standard stages.
+///
+/// The 39-stage ladder in lib/domain/stages.ts stays the single source of truth
+/// for the standard flow and is never mutated: real orders occasionally need a
+/// step the ladder does not model — a second inspection, a customer factory
+/// visit, a re-test after a repack — and inventing a global stage for a one-off
+/// would corrupt the ladder for every other order.
+///
+/// So these are per-order additions, layered on at render time and drawn
+/// distinctly, so nobody mistakes a local improvisation for standard process.
+model CustomStage {
+  id          String    @id @default(cuid())
+  workOrderId String
+  workOrder   WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  /// The standard stage this sits immediately after.
+  afterStageId  String
+  /// The standard stage it sits immediately before — recorded so the insertion
+  /// point survives even if the ladder's ordering is later revised.
+  beforeStageId String?
+  /// Phase it renders inside, taken from the stage it follows.
+  phase       String
+  label       String
+  /// Why this order needed a step the standard flow does not have. Required:
+  /// an unexplained extra step is indistinguishable from a mistake.
+  reason      String
+  /// Who has to do it.
+  owner       String // ONE_BUY | CUSTOMER | SUPPLIER | ESCROW | WHL | WHA | LOGISTICS
+  /// What has to be true to consider it finished.
+  exitCriteria String?
+  expectedHours Int    @default(24)
+  /// PENDING | DONE | SKIPPED
+  status      String    @default("PENDING")
+  /// When true the order should not pass this point until it is done. Advisory:
+  /// the stage ladder still governs transitions, so this is a flag the flow
+  /// surfaces rather than a hard gate that could deadlock an order.
+  blocking    Boolean   @default(false)
+  /// Ordering when several steps share the same insertion point.
+  sequence    Int       @default(1)
+  /// PENDING_APPROVAL | APPROVED | REJECTED — the request state, separate from
+  /// `status`, which is whether the step itself has been carried out.
+  ///
+  /// Adding a step changes what "done" means for the order, so it is a request
+  /// rather than an edit: somebody asks, somebody else agrees, and both are on
+  /// the record. A step awaiting approval is visible on the flow but does not
+  /// gate anything until it is approved.
+  approval      String    @default("PENDING_APPROVAL")
+  requestedBy   String?
+  requestedAt   DateTime?
+  /// Who decided, when, and — for a rejection — why.
+  decidedBy     String?
+  decidedAt     DateTime?
+  decisionNote  String?
+  completedAt DateTime?
+  completedBy String?
+  createdBy   String
+  createdAt   DateTime  @default(now())
+
+  @@index([workOrderId, afterStageId])
+}
+
+/// One phase's place in a single work order's flow — the per-order overlay that
+/// lets the seven macro phases be reordered, or taken out of the flow entirely.
+///
+/// Rows exist only for an order whose flow has actually been re-planned. An order
+/// running the standard ladder stores nothing, so the common case costs nothing
+/// and "no rows" unambiguously means "standard flow" rather than "plan unknown".
+/// When rows do exist there are always seven of them, which makes the read a
+/// straight `orderBy: position` with no gaps to reason about.
+///
+/// The stage ladder itself is never touched. See lib/domain/phase-plan.ts for
+/// what may be moved, what may be dropped, and why.
+model OrderPhasePlan {
+  id          String    @id @default(cuid())
+  workOrderId String
+  workOrder   WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  /// A..G
+  phase       String
+  /// Zero-based position in this order's flow.
+  position    Int
+  /// Taken out of this order's flow. The stages stay visible on the rail, struck
+  /// through, so what was cut is never invisible.
+  skipped     Boolean   @default(false)
+  /// Why this phase was moved or dropped. Held per phase, not just in the audit
+  /// log, so the rail can show the reason against the phase it belongs to.
+  reason      String?
+  changedBy   String
+  changedAt   DateTime  @default(now())
+
+  @@unique([workOrderId, phase])
+  @@index([workOrderId, position])
+}
+
+// ─── Demand aggregation ─────────────────────────────────────────────────────
+
+/// Pooling demand from several customer orders into one bulk supplier order.
+///
+/// The point is economies of scale on the BUY side: consolidate the same MPN
+/// across customers, negotiate one price for the combined quantity, place one
+/// purchase order, ship one consignment inbound.
+///
+/// What it deliberately does NOT do is merge the customers. Each customer keeps
+/// their own work order against the shared supplier PO, because each needs their
+/// own proforma invoice, their own tax invoice, their own e-way bill, their own
+/// delivery and their own proof of delivery. Those are statutory documents naming
+/// one buyer — they cannot be pooled. So the shape is:
+///
+///   many customer POs → one DemandAggregation → one bulk SupplierPO
+///                                             → one WorkOrder per customer PO
+///
+/// Combined with split sourcing (one customer PO across several supplier POs),
+/// that gives a genuine many-to-many between the two sides, with the allocation
+/// carried line by line in POLinkMapping.
+model DemandAggregation {
+  id            String    @id @default(cuid())
+  reference     String    @unique // AGG-2026-0001
+  title         String
+  /// Why these orders were pooled. Required: a consolidation nobody explained is
+  /// indistinguishable from a mistake once the prices differ per customer.
+  rationale     String
+  /// DRAFT | FLOATED | CANCELLED
+  status        String    @default("DRAFT")
+  supplierId    String?
+  supplier      Supplier? @relation(fields: [supplierId], references: [id])
+  /// The bulk order this produced. One aggregation floats exactly once.
+  supplierPoId  String?     @unique
+  supplierPo    SupplierPO? @relation(fields: [supplierPoId], references: [id])
+  sourcingRef   String?
+  requiredBy    DateTime?
+  currency      String    @default("USD")
+  incoterms     String    @default("FOB")
+  /// ADVANCE | ESCROW | CREDIT — carried onto the bulk PO and every work order.
+  paymentMethod String    @default("ESCROW")
+  notes         String?
+  createdBy     String
+  createdAt     DateTime  @default(now())
+  floatedAt     DateTime?
+  cancelledAt   DateTime?
+  cancelReason  String?
+
+  parts DemandAggregationPart[]
+  lines DemandAggregationLine[]
+
+  @@index([status])
+}
+
+/// One MPN in the pool, with the price negotiated for the combined quantity.
+///
+/// Separate from the lines because a bulk order has ONE price per part. Holding
+/// the price on each customer line would let the same MPN carry two different buy
+/// prices in the same purchase order, which is the opposite of what pooling is for.
+model DemandAggregationPart {
+  id            String            @id @default(cuid())
+  aggregationId String
+  aggregation   DemandAggregation @relation(fields: [aggregationId], references: [id], onDelete: Cascade)
+  mpn           String
+  manufacturer  String
+  description   String
+  hsnCode       String
+  /// Negotiated bulk price per piece, in the aggregation's currency.
+  buyUnitPrice  Float
+  /// What the individual (unpooled) price would have been, for the saving figure.
+  baselineUnitPrice Float?
+  leadTimeDays  Int?
+  countryOfOrigin String?
+  testingRequired Boolean         @default(false)
+
+  @@unique([aggregationId, mpn])
+}
+
+/// A slice of one customer's demand contributed to the pool.
+model DemandAggregationLine {
+  id               String            @id @default(cuid())
+  aggregationId    String
+  aggregation      DemandAggregation @relation(fields: [aggregationId], references: [id], onDelete: Cascade)
+  customerPoLineId String
+  customerPoLine   CustomerPOLine    @relation(fields: [customerPoLineId], references: [id], onDelete: Cascade)
+  /// How much of that customer line goes in. Never more than the line has left
+  /// unallocated — enforced in lib/actions/aggregation.ts.
+  quantity         Int
+  createdAt        DateTime          @default(now())
+
+  @@unique([aggregationId, customerPoLineId])
+  @@index([aggregationId])
+}

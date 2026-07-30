@@ -1,36 +1,122 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 1Source Fulfilment
 
-## Getting Started
+Procurement-to-fulfilment platform for **1BUY**, operating as Merchant of Record
+between customer and supplier: it takes title, carries the risk, imports the
+goods, pays the duty, and invoices the customer under its own GSTIN.
 
-First, run the development server:
+A single order touches seven parties — customer, supplier, escrow provider,
+testing laboratory, freight carrier, customs house agent, and 1BUY's own
+warehouse and finance teams. This is the one record that holds all of it.
+
+Jurisdiction is **India**: GST, customs valuation and e-invoicing rules are part
+of the domain, not bolted on.
+
+---
+
+## Getting started
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env
+npx prisma db push        # create the SQLite file
+npx prisma generate       # build the client into lib/generated/prisma
+npm run seed              # demo data — masters, orders, four scenarios
+npm run dev               # http://localhost:4100
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+| Script | Does |
+|---|---|
+| `npm run dev` | Dev server on **:4100** |
+| `npm run typecheck` | `tsc --noEmit` |
+| `npm test` | Vitest — **201 tests**, all pure domain logic |
+| `npm run lint` | ESLint |
+| `npm run seed` | Rebuild the whole demo database |
+| `npm run db:push` | Apply `schema.prisma` to SQLite |
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+> **After any schema change, restart the dev server.** `prisma generate` updates
+> the client on disk, but the running Next server holds the old one in memory and
+> Turbopack's hot reload will not pick it up. The symptom is
+> `Unknown field X for include statement on model Y` on every page.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+## Read this before writing code
 
-To learn more about Next.js, take a look at the following resources:
+**[`CONTEXT.md`](CONTEXT.md)** — §3 is fourteen rules, each of which exists
+because breaking it produced a real defect. Money as integer minor units. Import
+IGST excluded from landed cost. The stage ladder as single source of truth.
+Overlays that never mutate it. How the advance gates compose. Derived-not-stored
+state.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Most of it is not guessable from the file tree.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+**[`AGENTS.md`](AGENTS.md)** — this version of Next.js (16.2.12) has breaking
+changes from what most people have memorised. Read the relevant guide in
+`node_modules/next/dist/docs/` before writing framework code.
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Documentation
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| File | What it is |
+|---|---|
+| [`CONTEXT.md`](CONTEXT.md) | Engineering context — architecture, rules, domain model, known gaps |
+| `database-design.html` | 63 tables, 13 ERDs with crow's-foot notation, two-level DFD, searchable. Open in any browser; fully self-contained |
+| `1BUY-Fulfilment-Platform.docx` | Problem statement, objectives, methodology, full user guide, every field |
+| [`scripts/docs/`](scripts/docs) | The generators for the two above |
+
+The HTML and the .docx are **generated from the source of truth**, so they cannot
+describe a table or a stage the software does not have. When the domain changes,
+regenerate rather than edit — see `scripts/docs/README.md`.
+
+---
+
+## Shape of the codebase
+
+```
+app/(app)/        every screen (App Router)
+components/
+  flow/           the stage rail — a dumb renderer over railStates()
+  shell/          AppShell, TopBar, command palette, notifications, help
+  ui/             Layout, Badges, DataTable, tooltip primitives
+lib/
+  domain/         ← the source of truth. Start with stages.ts
+  actions/        server actions
+  queries/        server-side reads
+  tax/            GST engine + landed cost
+  adapters/       three-mode integration layer (mock / manual / live)
+prisma/           schema.prisma (63 models) + seeds
+```
+
+### The core idea
+
+An order is a **work order**, named from four documents:
+
+```
+CustomerPO _ OurPI _ OurPO _ SupplierPI
+```
+
+It moves along a declarative ladder of **39 stages across 7 phases**
+(`lib/domain/stages.ts`), which is the single source of truth for the flow rail,
+transition rules, SLA ageing, the next-action prompt, the audit trail and the
+generated documentation. Adding or reordering a stage means editing that one
+file.
+
+A stage is finished when there is **evidence on file** showing it happened — not
+when somebody pressed a button.
+
+---
+
+## Stack
+
+Next.js 16.2.12 (App Router, Turbopack) · React 19.2.4 with the React Compiler ·
+Tailwind v4 · Prisma 6.19.3 + SQLite · Radix UI · Zod · Vitest
+
+---
+
+## Status
+
+Working prototype with seeded demo data. Open items are listed in
+[`CONTEXT.md` §10](CONTEXT.md) — the significant one being that **there is no
+authentication**: the acting user is hardcoded, and RBAC is modelled but not
+enforced.

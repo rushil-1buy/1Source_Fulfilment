@@ -1,26 +1,543 @@
-@import "tailwindcss";
+@import 'tailwindcss';
+
+/* Class-based dark mode: system preference sets the class on first paint, and a
+   manual toggle can override it (master prompt §10.2). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DESIGN TOKENS — §10.2
+   Neutral spine of deep graphite/ink, ONE accent carrying all primary emphasis,
+   semantic colours reserved strictly for status, and a stakeholder palette used
+   consistently across badges and swimlanes in both themes.
+   ═══════════════════════════════════════════════════════════════════════════ */
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* ── Neutral spine: 11 steps, #F7F8FA → #0B0E14 ── */
+  --neutral-0: #ffffff;
+  --neutral-50: #f7f8fa;
+  --neutral-100: #f0f2f5;
+  --neutral-200: #e8ebf0;
+  --neutral-300: #d8dde6;
+  --neutral-400: #b9c1ce;
+  --neutral-500: #8b94a5;
+  --neutral-600: #6b7486;
+  --neutral-700: #4a5163;
+  --neutral-800: #2c3243;
+  --neutral-900: #171c28;
+  --neutral-950: #0b0e14;
+
+  /* ── Surfaces ── */
+  --surface-0: var(--neutral-50);
+  --surface-1: var(--neutral-0);
+  --surface-2: var(--neutral-0);
+  --surface-3: var(--neutral-100);
+  --surface-inset: var(--neutral-100);
+
+  /* ── Text ── */
+  --text-primary: var(--neutral-950);
+  --text-secondary: var(--neutral-700);
+  --text-tertiary: var(--neutral-600);
+  --text-inverse: var(--neutral-0);
+
+  /* ── Borders ── */
+  --border-subtle: var(--neutral-200);
+  --border-default: var(--neutral-300);
+  --border-strong: var(--neutral-400);
+
+  /* ── The single accent ── */
+  --accent: #4f46e5;
+  --accent-hover: #4338ca;
+  --accent-active: #3730a3;
+  --accent-subtle: #eef0ff;
+  --accent-border: #c7cbff;
+  --accent-fg: #ffffff;
+  --accent-text: #4338ca;
+
+  /* ── Semantic status ── */
+  --success: #047857;
+  --success-subtle: #ecfdf5;
+  --success-border: #a7f3d0;
+  --success-fg: #ffffff;
+
+  --warning: #b45309;
+  --warning-subtle: #fffbeb;
+  --warning-border: #fde68a;
+  --warning-fg: #ffffff;
+
+  --danger: #be123c;
+  --danger-subtle: #fff1f3;
+  --danger-border: #fecdd3;
+  --danger-fg: #ffffff;
+
+  --info: #0369a1;
+  --info-subtle: #f0f9ff;
+  --info-border: #bae6fd;
+  --info-fg: #ffffff;
+
+  --muted: #556070;
+  --muted-subtle: var(--neutral-100);
+  --muted-border: var(--neutral-300);
+
+  /* ── Stakeholder palette (§10.2) ────────────────────────────────────────
+     VALIDATED, not eyeballed. The five load-bearing hues below were checked
+     with the dataviz validator (all-pairs, light surface) and pass every check:
+     lightness band, chroma floor, normal-vision floor (worst pair ΔE 16.6), and
+     contrast ≥ 3:1. Colour-vision-deficient separation lands at ΔE 6.5, inside
+     the 6–8 floor band that is legal ONLY with secondary encoding — which this
+     app enforces unconditionally: every stakeholder mark carries its text code
+     and icon, so identity is never colour-alone (§5.2, §8.1).
+
+     Seven fully distinct categorical hues are not achievable — under
+     deuteranopia the red/orange/yellow/green region collapses onto one axis. So
+     Supplier takes violet (normal-vision ΔE 15.9 from indigo) and Logistics
+     takes a deliberate neutral, rather than inventing a hue that only looks
+     distinct to people with full colour vision. */
+  --sh-onebuy: #4f46e5; /* indigo  — validated */
+  --sh-onebuy-subtle: #eef0ff;
+  --sh-customer: #0891b2; /* cyan    — validated */
+  --sh-customer-subtle: #ecfeff;
+  --sh-supplier: #7c3aed; /* violet  — normal-vision safe vs indigo */
+  --sh-supplier-subtle: #f5f3ff;
+  --sh-escrow: #15803d; /* green   — validated */
+  --sh-escrow-subtle: #ecfdf5;
+  --sh-whl: #d97706; /* amber   — validated */
+  --sh-whl-subtle: #fffbeb;
+  --sh-wha: #e11d48; /* rose    — validated */
+  --sh-wha-subtle: #fff1f3;
+  --sh-logistics: #475569; /* neutral — deliberate, not a failed hue */
+  --sh-logistics-subtle: #f1f5f9;
+
+  /* ── Elevation: 4 subtle layered levels, no heavy drop shadows ── */
+  --shadow-1: 0 1px 2px rgba(11, 14, 20, 0.06), 0 1px 1px rgba(11, 14, 20, 0.04);
+  --shadow-2: 0 2px 4px -1px rgba(11, 14, 20, 0.07), 0 4px 8px -2px rgba(11, 14, 20, 0.05);
+  --shadow-3: 0 4px 8px -2px rgba(11, 14, 20, 0.08), 0 12px 20px -4px rgba(11, 14, 20, 0.07);
+  --shadow-4: 0 8px 16px -4px rgba(11, 14, 20, 0.1), 0 24px 40px -8px rgba(11, 14, 20, 0.12);
+
+  --ring: var(--accent);
+  --scrollbar-thumb: var(--neutral-300);
 }
 
+.dark {
+  --surface-0: var(--neutral-950);
+  --surface-1: #12161f;
+  --surface-2: #1a1f2b;
+  --surface-3: #232936;
+  --surface-inset: #0e121a;
+
+  --text-primary: #eef1f6;
+  --text-secondary: #a7b0c0;
+  --text-tertiary: #808a9a;
+  --text-inverse: var(--neutral-950);
+
+  --border-subtle: #1f2530;
+  --border-default: #2a3140;
+  --border-strong: #3c4553;
+
+  --accent: #6366f1;
+  --accent-hover: #818cf8;
+  --accent-active: #a5b4fc;
+  --accent-subtle: #1b1e3a;
+  --accent-border: #383c74;
+  --accent-fg: #ffffff;
+  --accent-text: #a5b4fc;
+
+  --success: #10b981;
+  --success-subtle: #06281f;
+  --success-border: #10553f;
+  --success-fg: #04170f;
+
+  --warning: #f59e0b;
+  --warning-subtle: #2a1d05;
+  --warning-border: #5c410c;
+  --warning-fg: #1c1301;
+
+  --danger: #f43f5e;
+  --danger-subtle: #2c0b14;
+  --danger-border: #6b1c2c;
+  --danger-fg: #1e0409;
+
+  --info: #38bdf8;
+  --info-subtle: #06222e;
+  --info-border: #0d4a63;
+  --info-fg: #041219;
+
+  --muted: #94a3b8;
+  --muted-subtle: #1a1f2b;
+  --muted-border: #2a3140;
+
+  /* Dark mode is SELECTED, not an automatic flip — its own steps, re-validated
+     against the dark surface, all inside dark's narrower L 0.48–0.67 band. */
+  --sh-onebuy: #6366f1;
+  --sh-onebuy-subtle: #1b1e3a;
+  --sh-customer: #0891b2;
+  --sh-customer-subtle: #082f36;
+  --sh-supplier: #a855f7;
+  --sh-supplier-subtle: #241a45;
+  --sh-escrow: #16a34a;
+  --sh-escrow-subtle: #06281f;
+  --sh-whl: #b45309;
+  --sh-whl-subtle: #2a1d05;
+  --sh-wha: #f43f5e;
+  --sh-wha-subtle: #2c0b14;
+  --sh-logistics: #94a3b8;
+  --sh-logistics-subtle: #1e293b;
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 1px rgba(0, 0, 0, 0.3);
+  --shadow-2: 0 2px 4px -1px rgba(0, 0, 0, 0.45), 0 4px 8px -2px rgba(0, 0, 0, 0.35);
+  --shadow-3: 0 4px 8px -2px rgba(0, 0, 0, 0.5), 0 12px 20px -4px rgba(0, 0, 0, 0.4);
+  --shadow-4: 0 8px 16px -4px rgba(0, 0, 0, 0.55), 0 24px 40px -8px rgba(0, 0, 0, 0.5);
+
+  --scrollbar-thumb: #2a3140;
+}
+
+/* ── Register tokens as Tailwind utilities ── */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-surface-0: var(--surface-0);
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-surface-inset: var(--surface-inset);
+
+  --color-fg: var(--text-primary);
+  --color-fg-secondary: var(--text-secondary);
+  --color-fg-tertiary: var(--text-tertiary);
+  --color-fg-inverse: var(--text-inverse);
+
+  --color-line-subtle: var(--border-subtle);
+  --color-line: var(--border-default);
+  --color-line-strong: var(--border-strong);
+
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-active: var(--accent-active);
+  --color-accent-subtle: var(--accent-subtle);
+  --color-accent-border: var(--accent-border);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-text: var(--accent-text);
+
+  --color-success: var(--success);
+  --color-success-subtle: var(--success-subtle);
+  --color-success-border: var(--success-border);
+  --color-success-fg: var(--success-fg);
+
+  --color-warning: var(--warning);
+  --color-warning-subtle: var(--warning-subtle);
+  --color-warning-border: var(--warning-border);
+  --color-warning-fg: var(--warning-fg);
+
+  --color-danger: var(--danger);
+  --color-danger-subtle: var(--danger-subtle);
+  --color-danger-border: var(--danger-border);
+  --color-danger-fg: var(--danger-fg);
+
+  --color-info: var(--info);
+  --color-info-subtle: var(--info-subtle);
+  --color-info-border: var(--info-border);
+  --color-info-fg: var(--info-fg);
+
+  --color-muted: var(--muted);
+  --color-muted-subtle: var(--muted-subtle);
+  --color-muted-border: var(--muted-border);
+
+  --color-sh-onebuy: var(--sh-onebuy);
+  --color-sh-onebuy-subtle: var(--sh-onebuy-subtle);
+  --color-sh-customer: var(--sh-customer);
+  --color-sh-customer-subtle: var(--sh-customer-subtle);
+  --color-sh-supplier: var(--sh-supplier);
+  --color-sh-supplier-subtle: var(--sh-supplier-subtle);
+  --color-sh-escrow: var(--sh-escrow);
+  --color-sh-escrow-subtle: var(--sh-escrow-subtle);
+  --color-sh-whl: var(--sh-whl);
+  --color-sh-whl-subtle: var(--sh-whl-subtle);
+  --color-sh-wha: var(--sh-wha);
+  --color-sh-wha-subtle: var(--sh-wha-subtle);
+  --color-sh-logistics: var(--sh-logistics);
+  --color-sh-logistics-subtle: var(--sh-logistics-subtle);
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+
+  /* Radii — 6 / 10 / 14 / full */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  --shadow-e1: var(--shadow-1);
+  --shadow-e2: var(--shadow-2);
+  --shadow-e3: var(--shadow-3);
+  --shadow-e4: var(--shadow-4);
+
+  /* Type scale — 11/12/13/14/16/20/24/32/40 */
+  --text-2xs: 0.6875rem;
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 2rem;
+  --text-3xl: 2.5rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ═══════════════════════════════════════════════════════════════════════════
+   BASE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+html {
+  color-scheme: light;
+}
+html.dark {
+  color-scheme: dark;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--surface-0);
+  color: var(--text-primary);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Numbers must never jitter between renders (§8.1, §10.2). */
+.tnum,
+td,
+th,
+input[type='number'] {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+code,
+kbd,
+samp {
+  font-variant-numeric: tabular-nums slashed-zero;
+}
+
+/* Focus-visible rings everywhere (§10.4) */
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+/* Restrained scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FLOW RAIL MOTION — §5.3, to the exact numbers in the spec.
+   Only `transform` and `opacity` are animated, so everything is GPU-composited
+   and holds 60fps with 50 micro-rails on screen.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes rail-halo {
+  from {
+    transform: scale(1);
+    opacity: 0.45;
+  }
+  to {
+    transform: scale(2.1);
+    opacity: 0;
+  }
+}
+
+/* Blocked pulses faster and tighter, to read as urgent rather than calm. */
+@keyframes rail-halo-urgent {
+  from {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  to {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+@keyframes rail-breathe {
+  from {
+    box-shadow: 0 0 0 0 var(--glow-color);
+  }
+  to {
+    box-shadow: 0 0 10px 2px var(--glow-color);
+  }
+}
+
+@keyframes rail-sheen {
+  from {
+    background-position: 0% 50%;
+  }
+  to {
+    background-position: -200% 50%;
+  }
+}
+
+.rail-halo {
+  animation: rail-halo 2200ms ease-out infinite;
+}
+/* Second ring, staggered by 700ms. */
+.rail-halo-delayed {
+  animation: rail-halo 2200ms ease-out 700ms infinite;
+}
+.rail-halo-urgent {
+  animation: rail-halo-urgent 1200ms ease-out infinite;
+}
+.rail-halo-urgent-delayed {
+  animation: rail-halo-urgent 1200ms ease-out 400ms infinite;
+}
+/* The micro rail's live mark. An opacity pulse rather than a box-shadow: a
+   shadow on a 5px sliver blurs into its neighbours, and on a light background
+   that turns the most important mark in the row into the least readable one. */
+@keyframes micro-pulse {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.55;
+  }
+}
+.micro-pulse {
+  animation: micro-pulse 1600ms ease-in-out infinite alternate;
+}
+
+.rail-breathe {
+  animation: rail-breathe 1800ms ease-in-out infinite alternate;
+}
+.rail-sheen {
+  background-image: linear-gradient(
+    90deg,
+    var(--accent) 0%,
+    color-mix(in oklab, var(--accent) 30%, transparent) 40%,
+    var(--accent) 80%
+  );
+  background-size: 200% 100%;
+  animation: rail-sheen 2400ms linear infinite;
+}
+
+/* Skeletons shaped like the real content (§10.4) */
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+.skeleton {
+  background-image: linear-gradient(
+    90deg,
+    var(--surface-3) 0%,
+    color-mix(in oklab, var(--surface-3) 55%, var(--surface-1)) 50%,
+    var(--surface-3) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1400ms linear infinite;
+  border-radius: 6px;
+}
+
+/* Internal-only communication entries get a hatched border so they can never be
+   mistaken for external correspondence (§7.2). */
+.hatched-internal {
+  background-image: repeating-linear-gradient(
+    45deg,
+    color-mix(in oklab, var(--warning) 12%, transparent) 0px,
+    color-mix(in oklab, var(--warning) 12%, transparent) 6px,
+    transparent 6px,
+    transparent 12px
+  );
+}
+
+/* ── Reduced motion (§5.3 MUST) ─────────────────────────────────────────────
+   Both the OS setting and the manual Settings toggle kill every pulse. The rail
+   then relies on a static high-contrast ring plus the "Current stage" text
+   badge, which the component renders unconditionally for screen readers. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .rail-halo,
+  .rail-halo-delayed,
+  .rail-halo-urgent,
+  .rail-halo-urgent-delayed,
+  .rail-breathe,
+  .rail-sheen,
+  .skeleton {
+    animation: none !important;
+  }
+  .rail-sheen {
+    background-image: none;
+    background-color: var(--accent);
+  }
+}
+
+[data-reduce-motion='true'] .rail-halo,
+[data-reduce-motion='true'] .rail-halo-delayed,
+[data-reduce-motion='true'] .rail-halo-urgent,
+[data-reduce-motion='true'] .rail-halo-urgent-delayed,
+[data-reduce-motion='true'] .rail-breathe,
+[data-reduce-motion='true'] .rail-sheen,
+[data-reduce-motion='true'] .skeleton {
+  animation: none !important;
+}
+[data-reduce-motion='true'] .rail-sheen {
+  background-image: none;
+  background-color: var(--accent);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PRINT — PO / PI / Invoice / POD must print cleanly (§10.4)
+   ═══════════════════════════════════════════════════════════════════════════ */
+.print-only {
+  display: none;
+}
+
+@media print {
+  :root {
+    --surface-0: #ffffff;
+    --surface-1: #ffffff;
+    --surface-3: #f2f2f2;
+    --text-primary: #000000;
+    --text-secondary: #333333;
+    --border-subtle: #999999;
+    --border-default: #666666;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  body {
+    background: #ffffff;
+    font-size: 11pt;
+  }
+  @page {
+    margin: 14mm;
+  }
 }
