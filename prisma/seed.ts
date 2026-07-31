@@ -1203,6 +1203,9 @@ async function buildWorkOrder(spec: WoSpec) {
         grnNumber: `GRN-2026-${pad(200 + spec.aliasNo)}`,
         receivedAt: at('GOODS_RECEIVED_INBOUND_AT_1BUY'),
         cartons: 4,
+        // Zone-rack-bin, derived from the order number so a reseed puts the same
+        // consignment back in the same place rather than shuffling the warehouse.
+        storageLocation: `${'ABCD'[spec.aliasNo % 4]}-${pad(1 + (spec.aliasNo % 12), 2)}-R${1 + (spec.aliasNo % 3)}`,
         receivedBy: 'Akash Dwivedi',
         hasShortfall: false,
         remarks: 'All cartons intact. Seals matched the packing list.',

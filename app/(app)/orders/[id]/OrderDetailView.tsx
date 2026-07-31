@@ -2875,6 +2875,13 @@ function InspectionTab({ order }: { order: OrderDetail }) {
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <KeyValue label="Received">{formatDateTime(g.receivedAt)}</KeyValue>
             <KeyValue label="Cartons">{g.cartons}</KeyValue>
+            <KeyValue label="Storage location" termKey="storageLocation">
+              {g.storageLocation ? (
+                <MonoId value={g.storageLocation} copyable={false} />
+              ) : (
+                'Not put away'
+              )}
+            </KeyValue>
             <KeyValue label="Received by">{g.receivedBy}</KeyValue>
             <KeyValue label="Remarks">{g.remarks ?? '—'}</KeyValue>
           </div>

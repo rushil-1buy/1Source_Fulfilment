@@ -189,7 +189,7 @@
 
     <div class="stats">
       <div class="stat"><b>60</b><span>Tables</span></div>
-      <div class="stat"><b>881</b><span>Columns</span></div>
+      <div class="stat"><b>882</b><span>Columns</span></div>
       <div class="stat"><b>72</b><span>Foreign keys</span></div>
       <div class="stat"><b>144</b><span>Relation fields</span></div>
       <div class="stat"><b>34</b><span>Unique constraints</span></div>
@@ -4670,10 +4670,10 @@
          <div class="figscroll"><svg viewBox="0 0 548 437" class="erd" role="img" aria-label="Entity relationship diagram"><g class="rel"><path d="M242,68 H274 V68 H306" class="rl"/><path d="M231,62 L231,74" class="cf"/><path d="M322,68 L311,62 M322,68 L311,68 M322,68 L311,74" class="cf"/><path d="M307,62 L307,74" class="cf"/><title>Grn 1 → GrnLine many (grnId, on delete Cascade)</title></g><g class="rel"><path d="M242,205.5 H274 V198 H306" class="rl"/><path d="M231,199.5 L231,211.5" class="cf"/><path d="M322,198 L311,192 M322,198 L311,198 M322,198 L311,204" class="cf"/><path d="M307,192 L307,204" class="cf"/><title>InspectionReport 1 → InspectionChecklistItem many (reportId, on delete Cascade)</title></g><g class="ent"><rect x="16" y="16" width="210" height="104" rx="5"/><rect x="16" y="16" width="210" height="22" rx="5" class="ehead"/><rect x="16" y="33" width="210" height="5" class="ehead"/><text x="121" y="31" text-anchor="middle" class="en">Grn</text><text x="23" y="49" class="ek">PK</text><text x="42" y="49" class="ef key">id</text><text x="219" y="49" class="et" text-anchor="end">String</text><text x="23" y="64" class="ek">FK</text><text x="42" y="64" class="ef key">workOrderId</text><text x="219" y="64" class="et" text-anchor="end">→ WorkOrder</text><text x="23" y="79" class="ek"></text><text x="42" y="79" class="ef">grnNumber</text><text x="219" y="79" class="et" text-anchor="end">String</text><text x="23" y="94" class="ek"></text><text x="42" y="94" class="ef">receivedAt</text><text x="219" y="94" class="et" text-anchor="end">DateTime</text><text x="23" y="109" class="ek"></text><text x="42" y="109" class="ef">cartons</text><text x="219" y="109" class="et" text-anchor="end">Int</text></g><g class="ent"><rect x="322" y="16" width="210" height="104" rx="5"/><rect x="322" y="16" width="210" height="22" rx="5" class="ehead"/><rect x="322" y="33" width="210" height="5" class="ehead"/><text x="427" y="31" text-anchor="middle" class="en">GrnLine</text><text x="329" y="49" class="ek">PK</text><text x="348" y="49" class="ef key">id</text><text x="525" y="49" class="et" text-anchor="end">String</text><text x="329" y="64" class="ek">FK</text><text x="348" y="64" class="ef key">grnId</text><text x="525" y="64" class="et" text-anchor="end">→ Grn</text><text x="329" y="79" class="ek"></text><text x="348" y="79" class="ef">mpn</text><text x="525" y="79" class="et" text-anchor="end">String</text><text x="329" y="94" class="ek"></text><text x="348" y="94" class="ef">expectedQty</text><text x="525" y="94" class="et" text-anchor="end">Int</text><text x="329" y="109" class="ek"></text><text x="348" y="109" class="ef">receivedQty</text><text x="525" y="109" class="et" text-anchor="end">Int</text></g><g class="ent"><rect x="16" y="146" width="210" height="119" rx="5"/><rect x="16" y="146" width="210" height="22" rx="5" class="ehead"/><rect x="16" y="163" width="210" height="5" class="ehead"/><text x="121" y="161" text-anchor="middle" class="en">InspectionReport</text><text x="23" y="179" class="ek">PK</text><text x="42" y="179" class="ef key">id</text><text x="219" y="179" class="et" text-anchor="end">String</text><text x="23" y="194" class="ek">FK</text><text x="42" y="194" class="ef key">workOrderId</text><text x="219" y="194" class="et" text-anchor="end">→ WorkOrder</text><text x="23" y="209" class="ek">FK</text><text x="42" y="209" class="ef key">inspectorId</text><text x="219" y="209" class="et" text-anchor="end">→ User</text><text x="23" y="224" class="ek"></text><text x="42" y="224" class="ef">reportNo</text><text x="219" y="224" class="et" text-anchor="end">String</text><text x="23" y="239" class="ek"></text><text x="42" y="239" class="ef">startedAt</text><text x="219" y="239" class="et" text-anchor="end">DateTime</text><text x="23" y="254" class="ek"></text><text x="42" y="254" class="ef">completedAt</text><text x="219" y="254" class="et" text-anchor="end">DateTime?</text></g><g class="ent"><rect x="322" y="146" width="210" height="104" rx="5"/><rect x="322" y="146" width="210" height="22" rx="5" class="ehead"/><rect x="322" y="163" width="210" height="5" class="ehead"/><text x="427" y="161" text-anchor="middle" class="en">InspectionChecklistItem</text><text x="329" y="179" class="ek">PK</text><text x="348" y="179" class="ef key">id</text><text x="525" y="179" class="et" text-anchor="end">String</text><text x="329" y="194" class="ek">FK</text><text x="348" y="194" class="ef key">reportId</text><text x="525" y="194" class="et" text-anchor="end">→ InspectionReport</text><text x="329" y="209" class="ek"></text><text x="348" y="209" class="ef">sequence</text><text x="525" y="209" class="et" text-anchor="end">Int</text><text x="329" y="224" class="ek"></text><text x="348" y="224" class="ef">category</text><text x="525" y="224" class="et" text-anchor="end">String</text><text x="329" y="239" class="ek"></text><text x="348" y="239" class="ef">label</text><text x="525" y="239" class="et" text-anchor="end">String</text></g><g class="ent"><rect x="16" y="291" width="210" height="104" rx="5"/><rect x="16" y="291" width="210" height="22" rx="5" class="ehead"/><rect x="16" y="308" width="210" height="5" class="ehead"/><text x="121" y="306" text-anchor="middle" class="en">RepackJob</text><text x="23" y="324" class="ek">PK</text><text x="42" y="324" class="ef key">id</text><text x="219" y="324" class="et" text-anchor="end">String</text><text x="23" y="339" class="ek">FK</text><text x="42" y="339" class="ef key">workOrderId</text><text x="219" y="339" class="et" text-anchor="end">→ WorkOrder</text><text x="23" y="354" class="ek"></text><text x="42" y="354" class="ef">jobNo</text><text x="219" y="354" class="et" text-anchor="end">String</text><text x="23" y="369" class="ek"></text><text x="42" y="369" class="ef">startedAt</text><text x="219" y="369" class="et" text-anchor="end">DateTime</text><text x="23" y="384" class="ek"></text><text x="42" y="384" class="ef">completedAt</text><text x="219" y="384" class="et" text-anchor="end">DateTime?</text></g></svg></div>
          <figcaption>ERD — Receipt, inspection &amp; value-add. 2 relationships inside this domain; foreign keys pointing outside it are listed on each table.</figcaption>
        </figure>
-    <section class="model" id="m-Grn" data-name="grn" data-group="warehouse" data-text="grn  id  workorderid  workorder  grnnumber  receivedat  cartons  receivedby  variance  hasshortfall  remarks  createdat  lines  cascade foreign key fk">
+    <section class="model" id="m-Grn" data-name="grn" data-group="warehouse" data-text="grn  id  workorderid  workorder  grnnumber  receivedat  cartons  receivedby  storagelocation where in the warehouse the consignment was put away — zone / rack / bin. nullable because a receipt is booked at the dock, and put-away can happen minutes or hours later; forcing a location at receipt time would mean inventing one, and an invented location is worse than an empty one. variance  hasshortfall  remarks  createdat  lines  cascade foreign key fk">
     <header class="mh">
       <h3>Grn</h3>
-      <span class="mstat">10 fields · 2 relations</span>
+      <span class="mstat">11 fields · 2 relations</span>
     </header>
     
     <table class="ftab">
@@ -4720,6 +4720,12 @@
     <td class="fd"></td>
     <td class="fx"></td>
     <td class="fc"></td>
+  </tr><tr class="">
+    <td class="fn">storageLocation</td>
+    <td class="ft"><code>String?</code></td>
+    <td class="fd"></td>
+    <td class="fx"></td>
+    <td class="fc">Where in the warehouse the consignment was put away — zone / rack / bin. Nullable because a receipt is booked at the dock, and put-away can happen minutes or hours later; forcing a location at receipt time would mean inventing one, and an invented location is worse than an empty one.</td>
   </tr><tr class="">
     <td class="fn">variance</td>
     <td class="ft"><code>String?</code></td>
@@ -8208,6 +8214,11 @@ model Grn {
   receivedAt  DateTime
   cartons     Int
   receivedBy  String
+  /// Where in the warehouse the consignment was put away — zone / rack / bin.
+  /// Nullable because a receipt is booked at the dock, and put-away can happen
+  /// minutes or hours later; forcing a location at receipt time would mean
+  /// inventing one, and an invented location is worse than an empty one.
+  storageLocation String?
   variance    String? // JSON [{mpn, expectedQty, receivedQty}]
   hasShortfall Boolean  @default(false)
   remarks     String?

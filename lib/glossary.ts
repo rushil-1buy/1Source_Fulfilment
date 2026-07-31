@@ -607,6 +607,16 @@ export const GLOSSARY: GlossaryEntry[] = [
 
   // ── Inspection & warehouse ───────────────────────────────────────────────
   {
+    key: 'storageLocation',
+    term: 'Storage location',
+    plainTerm: 'Where it is in the warehouse',
+    whatItIs: 'The zone, rack and bin the consignment was put away in after it was received.',
+    whyItMatters:
+      'It is how anyone finds the stock again — for inspection, for repack, or to pick it for despatch. Goods that are received but not located are, in practice, lost.',
+    example: 'A-04-R2',
+    category: 'inspection',
+  },
+  {
     key: 'grn',
     term: 'GRN',
     plainTerm: 'Goods received note',

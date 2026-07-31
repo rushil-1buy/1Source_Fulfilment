@@ -390,7 +390,7 @@ the same code as the seed — sharing it is what stops the two drifting.
 
 | File | What it is | Regenerate |
 |---|---|---|
-| `database-design.html` | Self-contained, searchable reference for all 60 tables and 881 columns, with the raw schema embedded | from `prisma/schema.prisma` |
+| `database-design.html` | Self-contained, searchable reference for all 60 tables and 882 columns, with the raw schema embedded | from `prisma/schema.prisma` |
 | `1BUY-Fulfilment-Platform.docx` | Problem statement, objectives, methodology, full user guide, every field | from `lib/domain` |
 | `CONTEXT.md` | This file | by hand |
 

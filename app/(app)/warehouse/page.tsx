@@ -30,6 +30,7 @@ export default async function WarehousePage() {
         { key: 'grnNumber', label: 'Goods receipt number', termKey: 'grn', kind: 'mono', mobile: 'secondary', width: '170px' },
         { key: 'receivedAt', label: 'Received', kind: 'datetime', mobile: 'meta', width: '170px' },
         { key: 'cartons', label: 'Cartons', kind: 'number', mobile: 'meta', width: '100px' },
+        { key: 'storageLocation', label: 'Storage location', termKey: 'storageLocation', kind: 'mono', mobile: 'meta', width: '150px', empty: 'Not put away' },
         { key: 'lines', label: 'Part lines', kind: 'number', mobile: 'hidden', width: '110px' },
         { key: 'expectedQty', label: 'Quantity expected', kind: 'number', mobile: 'meta' },
         { key: 'receivedQty', label: 'Quantity received', kind: 'number', mobile: 'meta' },

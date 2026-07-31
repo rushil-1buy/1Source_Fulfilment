@@ -196,6 +196,7 @@ export async function listWarehouseActivity(): Promise<{
       grnNumber: g.grnNumber,
       receivedAt: g.receivedAt.toISOString(),
       cartons: g.cartons,
+      storageLocation: g.storageLocation,
       lines: g.lines.length,
       expectedQty: g.lines.reduce((a, l) => a + l.expectedQty, 0),
       receivedQty: g.lines.reduce((a, l) => a + l.receivedQty, 0),

@@ -945,6 +945,11 @@ model Grn {
   receivedAt  DateTime
   cartons     Int
   receivedBy  String
+  /// Where in the warehouse the consignment was put away — zone / rack / bin.
+  /// Nullable because a receipt is booked at the dock, and put-away can happen
+  /// minutes or hours later; forcing a location at receipt time would mean
+  /// inventing one, and an invented location is worse than an empty one.
+  storageLocation String?
   variance    String? // JSON [{mpn, expectedQty, receivedQty}]
   hasShortfall Boolean  @default(false)
   remarks     String?

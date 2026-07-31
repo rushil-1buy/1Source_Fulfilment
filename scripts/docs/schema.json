@@ -10853,6 +10853,22 @@
      "doc": ""
     },
     {
+     "name": "storageLocation",
+     "type": "String",
+     "list": false,
+     "optional": true,
+     "scalar": true,
+     "isId": false,
+     "unique": false,
+     "default": null,
+     "updatedAt": false,
+     "relation": null,
+     "onDelete": null,
+     "fk": null,
+     "refs": null,
+     "doc": "Where in the warehouse the consignment was put away — zone / rack / bin. Nullable because a receipt is booked at the dock, and put-away can happen minutes or hours later; forcing a location at receipt time would mean inventing one, and an invented location is worse than an empty one."
+    },
+    {
      "name": "variance",
      "type": "String",
      "list": false,
@@ -17611,7 +17627,7 @@
  ],
  "stats": {
   "models": 60,
-  "fields": 881,
+  "fields": 882,
   "relationFields": 144,
   "relations": 72,
   "indexes": 10,
