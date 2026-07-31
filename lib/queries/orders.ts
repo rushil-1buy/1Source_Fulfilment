@@ -67,20 +67,6 @@ export interface OrderRow {
   termsLockedAt: string | null;
   /** RFQ / Sourcing ID from whichever document carries it. */
   sourcingRef: string | null;
-  /**
-   * How many work orders serve this row's customer order, and which one this is.
-   * A customer order split across suppliers produces several rows that differ
-   * only by supplier — without this they read as duplicated data.
-   */
-  splitOf: number;
-  splitIndex: number;
-  /**
-   * How many work orders share this row's SUPPLIER order, and which one this is.
-   * The mirror of splitOf: a bulk order raised from a demand aggregation produces
-   * several rows differing only by customer, which read as duplicates without it.
-   */
-  bulkOf: number;
-  bulkIndex: number;
 }
 
 const ORDER_INCLUDE = {
@@ -122,8 +108,6 @@ type RawOrder = Prisma.WorkOrderGetPayload<{ include: typeof ORDER_INCLUDE }>;
 function toRow(
   wo: RawOrder,
   now: Date,
-  split?: { of: number; index: number },
-  bulk?: { of: number; index: number },
 ): OrderRow {
   const ctx = stageContextFrom(wo);
 
@@ -209,50 +193,9 @@ function toRow(
     // Either document may carry it; the customer's enquiry is the origin, so it
     // wins when both do.
     sourcingRef: wo.customerPo.sourcingRef ?? wo.supplierPo.sourcingRef ?? null,
-    splitOf: split?.of ?? 1,
-    splitIndex: split?.index ?? 1,
-    bulkOf: bulk?.of ?? 1,
-    bulkIndex: bulk?.index ?? 1,
   };
 }
 
-/**
- * How many legs each customer order is split across, and the position of each
- * work order within its own split. Computed in one pass over the whole set so
- * the list does not fire a query per row.
- */
-function splitPositions(
-  orders: { id: string; customerPoId: string; createdAt: Date }[],
-): Map<string, { of: number; index: number }> {
-  return positionsBy(orders, (o) => o.customerPoId);
-}
-
-/** The same counting, grouped by supplier order instead. */
-function bulkPositions(
-  orders: { id: string; supplierPoId: string; createdAt: Date }[],
-): Map<string, { of: number; index: number }> {
-  return positionsBy(orders, (o) => o.supplierPoId);
-}
-
-function positionsBy<T extends { id: string; createdAt: Date }>(
-  orders: T[],
-  key: (o: T) => string,
-): Map<string, { of: number; index: number }> {
-  const byPo = new Map<string, T[]>();
-  for (const o of orders) {
-    const list = byPo.get(key(o)) ?? [];
-    list.push(o);
-    byPo.set(key(o), list);
-  }
-  const out = new Map<string, { of: number; index: number }>();
-  for (const list of byPo.values()) {
-    // Oldest first, so "1 of 3" is the leg that was raised first and the numbers
-    // stay put as the list is re-sorted.
-    const ordered = [...list].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
-    ordered.forEach((o, i) => out.set(o.id, { of: ordered.length, index: i + 1 }));
-  }
-  return out;
-}
 
 export async function listOrders(): Promise<OrderRow[]> {
   const now = new Date();
@@ -260,30 +203,13 @@ export async function listOrders(): Promise<OrderRow[]> {
     include: ORDER_INCLUDE,
     orderBy: { createdAt: 'desc' },
   });
-  const splits = splitPositions(orders);
-  const bulks = bulkPositions(orders);
-  return orders.map((wo) => toRow(wo, now, splits.get(wo.id), bulks.get(wo.id)));
+  return orders.map((wo) => toRow(wo, now));
 }
 
 export async function getOrderRow(id: string): Promise<OrderRow | null> {
   const wo = await db.workOrder.findUnique({ where: { id }, include: ORDER_INCLUDE });
   if (!wo) return null;
-  const [siblings, peers] = await Promise.all([
-    db.workOrder.findMany({
-      where: { customerPoId: wo.customerPoId },
-      select: { id: true, customerPoId: true, createdAt: true },
-    }),
-    db.workOrder.findMany({
-      where: { supplierPoId: wo.supplierPoId },
-      select: { id: true, supplierPoId: true, createdAt: true },
-    }),
-  ]);
-  return toRow(
-    wo,
-    new Date(),
-    splitPositions(siblings).get(wo.id),
-    bulkPositions(peers).get(wo.id),
-  );
+  return toRow(wo, new Date());
 }
 
 /** Aggregates for the Control Tower (§6.1). */

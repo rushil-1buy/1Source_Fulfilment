@@ -60,17 +60,6 @@ export const NAV_GROUPS: NavGroup[] = [
         ],
       },
       {
-        href: '/demand-aggregation',
-        label: 'Demand Aggregation',
-        plainLabel: 'Pool orders together',
-        icon: 'Layers',
-        hint: 'Pool the same part across several customer orders and buy it once, in bulk.',
-        children: [
-          { href: '/demand-aggregation?view=open', label: 'Open demand', plainLabel: 'What is unsourced' },
-          { href: '/demand-aggregation?view=pools', label: 'Pools', plainLabel: 'Consolidations' },
-        ],
-      },
-      {
         href: '/purchase-orders',
         label: 'Created Purchase Orders',
         plainLabel: 'Purchase orders',

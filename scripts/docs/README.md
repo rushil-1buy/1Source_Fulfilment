@@ -5,7 +5,7 @@ generators that do it. Both read the source of truth, so neither can describe a
 table or a stage the software does not have.
 
 ```bash
-# database-design.html — 63 tables, ERDs, DFDs, raw schema embedded
+# database-design.html — 60 tables, ERDs, DFDs, raw schema embedded
 node scripts/docs/parse-schema.js prisma/schema.prisma /tmp/schema.json
 cp /tmp/schema.json scripts/docs/schema.json
 node scripts/docs/build-db-html.js prisma/schema.prisma database-design.html

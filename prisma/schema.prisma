@@ -245,7 +245,6 @@ model Supplier {
 
   avl          AVLRecord?
   purchaseOrders SupplierPO[]
-  aggregations DemandAggregation[]
 }
 
 /// Approved Vendor List. A supplier may only be selected on a Supplier PO when
@@ -388,9 +387,6 @@ model CustomerPOLine {
   remarks         String?
 
   mappings POLinkMapping[]
-
-  /// Slices of this line contributed to a demand-aggregation pool.
-  aggregationLines DemandAggregationLine[]
 }
 
 model ProformaInvoice {
@@ -518,8 +514,6 @@ model SupplierPO {
   proformas  ProformaInvoice[]
   workOrders WorkOrder[]
   documents  Document[]
-  /// Set when this order was raised from a pooled demand aggregation.
-  aggregation DemandAggregation?
 }
 
 model SupplierPOLine {
@@ -1504,95 +1498,3 @@ model OrderPhasePlan {
   @@index([workOrderId, position])
 }
 
-// ─── Demand aggregation ─────────────────────────────────────────────────────
-
-/// Pooling demand from several customer orders into one bulk supplier order.
-///
-/// The point is economies of scale on the BUY side: consolidate the same MPN
-/// across customers, negotiate one price for the combined quantity, place one
-/// purchase order, ship one consignment inbound.
-///
-/// What it deliberately does NOT do is merge the customers. Each customer keeps
-/// their own work order against the shared supplier PO, because each needs their
-/// own proforma invoice, their own tax invoice, their own e-way bill, their own
-/// delivery and their own proof of delivery. Those are statutory documents naming
-/// one buyer — they cannot be pooled. So the shape is:
-///
-///   many customer POs → one DemandAggregation → one bulk SupplierPO
-///                                             → one WorkOrder per customer PO
-///
-/// Combined with split sourcing (one customer PO across several supplier POs),
-/// that gives a genuine many-to-many between the two sides, with the allocation
-/// carried line by line in POLinkMapping.
-model DemandAggregation {
-  id            String    @id @default(cuid())
-  reference     String    @unique // AGG-2026-0001
-  title         String
-  /// Why these orders were pooled. Required: a consolidation nobody explained is
-  /// indistinguishable from a mistake once the prices differ per customer.
-  rationale     String
-  /// DRAFT | FLOATED | CANCELLED
-  status        String    @default("DRAFT")
-  supplierId    String?
-  supplier      Supplier? @relation(fields: [supplierId], references: [id])
-  /// The bulk order this produced. One aggregation floats exactly once.
-  supplierPoId  String?     @unique
-  supplierPo    SupplierPO? @relation(fields: [supplierPoId], references: [id])
-  sourcingRef   String?
-  requiredBy    DateTime?
-  currency      String    @default("USD")
-  incoterms     String    @default("FOB")
-  /// ADVANCE | ESCROW | CREDIT — carried onto the bulk PO and every work order.
-  paymentMethod String    @default("ESCROW")
-  notes         String?
-  createdBy     String
-  createdAt     DateTime  @default(now())
-  floatedAt     DateTime?
-  cancelledAt   DateTime?
-  cancelReason  String?
-
-  parts DemandAggregationPart[]
-  lines DemandAggregationLine[]
-
-  @@index([status])
-}
-
-/// One MPN in the pool, with the price negotiated for the combined quantity.
-///
-/// Separate from the lines because a bulk order has ONE price per part. Holding
-/// the price on each customer line would let the same MPN carry two different buy
-/// prices in the same purchase order, which is the opposite of what pooling is for.
-model DemandAggregationPart {
-  id            String            @id @default(cuid())
-  aggregationId String
-  aggregation   DemandAggregation @relation(fields: [aggregationId], references: [id], onDelete: Cascade)
-  mpn           String
-  manufacturer  String
-  description   String
-  hsnCode       String
-  /// Negotiated bulk price per piece, in the aggregation's currency.
-  buyUnitPrice  Float
-  /// What the individual (unpooled) price would have been, for the saving figure.
-  baselineUnitPrice Float?
-  leadTimeDays  Int?
-  countryOfOrigin String?
-  testingRequired Boolean         @default(false)
-
-  @@unique([aggregationId, mpn])
-}
-
-/// A slice of one customer's demand contributed to the pool.
-model DemandAggregationLine {
-  id               String            @id @default(cuid())
-  aggregationId    String
-  aggregation      DemandAggregation @relation(fields: [aggregationId], references: [id], onDelete: Cascade)
-  customerPoLineId String
-  customerPoLine   CustomerPOLine    @relation(fields: [customerPoLineId], references: [id], onDelete: Cascade)
-  /// How much of that customer line goes in. Never more than the line has left
-  /// unallocated — enforced in lib/actions/aggregation.ts.
-  quantity         Int
-  createdAt        DateTime          @default(now())
-
-  @@unique([aggregationId, customerPoLineId])
-  @@index([aggregationId])
-}

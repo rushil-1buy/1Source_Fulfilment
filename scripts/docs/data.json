@@ -1,0 +1,4528 @@
+{
+ "phases": [
+  {
+   "id": "A",
+   "label": "Demand Capture",
+   "plainLabel": "Getting the order",
+   "description": "The customer's order arrives and we quote it back to them.",
+   "owner": "1BUY Sales / Ops"
+  },
+  {
+   "id": "B",
+   "label": "Sourcing & Commitment",
+   "plainLabel": "Buying the parts",
+   "description": "We pick an approved supplier, order from them, and lock the terms.",
+   "owner": "1BUY Procurement"
+  },
+  {
+   "id": "C",
+   "label": "Financial Arming",
+   "plainLabel": "Getting the money ready",
+   "description": "Money is put in place so the supplier can safely start work.",
+   "owner": "1BUY Finance + Escrow"
+  },
+  {
+   "id": "D",
+   "label": "Quality Assurance",
+   "plainLabel": "Testing the parts",
+   "description": "An independent laboratory checks the parts before the full shipment moves.",
+   "owner": "Supplier + Testing Laboratory"
+  },
+  {
+   "id": "E",
+   "label": "Logistics",
+   "plainLabel": "Shipping and customs",
+   "description": "The goods travel to India and clear customs.",
+   "owner": "Supplier → Logistics Partner → Customs Agent"
+  },
+  {
+   "id": "F",
+   "label": "Inspection & Settlement",
+   "plainLabel": "Checking and paying",
+   "description": "We inspect what arrived, then pay the supplier.",
+   "owner": "1BUY QC + Finance"
+  },
+  {
+   "id": "G",
+   "label": "Value-Add & Delivery",
+   "plainLabel": "Repacking and delivering",
+   "description": "We rebrand, repack, deliver to the customer and close the order.",
+   "owner": "1BUY Warehouse + Logistics"
+  }
+ ],
+ "stages": [
+  {
+   "id": "CUSTOMER_PO_RECEIVED",
+   "code": "A1",
+   "phase": "A",
+   "label": "Customer Purchase Order received",
+   "plainLabel": "Customer's order received",
+   "description": "The customer's purchase order has been entered into the system with every part and quantity.",
+   "exitCriteria": "Purchase Order header and all part lines captured and validated.",
+   "owner": "ONE_BUY",
+   "expectedHours": 4,
+   "artifacts": [
+    "Customer Purchase Order document"
+   ],
+   "nextAction": "Raise a Proforma Invoice for the customer.",
+   "nextActionOwner": "ONE_BUY",
+   "isExceptionBranch": false,
+   "isTerminal": false,
+   "conditional": false,
+   "attestation": "The customer’s order is in hand and its terms have been read.",
+   "fields": [
+    {
+     "id": "receivedVia",
+     "label": "How the order reached us",
+     "type": "select",
+     "required": false,
+     "help": "Email, their portal, or a hard copy. Matters if we later have to prove when we received it.",
+     "options": [
+      "Email",
+      "Customer portal",
+      "Hard copy",
+      "WhatsApp"
+     ],
+     "unit": null
+    },
+    {
+     "id": "receivedOn",
+     "label": "Date received",
+     "type": "date",
+     "required": true,
+     "help": "The date on our side, which is what the clock runs from.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "termsRead",
+     "label": "Their terms and conditions have been read",
+     "type": "boolean",
+     "required": false,
+     "help": "Confirms someone actually looked for penalty clauses, delivery windows and inspection rights before we committed.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "discrepancies",
+     "label": "Anything unclear or unusual",
+     "type": "longtext",
+     "required": false,
+     "help": "Part numbers that do not match the enquiry, dates we cannot meet, terms we would not accept. Write it now, while it is fresh.",
+     "options": null,
+     "unit": null
+    }
+   ],
+   "documents": [
+    {
+     "id": "customerPo",
+     "label": "The customer’s purchase order",
+     "required": true,
+     "help": "Their document as received. This is the instruction we are acting on."
+    }
+   ],
+   "subTasks": [
+    {
+     "kind": "DOCUMENT",
+     "label": "Upload — The customer’s purchase order",
+     "detail": "Their document as received. This is the instruction we are acting on.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Read the customer’s terms and conditions",
+     "detail": "Look for penalty clauses, the delivery window, inspection rights and who bears freight. Cheaper to find now than after we have committed to a supplier.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Check the order against their credit limit",
+     "detail": "A customer already at their limit is a decision for Finance, not for procurement.",
+     "owner": "ONE_BUY",
+     "required": false,
+     "standard": null
+    },
+    {
+     "kind": "CAPTURE",
+     "label": "Record the details — 4 fields",
+     "detail": "Date received must be recorded before the order can move on.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    }
+   ]
+  },
+  {
+   "id": "PI_ISSUED_TO_CUSTOMER",
+   "code": "A2",
+   "phase": "A",
+   "label": "Proforma Invoice issued to customer",
+   "plainLabel": "Price quote sent to customer",
+   "description": "We have sent the customer our Proforma Invoice — our formal price and terms.",
+   "exitCriteria": "Proforma Invoice issued, sent and timestamped.",
+   "owner": "ONE_BUY",
+   "expectedHours": 8,
+   "artifacts": [
+    "1BUY Proforma Invoice"
+   ],
+   "nextAction": "Chase the customer to confirm the Proforma Invoice.",
+   "nextActionOwner": "CUSTOMER",
+   "isExceptionBranch": false,
+   "isTerminal": false,
+   "conditional": false,
+   "attestation": "Our quote has gone to the customer.",
+   "fields": [
+    {
+     "id": "sentOn",
+     "label": "Date sent",
+     "type": "date",
+     "required": true,
+     "help": "When it left us.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "sentTo",
+     "label": "Sent to",
+     "type": "text",
+     "required": true,
+     "help": "The person at the customer who has it, so a chase goes to the right inbox.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "validUntil",
+     "label": "Quote valid until",
+     "type": "date",
+     "required": false,
+     "help": "After this date the prices are no longer ours to honour.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "marginChecked",
+     "label": "Margin checked against the floor",
+     "type": "boolean",
+     "required": false,
+     "help": "Confirms the quote was priced above the minimum margin, not just above cost.",
+     "options": null,
+     "unit": null
+    }
+   ],
+   "documents": [
+    {
+     "id": "customerPi",
+     "label": "The proforma invoice sent",
+     "required": true,
+     "help": "The version the customer received, so there is no argument later about what was quoted."
+    }
+   ],
+   "subTasks": [
+    {
+     "kind": "DOCUMENT",
+     "label": "Upload — The proforma invoice sent",
+     "detail": "The version the customer received, so there is no argument later about what was quoted.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Check the quoted margin against the floor",
+     "detail": "Anything under the margin floor needs sign-off before it leaves the building.",
+     "owner": "ONE_BUY",
+     "required": false,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Send the proforma to the customer",
+     "detail": "Email or their portal, with the validity date stated.",
+     "owner": "ONE_BUY",
+     "required": false,
+     "standard": null
+    },
+    {
+     "kind": "CAPTURE",
+     "label": "Record the details — 4 fields",
+     "detail": "Date sent, Sent to must be recorded before the order can move on.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    }
+   ]
+  },
+  {
+   "id": "PI_ACCEPTED_BY_CUSTOMER",
+   "code": "A3",
+   "phase": "A",
+   "label": "Proforma Invoice accepted by customer",
+   "plainLabel": "Customer agreed the quote",
+   "description": "The customer has confirmed our Proforma Invoice, so we can commit to a supplier.",
+   "exitCriteria": "Acceptance recorded with reference and date.",
+   "owner": "CUSTOMER",
+   "expectedHours": 48,
+   "artifacts": [
+    "Acceptance email or reference"
+   ],
+   "nextAction": "Choose an approved supplier from the Approved Vendor List.",
+   "nextActionOwner": "ONE_BUY",
+   "isExceptionBranch": false,
+   "isTerminal": false,
+   "conditional": false,
+   "attestation": "The customer has accepted our quote in writing.",
+   "fields": [
+    {
+     "id": "acceptanceRef",
+     "label": "Their acceptance reference",
+     "type": "text",
+     "required": true,
+     "help": "Their email, order confirmation or signed copy reference. This is what makes the terms binding.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "acceptedOn",
+     "label": "Date accepted",
+     "type": "date",
+     "required": true,
+     "help": "The moment the terms became fixed.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "acceptedBy",
+     "label": "Who accepted",
+     "type": "text",
+     "required": true,
+     "help": "The named person, and ideally their authority to commit their company.",
+     "options": null,
+     "unit": null
+    }
+   ],
+   "documents": [
+    {
+     "id": "acceptance",
+     "label": "Written acceptance",
+     "required": true,
+     "help": "The email or signed copy. Verbal acceptance is not evidence."
+    }
+   ],
+   "subTasks": [
+    {
+     "kind": "DOCUMENT",
+     "label": "Upload — Written acceptance",
+     "detail": "The email or signed copy. Verbal acceptance is not evidence.",
+     "owner": "CUSTOMER",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Get the acceptance in writing",
+     "detail": "A verbal yes is not an order. Email confirmation, a signed copy, or their PO referencing our proforma.",
+     "owner": "CUSTOMER",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "CAPTURE",
+     "label": "Record the details — 3 fields",
+     "detail": "Their acceptance reference, Date accepted, Who accepted must be recorded before the order can move on.",
+     "owner": "CUSTOMER",
+     "required": true,
+     "standard": null
+    }
+   ]
+  },
+  {
+   "id": "SUPPLIER_SELECTED_FROM_AVL",
+   "code": "B1",
+   "phase": "B",
+   "label": "Supplier selected from Approved Vendor List",
+   "plainLabel": "Approved supplier chosen",
+   "description": "A supplier has been picked from the Approved Vendor List. Only approved, unexpired vendors can be used.",
+   "exitCriteria": "Approved Vendor List status is Approved and the approval has not expired.",
+   "owner": "ONE_BUY",
+   "expectedHours": 8,
+   "artifacts": [
+    "Approved Vendor List record snapshot"
+   ],
+   "nextAction": "Issue our Purchase Order to the supplier.",
+   "nextActionOwner": "ONE_BUY",
+   "isExceptionBranch": false,
+   "isTerminal": false,
+   "conditional": false,
+   "attestation": "The chosen supplier is approved and current, and the choice can be justified.",
+   "fields": [
+    {
+     "id": "avlCurrent",
+     "label": "Approval is current on the Approved Vendor List",
+     "type": "boolean",
+     "required": true,
+     "help": "A supplier whose approval has lapsed cannot be used, whatever the price.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "quotesCompared",
+     "label": "How many quotes were compared",
+     "type": "number",
+     "required": true,
+     "help": "One quote is not a comparison. Record the number actually obtained.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "selectionReason",
+     "label": "Why this supplier",
+     "type": "longtext",
+     "required": true,
+     "help": "Price, stock position, date code, lead time, or the only one who had it. A cheaper option not taken should say why.",
+     "options": null,
+     "unit": null
+    }
+   ],
+   "documents": [
+    {
+     "id": "quotes",
+     "label": "The quotes compared",
+     "required": false,
+     "help": "What the alternatives offered, so the choice is defensible."
+    }
+   ],
+   "subTasks": [
+    {
+     "kind": "DOCUMENT",
+     "label": "Upload — The quotes compared",
+     "detail": "What the alternatives offered, so the choice is defensible.",
+     "owner": "ONE_BUY",
+     "required": false,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Confirm the supplier is on the Approved Vendor List",
+     "detail": "Buying off-AVL is what puts counterfeit parts into the chain. If they are not on it, they get approved first or we source elsewhere.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Compare at least two quotes where the value warrants it",
+     "detail": "Price, lead time, and whether they hold genuine stock rather than a promise of it.",
+     "owner": "ONE_BUY",
+     "required": false,
+     "standard": null
+    },
+    {
+     "kind": "CAPTURE",
+     "label": "Record the details — 3 fields",
+     "detail": "Approval is current on the Approved Vendor List, How many quotes were compared, Why this supplier must be recorded before the order can move on.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    }
+   ]
+  },
+  {
+   "id": "SUPPLIER_PO_ISSUED",
+   "code": "B2",
+   "phase": "B",
+   "label": "Supplier Purchase Order issued",
+   "plainLabel": "Our order sent to supplier",
+   "description": "We have issued our Purchase Order to the supplier and linked it to the customer's order.",
+   "exitCriteria": "Purchase Order issued to supplier; line mapping to the customer's order complete.",
+   "owner": "ONE_BUY",
+   "expectedHours": 8,
+   "artifacts": [
+    "1BUY Purchase Order"
+   ],
+   "nextAction": "Wait for the supplier's Proforma Invoice, then record it.",
+   "nextActionOwner": "SUPPLIER",
+   "isExceptionBranch": false,
+   "isTerminal": false,
+   "conditional": false,
+   "attestation": "Our order has been placed with the supplier.",
+   "fields": [
+    {
+     "id": "issuedOn",
+     "label": "Date issued",
+     "type": "date",
+     "required": true,
+     "help": "When the order went out.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "sentTo",
+     "label": "Sent to",
+     "type": "text",
+     "required": true,
+     "help": "The person at the supplier who has it.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "ackReceived",
+     "label": "Supplier has acknowledged",
+     "type": "boolean",
+     "required": false,
+     "help": "An unacknowledged order is not yet a commitment on their side.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "ackRef",
+     "label": "Their acknowledgement reference",
+     "type": "text",
+     "required": false,
+     "help": "Their order number, which is what they will quote back at us.",
+     "options": null,
+     "unit": null
+    }
+   ],
+   "documents": [
+    {
+     "id": "supplierPo",
+     "label": "The purchase order sent",
+     "required": true,
+     "help": "The voucher as issued."
+    },
+    {
+     "id": "ack",
+     "label": "Their acknowledgement",
+     "required": false,
+     "help": "Confirms they accepted our terms, not just our order."
+    }
+   ],
+   "subTasks": [
+    {
+     "kind": "DOCUMENT",
+     "label": "Upload — The purchase order sent",
+     "detail": "The voucher as issued.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "DOCUMENT",
+     "label": "Upload — Their acknowledgement",
+     "detail": "Confirms they accepted our terms, not just our order.",
+     "owner": "ONE_BUY",
+     "required": false,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Issue our purchase order to the supplier",
+     "detail": "With part numbers, quantities, price, Incoterm and the required delivery date on it.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "State the testing requirement on the order",
+     "detail": "If the lot is to be independently tested, the supplier must know before they ship — it changes where the parts go first.",
+     "owner": "ONE_BUY",
+     "required": false,
+     "standard": null
+    },
+    {
+     "kind": "CAPTURE",
+     "label": "Record the details — 4 fields",
+     "detail": "Date issued, Sent to must be recorded before the order can move on.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    }
+   ]
+  },
+  {
+   "id": "SUPPLIER_PI_RECEIVED",
+   "code": "B3",
+   "phase": "B",
+   "label": "Supplier Proforma Invoice received",
+   "plainLabel": "Supplier's invoice received",
+   "description": "The supplier's Proforma Invoice is recorded and checked against our Purchase Order for price, quantity and lead time.",
+   "exitCriteria": "Supplier Proforma Invoice captured; prices and lead times reconciled against the Purchase Order.",
+   "owner": "SUPPLIER",
+   "expectedHours": 24,
+   "artifacts": [
+    "Supplier Proforma Invoice",
+    "Variance report"
+   ],
+   "nextAction": "Agree and lock the commercial terms.",
+   "nextActionOwner": "ONE_BUY",
+   "isExceptionBranch": false,
+   "isTerminal": false,
+   "conditional": false,
+   "attestation": "The supplier’s proforma invoice is in hand and has been checked against our order.",
+   "fields": [
+    {
+     "id": "supplierPiRef",
+     "label": "Their proforma invoice number",
+     "type": "text",
+     "required": true,
+     "help": "The number they will reference on the shipment and their bank instruction.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "receivedOn",
+     "label": "Date received",
+     "type": "date",
+     "required": true,
+     "help": "When it arrived.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "threeWayChecked",
+     "label": "Checked against our order and their quote",
+     "type": "boolean",
+     "required": true,
+     "help": "Part number, quantity, unit price, delivery term. This is where a wrong price gets caught, before money moves.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "variances",
+     "label": "Any differences found",
+     "type": "longtext",
+     "required": false,
+     "help": "Anything that does not match our order — and what was agreed about it.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "bankDetailsVerified",
+     "label": "Bank details verified independently",
+     "type": "boolean",
+     "required": true,
+     "help": "Confirmed by a channel other than the email carrying them. This is the control against payment redirection fraud.",
+     "options": null,
+     "unit": null
+    }
+   ],
+   "documents": [
+    {
+     "id": "supplierPi",
+     "label": "Their proforma invoice",
+     "required": true,
+     "help": "Including the bank details we will pay against."
+    }
+   ],
+   "subTasks": [
+    {
+     "kind": "DOCUMENT",
+     "label": "Upload — Their proforma invoice",
+     "detail": "Including the bank details we will pay against.",
+     "owner": "SUPPLIER",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Check their proforma line by line against our order",
+     "detail": "Part number, quantity, unit price, delivery term. This is where a wrong price gets caught, before any money moves.",
+     "owner": "SUPPLIER",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Verify the bank details independently",
+     "detail": "Call a known number, not one on the invoice. Payment-diversion fraud enters here.",
+     "owner": "SUPPLIER",
+     "required": false,
+     "standard": null
+    },
+    {
+     "kind": "CAPTURE",
+     "label": "Record the details — 5 fields",
+     "detail": "Their proforma invoice number, Date received, Checked against our order and their quote, Bank details verified independently must be recorded before the order can move on.",
+     "owner": "SUPPLIER",
+     "required": true,
+     "standard": null
+    }
+   ]
+  },
+  {
+   "id": "TERMS_LOCKED",
+   "code": "B4",
+   "phase": "B",
+   "label": "Terms locked",
+   "plainLabel": "Terms agreed and frozen",
+   "description": "Payment method, testing requirement, delivery terms, currency and exchange rate are all agreed and frozen.",
+   "exitCriteria": "Payment method, testing requirement, test scope, delivery terms, currency and exchange rate all locked.",
+   "owner": "ONE_BUY",
+   "expectedHours": 12,
+   "artifacts": [
+    "Terms sheet"
+   ],
+   "nextAction": "Activate the internal work order.",
+   "nextActionOwner": "ONE_BUY",
+   "isExceptionBranch": false,
+   "isTerminal": false,
+   "conditional": false,
+   "attestation": "The commercial terms are fixed and will not be reopened without a change note.",
+   "fields": [
+    {
+     "id": "lockedOn",
+     "label": "Date locked",
+     "type": "date",
+     "required": true,
+     "help": "From here the exchange rate, prices and delivery terms are fixed.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "fxRate",
+     "label": "Exchange rate applied",
+     "type": "number",
+     "required": true,
+     "help": "The rate the margin is calculated at. Locking it is what stops the margin drifting with the market.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "fxSource",
+     "label": "Rate source",
+     "type": "text",
+     "required": true,
+     "help": "Which published rate, and as at when. Needed to defend the figure.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "escrowFundedBy",
+     "label": "Who funds the escrow",
+     "type": "select",
+     "required": false,
+     "help": "A negotiated term, not a platform rule. Take it from the signed terms.",
+     "options": [
+      "Supplier",
+      "1BUY",
+      "Both"
+     ],
+     "unit": null
+    },
+    {
+     "id": "escrowBasis",
+     "label": "Escrow amount is based on",
+     "type": "select",
+     "required": false,
+     "help": "What the held amount is calculated from.",
+     "options": [
+      "Buy value",
+      "Sell value",
+      "A custom figure"
+     ],
+     "unit": null
+    }
+   ],
+   "documents": [
+    {
+     "id": "signedTerms",
+     "label": "The agreed terms",
+     "required": true,
+     "help": "Whatever both sides signed or confirmed in writing."
+    }
+   ],
+   "subTasks": [
+    {
+     "kind": "DOCUMENT",
+     "label": "Upload — The agreed terms",
+     "detail": "Whatever both sides signed or confirmed in writing.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Agree the final commercial terms",
+     "detail": "Price, Incoterm, payment method and delivery date, all fixed. After this they are quoted, not negotiated.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Confirm who pays freight, insurance and duty",
+     "detail": "The Incoterm decides it. Getting this wrong shows up as an unbudgeted cost at customs.",
+     "owner": "ONE_BUY",
+     "required": false,
+     "standard": null
+    },
+    {
+     "kind": "CAPTURE",
+     "label": "Record the details — 5 fields",
+     "detail": "Date locked, Exchange rate applied, Rate source must be recorded before the order can move on.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    }
+   ]
+  },
+  {
+   "id": "WORK_ORDER_ACTIVE",
+   "code": "B5",
+   "phase": "B",
+   "label": "Work order active",
+   "plainLabel": "Internal job opened",
+   "description": "The internal work order is live. From here the order is tracked as one job end to end.",
+   "exitCriteria": "Work Order created and active.",
+   "owner": "ONE_BUY",
+   "expectedHours": 2,
+   "artifacts": [
+    "Work Order"
+   ],
+   "nextAction": "Put the money in place for the supplier.",
+   "nextActionOwner": "ONE_BUY",
+   "isExceptionBranch": false,
+   "isTerminal": false,
+   "conditional": false,
+   "attestation": "The job is open, owned, and everyone involved knows it is running.",
+   "fields": [
+    {
+     "id": "owner",
+     "label": "Who owns this order",
+     "type": "text",
+     "required": true,
+     "help": "One named person accountable for it end to end.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "targetDelivery",
+     "label": "Target delivery date to the customer",
+     "type": "date",
+     "required": true,
+     "help": "What we are working back from.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "customerNotified",
+     "label": "Customer told the order is in progress",
+     "type": "boolean",
+     "required": false,
+     "help": "Silence after acceptance is the commonest cause of a chasing call.",
+     "options": null,
+     "unit": null
+    }
+   ],
+   "documents": [],
+   "subTasks": [
+    {
+     "kind": "ACTION",
+     "label": "Tell the supplier the order is live",
+     "detail": "They should not start work on an order we have not activated.",
+     "owner": "ONE_BUY",
+     "required": false,
+     "standard": null
+    },
+    {
+     "kind": "CAPTURE",
+     "label": "Record the details — 3 fields",
+     "detail": "Who owns this order, Target delivery date to the customer must be recorded before the order can move on.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    }
+   ]
+  },
+  {
+   "id": "ESCROW_ACCOUNT_OPENED",
+   "code": "C1",
+   "phase": "C",
+   "label": "Escrow account opened",
+   "plainLabel": "Neutral money account opened",
+   "description": "A neutral third party has opened an account to hold the money until both sides have done their part.",
+   "exitCriteria": "Escrow reference generated and both parties onboarded.",
+   "owner": "ESCROW",
+   "expectedHours": 24,
+   "artifacts": [
+    "Escrow agreement"
+   ],
+   "nextAction": "Fund the escrow account.",
+   "nextActionOwner": "ONE_BUY",
+   "isExceptionBranch": false,
+   "isTerminal": false,
+   "conditional": true,
+   "attestation": "An escrow account exists for this order and both sides know its reference.",
+   "fields": [
+    {
+     "id": "escrowRef",
+     "label": "Escrow reference",
+     "type": "text",
+     "required": true,
+     "help": "The provider’s reference for this order. Everything afterwards is quoted against it.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "provider",
+     "label": "Escrow provider",
+     "type": "text",
+     "required": true,
+     "help": "Who is holding the money.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "openedOn",
+     "label": "Date opened",
+     "type": "date",
+     "required": true,
+     "help": "When the account came into existence.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "supplierInformed",
+     "label": "Supplier has the reference",
+     "type": "boolean",
+     "required": false,
+     "help": "They need it to confirm the arrangement before they ship.",
+     "options": null,
+     "unit": null
+    }
+   ],
+   "documents": [
+    {
+     "id": "escrowAgreement",
+     "label": "Escrow agreement or confirmation",
+     "required": true,
+     "help": "The provider’s written confirmation of the arrangement and its conditions."
+    }
+   ],
+   "subTasks": [
+    {
+     "kind": "DOCUMENT",
+     "label": "Upload — Escrow agreement or confirmation",
+     "detail": "The provider’s written confirmation of the arrangement and its conditions.",
+     "owner": "ESCROW",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Create the escrow account with the provider",
+     "detail": "Open a dedicated account for this order with the neutral third party. It holds the money so the supplier knows it exists and the customer knows it has not been paid out yet.",
+     "owner": "ESCROW",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Place the escrow order and agree the release conditions",
+     "detail": "Register the amount, the currency and exactly what has to be true before money moves — inspection passed, two Finance approvers. The conditions are what make it escrow rather than a holding account.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Give the supplier the escrow reference",
+     "detail": "They will not start work against an arrangement they cannot see. Send the reference and the provider’s confirmation.",
+     "owner": "ESCROW",
+     "required": false,
+     "standard": null
+    },
+    {
+     "kind": "CAPTURE",
+     "label": "Record the details — 4 fields",
+     "detail": "Escrow reference, Escrow provider, Date opened must be recorded before the order can move on.",
+     "owner": "ESCROW",
+     "required": true,
+     "standard": null
+    }
+   ]
+  },
+  {
+   "id": "ESCROW_FUNDED",
+   "code": "C2",
+   "phase": "C",
+   "label": "Escrow funded",
+   "plainLabel": "Money placed in escrow",
+   "description": "The money is now sitting with the escrow provider, confirmed and held.",
+   "exitCriteria": "Full order value (or the agreed tranche) confirmed as held.",
+   "owner": "ESCROW",
+   "expectedHours": 48,
+   "artifacts": [
+    "Funding confirmation"
+   ],
+   "nextAction": "Release the test-enablement tranche so the supplier can send parts for testing.",
+   "nextActionOwner": "ONE_BUY",
+   "isExceptionBranch": false,
+   "isTerminal": false,
+   "conditional": true,
+   "attestation": "The money is genuinely with the escrow provider, not merely instructed.",
+   "fields": [
+    {
+     "id": "amountFunded",
+     "label": "Amount funded",
+     "type": "number",
+     "required": true,
+     "help": "The figure actually held. If it differs from the order value, say why below.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "currency",
+     "label": "Currency",
+     "type": "text",
+     "required": true,
+     "help": "The currency it is held in.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "valueDate",
+     "label": "Value date",
+     "type": "date",
+     "required": true,
+     "help": "The date the provider had the money, not the date we instructed the transfer.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "paymentRef",
+     "label": "Transfer reference",
+     "type": "text",
+     "required": true,
+     "help": "The bank reference, so the credit can be traced.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "providerConfirmed",
+     "label": "Provider has confirmed receipt",
+     "type": "boolean",
+     "required": true,
+     "help": "An instruction is not a payment. This must be their confirmation.",
+     "options": null,
+     "unit": null
+    }
+   ],
+   "documents": [
+    {
+     "id": "fundingProof",
+     "label": "Proof of funding",
+     "required": true,
+     "help": "The provider’s statement or confirmation showing the money held."
+    }
+   ],
+   "subTasks": [
+    {
+     "kind": "DOCUMENT",
+     "label": "Upload — Proof of funding",
+     "detail": "The provider’s statement or confirmation showing the money held.",
+     "owner": "ESCROW",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Deposit the agreed amount into escrow",
+     "detail": "Whoever funds it under the negotiated terms — supplier, us, or both — pays in against the reference.",
+     "owner": "ESCROW",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Get the provider’s confirmation of cleared funds",
+     "detail": "Instructed is not the same as settled. Only cleared funds let the supplier start.",
+     "owner": "ESCROW",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "CAPTURE",
+     "label": "Record the details — 5 fields",
+     "detail": "Amount funded, Currency, Value date, Transfer reference, Provider has confirmed receipt must be recorded before the order can move on.",
+     "owner": "ESCROW",
+     "required": true,
+     "standard": null
+    }
+   ]
+  },
+  {
+   "id": "ESCROW_PARTIAL_RELEASE_FOR_TESTING",
+   "code": "C3",
+   "phase": "C",
+   "label": "Escrow partial release for testing",
+   "plainLabel": "Part-payment released for testing",
+   "description": "A part-payment has been released so the supplier can afford to send parts to the testing lab.",
+   "exitCriteria": "Tranche released and acknowledged by the supplier.",
+   "owner": "ONE_BUY",
+   "expectedHours": 24,
+   "artifacts": [
+    "Release instruction",
+    "Escrow receipt"
+   ],
+   "nextAction": "Supplier books the courier to the testing lab.",
+   "nextActionOwner": "SUPPLIER",
+   "isExceptionBranch": false,
+   "isTerminal": false,
+   "conditional": true,
+   "attestation": "A part release has been authorised to get the parts into testing.",
+   "fields": [
+    {
+     "id": "amountReleased",
+     "label": "Amount released",
+     "type": "number",
+     "required": true,
+     "help": "The part payment, and nothing beyond it.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "authorisedBy",
+     "label": "Authorised by",
+     "type": "text",
+     "required": true,
+     "help": "The Finance approver who signed it off.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "purpose",
+     "label": "What this release is for",
+     "type": "longtext",
+     "required": true,
+     "help": "Usually to move the parts to the laboratory. Being specific is what stops it being treated as payment for the goods.",
+     "options": null,
+     "unit": null
+    }
+   ],
+   "documents": [
+    {
+     "id": "releaseInstruction",
+     "label": "Release instruction",
+     "required": true,
+     "help": "The signed instruction to the provider."
+    }
+   ],
+   "subTasks": [
+    {
+     "kind": "DOCUMENT",
+     "label": "Upload — Release instruction",
+     "detail": "The signed instruction to the provider.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Release the testing portion only",
+     "detail": "Enough to pay the laboratory, no more. The balance stays held until the goods are inspected.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "CAPTURE",
+     "label": "Record the details — 3 fields",
+     "detail": "Amount released, Authorised by, What this release is for must be recorded before the order can move on.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    }
+   ]
+  },
+  {
+   "id": "ADVANCE_PAYMENT_TO_SUPPLIER",
+   "code": "C1a",
+   "phase": "C",
+   "label": "Advance payment made",
+   "plainLabel": "Supplier paid up front",
+   "description": "The supplier has been paid in advance, as agreed in the terms.",
+   "exitCriteria": "Payment confirmed and receipt on file.",
+   "owner": "ONE_BUY",
+   "expectedHours": 24,
+   "artifacts": [
+    "Payment advice",
+    "Bank receipt"
+   ],
+   "nextAction": "Supplier begins fulfilment.",
+   "nextActionOwner": "SUPPLIER",
+   "isExceptionBranch": false,
+   "isTerminal": false,
+   "conditional": true,
+   "attestation": "The advance has been paid and the supplier has confirmed it.",
+   "fields": [
+    {
+     "id": "amountPaid",
+     "label": "Amount paid",
+     "type": "number",
+     "required": true,
+     "help": "What actually left our account.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "paidOn",
+     "label": "Date paid",
+     "type": "date",
+     "required": true,
+     "help": "The value date on the transfer.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "paymentRef",
+     "label": "Transfer reference",
+     "type": "text",
+     "required": true,
+     "help": "The bank reference for tracing.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "supplierConfirmed",
+     "label": "Supplier confirms receipt",
+     "type": "boolean",
+     "required": true,
+     "help": "Until they confirm, production has not started.",
+     "options": null,
+     "unit": null
+    }
+   ],
+   "documents": [
+    {
+     "id": "remittance",
+     "label": "Remittance advice",
+     "required": true,
+     "help": "The transfer confirmation from our bank."
+    }
+   ],
+   "subTasks": [
+    {
+     "kind": "DOCUMENT",
+     "label": "Upload — Remittance advice",
+     "detail": "The transfer confirmation from our bank.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Make the advance payment",
+     "detail": "Against the agreed schedule, to the bank details verified independently.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "CAPTURE",
+     "label": "Record the details — 4 fields",
+     "detail": "Amount paid, Date paid, Transfer reference, Supplier confirms receipt must be recorded before the order can move on.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    }
+   ]
+  },
+  {
+   "id": "CREDIT_TERMS_CONFIRMED",
+   "code": "C1c",
+   "phase": "C",
+   "label": "Credit terms confirmed",
+   "plainLabel": "Pay-later terms confirmed",
+   "description": "The supplier has agreed to supply on credit. Payment falls due after delivery, on the agreed terms.",
+   "exitCriteria": "Credit terms and due-date basis recorded.",
+   "owner": "SUPPLIER",
+   "expectedHours": 24,
+   "artifacts": [
+    "Credit terms confirmation"
+   ],
+   "nextAction": "Supplier begins fulfilment.",
+   "nextActionOwner": "SUPPLIER",
+   "isExceptionBranch": false,
+   "isTerminal": false,
+   "conditional": true,
+   "attestation": "The supplier has agreed to ship on credit, and the due date is recorded.",
+   "fields": [
+    {
+     "id": "creditDays",
+     "label": "Credit days agreed",
+     "type": "number",
+     "required": true,
+     "help": "How long we have to pay after the agreed trigger.",
+     "options": null,
+     "unit": "days"
+    },
+    {
+     "id": "creditFrom",
+     "label": "Counted from",
+     "type": "select",
+     "required": true,
+     "help": "The trigger the days run from. This is where credit disputes usually start.",
+     "options": [
+      "Invoice date",
+      "Date of dispatch",
+      "Date of delivery",
+      "Date of inspection"
+     ],
+     "unit": null
+    },
+    {
+     "id": "dueDate",
+     "label": "Payment due date",
+     "type": "date",
+     "required": true,
+     "help": "The date the money must be with them.",
+     "options": null,
+     "unit": null
+    }
+   ],
+   "documents": [
+    {
+     "id": "creditConfirmation",
+     "label": "Their written confirmation of credit",
+     "required": true,
+     "help": "Confirms the terms are theirs, not our assumption."
+    }
+   ],
+   "subTasks": [
+    {
+     "kind": "DOCUMENT",
+     "label": "Upload — Their written confirmation of credit",
+     "detail": "Confirms the terms are theirs, not our assumption.",
+     "owner": "SUPPLIER",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Get the credit terms confirmed in writing",
+     "detail": "Days, start point, and what happens if we are late. Verbal credit is not credit.",
+     "owner": "SUPPLIER",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "CAPTURE",
+     "label": "Record the details — 3 fields",
+     "detail": "Credit days agreed, Counted from, Payment due date must be recorded before the order can move on.",
+     "owner": "SUPPLIER",
+     "required": true,
+     "standard": null
+    }
+   ]
+  },
+  {
+   "id": "TEST_DISPATCH_BOOKED",
+   "code": "D1",
+   "phase": "D",
+   "label": "Test dispatch booked",
+   "plainLabel": "Parts booked to the lab",
+   "description": "The supplier has booked a courier to send parts to the testing lab.",
+   "exitCriteria": "Carrier, tracking number and pickup all confirmed.",
+   "owner": "SUPPLIER",
+   "expectedHours": 24,
+   "artifacts": [
+    "Test-leg shipment (Leg 1)"
+   ],
+   "nextAction": "Lab confirms it has received the parts.",
+   "nextActionOwner": "WHL",
+   "isExceptionBranch": false,
+   "isTerminal": false,
+   "conditional": true,
+   "attestation": "The parts are on their way to the laboratory.",
+   "fields": [
+    {
+     "id": "lab",
+     "label": "Laboratory",
+     "type": "text",
+     "required": true,
+     "help": "Who is testing.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "awb",
+     "label": "Consignment number",
+     "type": "text",
+     "required": true,
+     "help": "The tracking reference for the leg to the laboratory.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "dispatchedOn",
+     "label": "Date dispatched",
+     "type": "date",
+     "required": true,
+     "help": "When it left the supplier or our dock.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "quantitySent",
+     "label": "Quantity sent for testing",
+     "type": "number",
+     "required": true,
+     "help": "The sample or batch size actually sent.",
+     "options": null,
+     "unit": null
+    }
+   ],
+   "documents": [
+    {
+     "id": "packingList",
+     "label": "Packing list",
+     "required": true,
+     "help": "What is physically in the box, so the laboratory can reconcile on arrival."
+    }
+   ],
+   "subTasks": [
+    {
+     "kind": "DOCUMENT",
+     "label": "Upload — Packing list",
+     "detail": "What is physically in the box, so the laboratory can reconcile on arrival.",
+     "owner": "SUPPLIER",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Book the sample dispatch to the laboratory",
+     "detail": "The sample goes to the lab before the full lot moves, so a failure costs a courier rather than a container.",
+     "owner": "SUPPLIER",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Pack to the moisture-sensitivity level on the part",
+     "detail": "Dry-pack anything MSL-rated. Parts that absorb moisture in transit fail testing for a reason that has nothing to do with the supplier.",
+     "owner": "SUPPLIER",
+     "required": false,
+     "standard": "IPC/JEDEC J-STD-033"
+    },
+    {
+     "kind": "CAPTURE",
+     "label": "Record the details — 4 fields",
+     "detail": "Laboratory, Consignment number, Date dispatched, Quantity sent for testing must be recorded before the order can move on.",
+     "owner": "SUPPLIER",
+     "required": true,
+     "standard": null
+    }
+   ]
+  },
+  {
+   "id": "PARTS_RECEIVED_AT_WHL",
+   "code": "D2",
+   "phase": "D",
+   "label": "Parts received at Testing Laboratory",
+   "plainLabel": "Lab received the parts",
+   "description": "The testing lab has logged the parts in and checked the quantity against what was sent.",
+   "exitCriteria": "Quantity received reconciled against quantity dispatched.",
+   "owner": "WHL",
+   "expectedHours": 24,
+   "artifacts": [
+    "Testing Laboratory goods-receipt note"
+   ],
+   "nextAction": "Agree exactly what will be tested.",
+   "nextActionOwner": "ONE_BUY",
+   "isExceptionBranch": false,
+   "isTerminal": false,
+   "conditional": true,
+   "attestation": "The laboratory has the parts and agrees what it received.",
+   "fields": [
+    {
+     "id": "receivedOn",
+     "label": "Date received by the laboratory",
+     "type": "date",
+     "required": true,
+     "help": "Their receipt date, which their turnaround runs from.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "quantityReceived",
+     "label": "Quantity they received",
+     "type": "number",
+     "required": true,
+     "help": "If this differs from what was sent, stop and resolve it before testing starts.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "labReference",
+     "label": "Their job reference",
+     "type": "text",
+     "required": true,
+     "help": "The laboratory’s own reference for the work.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "conditionOk",
+     "label": "Received in good condition",
+     "type": "boolean",
+     "required": false,
+     "help": "Damage in transit will otherwise be blamed on the parts.",
+     "options": null,
+     "unit": null
+    }
+   ],
+   "documents": [
+    {
+     "id": "labReceipt",
+     "label": "Laboratory receipt",
+     "required": true,
+     "help": "Their acknowledgement of what arrived."
+    }
+   ],
+   "subTasks": [
+    {
+     "kind": "DOCUMENT",
+     "label": "Upload — Laboratory receipt",
+     "detail": "Their acknowledgement of what arrived.",
+     "owner": "WHL",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Laboratory confirms receipt and condition",
+     "detail": "Quantity, packaging intact, date codes legible. A dispute about what arrived is unwinnable later.",
+     "owner": "WHL",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "External visual inspection on receipt",
+     "detail": "Marking permanency, surface texture, lead condition and evidence of resurfacing or remarking — the first screen for a counterfeit.",
+     "owner": "WHL",
+     "required": false,
+     "standard": "IDEA-STD-1010"
+    },
+    {
+     "kind": "CAPTURE",
+     "label": "Record the details — 4 fields",
+     "detail": "Date received by the laboratory, Quantity they received, Their job reference must be recorded before the order can move on.",
+     "owner": "WHL",
+     "required": true,
+     "standard": null
+    }
+   ]
+  },
+  {
+   "id": "TEST_SCOPE_CONFIRMED",
+   "code": "D3",
+   "phase": "D",
+   "label": "Test scope confirmed",
+   "plainLabel": "Testing plan agreed",
+   "description": "It is agreed whether a sample from the lot is tested or every piece is tested, and which checks are run.",
+   "exitCriteria": "Scope, sample size, AQL and test parameters agreed.",
+   "owner": "ONE_BUY",
+   "expectedHours": 12,
+   "artifacts": [
+    "Test plan"
+   ],
+   "nextAction": "Lab starts testing.",
+   "nextActionOwner": "WHL",
+   "isExceptionBranch": false,
+   "isTerminal": false,
+   "conditional": true,
+   "attestation": "Exactly what will be tested, and what counts as a pass, is agreed in writing.",
+   "fields": [
+    {
+     "id": "parameters",
+     "label": "Parameters to be tested",
+     "type": "longtext",
+     "required": true,
+     "help": "The specific checks. \"Full testing\" is not a scope.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "scope",
+     "label": "Scope",
+     "type": "select",
+     "required": true,
+     "help": "Whether a sample or every piece is tested.",
+     "options": [
+      "Lot sample",
+      "Full batch"
+     ],
+     "unit": null
+    },
+    {
+     "id": "sampleSize",
+     "label": "Sample size",
+     "type": "number",
+     "required": false,
+     "help": "How many pieces. Required if testing a sample.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "aql",
+     "label": "Acceptance quality limit",
+     "type": "text",
+     "required": false,
+     "help": "The agreed defect threshold, e.g. AQL 1.0. This is what turns a result into a verdict.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "quotedDays",
+     "label": "Quoted turnaround",
+     "type": "number",
+     "required": false,
+     "help": "Working days to a signed report.",
+     "options": null,
+     "unit": "days"
+    }
+   ],
+   "documents": [
+    {
+     "id": "scopeConfirmation",
+     "label": "Agreed scope",
+     "required": true,
+     "help": "The laboratory’s written confirmation of what they will do."
+    }
+   ],
+   "subTasks": [
+    {
+     "kind": "DOCUMENT",
+     "label": "Upload — Agreed scope",
+     "detail": "The laboratory’s written confirmation of what they will do.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Agree the test scope and the standard it is performed to",
+     "detail": "Which methods, on how many pieces, and against which standard. The verdict is only as good as the scope it was given, and a report with no standard on it proves nothing.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": "SAE AS6171"
+    },
+    {
+     "kind": "ACTION",
+     "label": "Include material and lead-finish analysis",
+     "detail": "Elemental composition by SEM-EDS and plating thickness by X-ray fluorescence. Catches a lead finish that does not match what the marking claims.",
+     "owner": "WHL",
+     "required": false,
+     "standard": "ASTM E1508 · ASTM B568"
+    },
+    {
+     "kind": "ACTION",
+     "label": "Include radiographic examination",
+     "detail": "X-ray of the die and bond wires against a known-good reference. An empty or wrong die shows here and nowhere else non-destructively.",
+     "owner": "WHL",
+     "required": false,
+     "standard": "ASTM E1742"
+    },
+    {
+     "kind": "ACTION",
+     "label": "Include electrical parameter testing",
+     "detail": "Against the manufacturer’s datasheet limits, at the temperatures the customer will actually run them at.",
+     "owner": "WHL",
+     "required": false,
+     "standard": "SAE AS6171 /7"
+    },
+    {
+     "kind": "CAPTURE",
+     "label": "Record the details — 5 fields",
+     "detail": "Parameters to be tested, Scope must be recorded before the order can move on.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    }
+   ]
+  },
+  {
+   "id": "TESTING_IN_PROGRESS",
+   "code": "D4",
+   "phase": "D",
+   "label": "Testing in progress",
+   "plainLabel": "Testing under way",
+   "description": "The lab is running the agreed checks on the parts.",
+   "exitCriteria": "All specified tests executed and a verdict reached.",
+   "owner": "WHL",
+   "expectedHours": 96,
+   "artifacts": [
+    "Interim test logs"
+   ],
+   "nextAction": "Await the signed test report and verdict.",
+   "nextActionOwner": "WHL",
+   "isExceptionBranch": false,
+   "isTerminal": false,
+   "conditional": true,
+   "attestation": "Testing has started and we know when to expect the verdict.",
+   "fields": [
+    {
+     "id": "startedOn",
+     "label": "Date testing started",
+     "type": "date",
+     "required": true,
+     "help": "Their start date.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "expectedBy",
+     "label": "Report expected by",
+     "type": "date",
+     "required": true,
+     "help": "What we tell the customer, so it needs to be their commitment and not our hope.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "interim",
+     "label": "Any interim findings",
+     "type": "longtext",
+     "required": false,
+     "help": "Anything the laboratory has flagged before the formal report.",
+     "options": null,
+     "unit": null
+    }
+   ],
+   "documents": [],
+   "subTasks": [
+    {
+     "kind": "ACTION",
+     "label": "Laboratory testing under way",
+     "detail": "Nothing for us to do but hold the shipment. Chase only if the promised report date passes.",
+     "owner": "WHL",
+     "required": false,
+     "standard": "SAE AS6171"
+    },
+    {
+     "kind": "ACTION",
+     "label": "Keep the full lot on hold until the verdict",
+     "detail": "Shipping before the result is what makes a failed test expensive.",
+     "owner": "WHL",
+     "required": false,
+     "standard": null
+    },
+    {
+     "kind": "CAPTURE",
+     "label": "Record the details — 3 fields",
+     "detail": "Date testing started, Report expected by must be recorded before the order can move on.",
+     "owner": "WHL",
+     "required": true,
+     "standard": null
+    }
+   ]
+  },
+  {
+   "id": "TEST_PASSED",
+   "code": "D5a",
+   "phase": "D",
+   "label": "Test passed",
+   "plainLabel": "Parts passed testing",
+   "description": "The lab has signed off the parts as good.",
+   "exitCriteria": "Signed test report issued with a PASS verdict.",
+   "owner": "WHL",
+   "expectedHours": 12,
+   "artifacts": [
+    "Test report (PASS)"
+   ],
+   "nextAction": "Lab returns the parts to the supplier.",
+   "nextActionOwner": "WHL",
+   "isExceptionBranch": false,
+   "isTerminal": false,
+   "conditional": true,
+   "attestation": "The laboratory has signed off the parts as good, and we have the report.",
+   "fields": [
+    {
+     "id": "reportNumber",
+     "label": "Report number",
+     "type": "text",
+     "required": true,
+     "help": "The signed report’s own reference.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "reportDate",
+     "label": "Report date",
+     "type": "date",
+     "required": true,
+     "help": "The date on the report.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "quantityTested",
+     "label": "Quantity tested",
+     "type": "number",
+     "required": true,
+     "help": "How many pieces were actually examined.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "quantityPassed",
+     "label": "Quantity passed",
+     "type": "number",
+     "required": true,
+     "help": "If this is not the same as tested, the verdict is not a clean pass.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "signedBy",
+     "label": "Signed by",
+     "type": "text",
+     "required": true,
+     "help": "The named person at the laboratory taking responsibility for the verdict.",
+     "options": null,
+     "unit": null
+    }
+   ],
+   "documents": [
+    {
+     "id": "testReport",
+     "label": "Signed test report",
+     "required": true,
+     "help": "The report itself. This is the single most important document in the file — it is what releases payment."
+    }
+   ],
+   "subTasks": [
+    {
+     "kind": "DOCUMENT",
+     "label": "Upload — Signed test report",
+     "detail": "The report itself. This is the single most important document in the file — it is what releases payment.",
+     "owner": "WHL",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Read the report, not just the verdict",
+     "detail": "A pass with observations is still a pass, but the observations are what the customer will ask about.",
+     "owner": "WHL",
+     "required": true,
+     "standard": "SAE AS6171"
+    },
+    {
+     "kind": "ACTION",
+     "label": "File the report against the order",
+     "detail": "It travels with the goods and supports the certificate of conformance.",
+     "owner": "WHL",
+     "required": false,
+     "standard": null
+    },
+    {
+     "kind": "CAPTURE",
+     "label": "Record the details — 5 fields",
+     "detail": "Report number, Report date, Quantity tested, Quantity passed, Signed by must be recorded before the order can move on.",
+     "owner": "WHL",
+     "required": true,
+     "standard": null
+    }
+   ]
+  },
+  {
+   "id": "TEST_FAILED",
+   "code": "D5b",
+   "phase": "D",
+   "label": "Test failed",
+   "plainLabel": "Parts failed testing",
+   "description": "The lab has failed the parts. The order is blocked until someone decides how to proceed.",
+   "exitCriteria": "A resolution route is chosen and the exception is closed.",
+   "owner": "ONE_BUY",
+   "expectedHours": 24,
+   "artifacts": [
+    "Test report (FAIL)",
+    "Non-conformance report"
+   ],
+   "nextAction": "Choose how to resolve the failure.",
+   "nextActionOwner": "ONE_BUY",
+   "isExceptionBranch": true,
+   "isTerminal": false,
+   "conditional": true,
+   "attestation": "The parts failed, and the failure is documented well enough to act on.",
+   "fields": [
+    {
+     "id": "reportNumber",
+     "label": "Report number",
+     "type": "text",
+     "required": true,
+     "help": "The signed report’s reference.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "quantityTested",
+     "label": "Quantity tested",
+     "type": "number",
+     "required": true,
+     "help": "How many were examined.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "quantityFailed",
+     "label": "Quantity failed",
+     "type": "number",
+     "required": true,
+     "help": "How many failed.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "failureMode",
+     "label": "How they failed",
+     "type": "longtext",
+     "required": true,
+     "help": "The specific failure, per part number. Vague wording here weakens any claim against the supplier.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "supplierNotified",
+     "label": "Supplier notified",
+     "type": "boolean",
+     "required": true,
+     "help": "They must be told promptly for a claim to hold.",
+     "options": null,
+     "unit": null
+    }
+   ],
+   "documents": [
+    {
+     "id": "testReport",
+     "label": "Signed test report",
+     "required": true,
+     "help": "The evidence behind any claim or return."
+    },
+    {
+     "id": "photos",
+     "label": "Photographs",
+     "required": false,
+     "help": "Visual evidence of the failure, where it can be seen."
+    }
+   ],
+   "subTasks": [
+    {
+     "kind": "DOCUMENT",
+     "label": "Upload — Signed test report",
+     "detail": "The evidence behind any claim or return.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "DOCUMENT",
+     "label": "Upload — Photographs",
+     "detail": "Visual evidence of the failure, where it can be seen.",
+     "owner": "ONE_BUY",
+     "required": false,
+     "standard": null
+    },
+    {
+     "kind": "CAPTURE",
+     "label": "Record the details — 5 fields",
+     "detail": "Report number, Quantity tested, Quantity failed, How they failed, Supplier notified must be recorded before the order can move on.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    }
+   ]
+  },
+  {
+   "id": "PARTS_RETURNED_TO_SUPPLIER",
+   "code": "D6",
+   "phase": "D",
+   "label": "Parts returned to supplier",
+   "plainLabel": "Parts sent back to supplier",
+   "description": "The tested parts are on their way back to the supplier to join the full shipment.",
+   "exitCriteria": "Supplier confirms receipt of the returned parts.",
+   "owner": "WHL",
+   "expectedHours": 48,
+   "artifacts": [
+    "Return shipment (Leg 2)"
+   ],
+   "nextAction": "Supplier ships the full consignment to us.",
+   "nextActionOwner": "SUPPLIER",
+   "isExceptionBranch": false,
+   "isTerminal": false,
+   "conditional": true,
+   "attestation": "The failed parts have gone back and the supplier has accepted the return.",
+   "fields": [
+    {
+     "id": "awb",
+     "label": "Return consignment number",
+     "type": "text",
+     "required": true,
+     "help": "The tracking reference for the return leg.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "returnedOn",
+     "label": "Date returned",
+     "type": "date",
+     "required": true,
+     "help": "When they left.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "quantityReturned",
+     "label": "Quantity returned",
+     "type": "number",
+     "required": true,
+     "help": "How many went back.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "costBorneBy",
+     "label": "Who bears the cost",
+     "type": "select",
+     "required": true,
+     "help": "Per the purchase order terms, test failure costs normally sit with the supplier.",
+     "options": [
+      "Supplier",
+      "1BUY",
+      "Shared"
+     ],
+     "unit": null
+    },
+    {
+     "id": "supplierAccepted",
+     "label": "Supplier has accepted the return",
+     "type": "boolean",
+     "required": false,
+     "help": "Without their acceptance the parts may simply come back.",
+     "options": null,
+     "unit": null
+    }
+   ],
+   "documents": [
+    {
+     "id": "returnDocs",
+     "label": "Return paperwork",
+     "required": true,
+     "help": "The dispatch note and their acceptance."
+    }
+   ],
+   "subTasks": [
+    {
+     "kind": "DOCUMENT",
+     "label": "Upload — Return paperwork",
+     "detail": "The dispatch note and their acceptance.",
+     "owner": "WHL",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Return the tested samples to the supplier",
+     "detail": "Packed to commercial standard so they arrive in the condition the report describes.",
+     "owner": "WHL",
+     "required": false,
+     "standard": "ASTM D3951"
+    },
+    {
+     "kind": "CAPTURE",
+     "label": "Record the details — 5 fields",
+     "detail": "Return consignment number, Date returned, Quantity returned, Who bears the cost must be recorded before the order can move on.",
+     "owner": "WHL",
+     "required": true,
+     "standard": null
+    }
+   ]
+  },
+  {
+   "id": "FULL_SHIPMENT_DISPATCHED_BY_SUPPLIER",
+   "code": "E1",
+   "phase": "E",
+   "label": "Full shipment dispatched by supplier",
+   "plainLabel": "Supplier shipped everything",
+   "description": "The supplier has shipped the whole consignment to us with all export paperwork.",
+   "exitCriteria": "Carrier, Air Waybill or Bill of Lading, packing list, invoice and certificate of origin all issued.",
+   "owner": "SUPPLIER",
+   "expectedHours": 24,
+   "artifacts": [
+    "Import shipment (Leg 3)",
+    "Packing list",
+    "Certificate of origin"
+   ],
+   "nextAction": "Track the shipment to the border.",
+   "nextActionOwner": "LOGISTICS",
+   "isExceptionBranch": false,
+   "isTerminal": false,
+   "conditional": false,
+   "attestation": "The full order has shipped, and the paperwork travelling with it is correct.",
+   "fields": [
+    {
+     "id": "awb",
+     "label": "Consignment number",
+     "type": "text",
+     "required": true,
+     "help": "Air waybill or bill of lading. Everything downstream is tracked by it.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "carrier",
+     "label": "Carrier",
+     "type": "text",
+     "required": true,
+     "help": "Who is moving it.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "dispatchedOn",
+     "label": "Date dispatched",
+     "type": "date",
+     "required": true,
+     "help": "When it left the supplier.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "cartons",
+     "label": "Number of cartons",
+     "type": "number",
+     "required": true,
+     "help": "Needed to reconcile on arrival and to spot a short shipment early.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "grossWeight",
+     "label": "Gross weight",
+     "type": "number",
+     "required": false,
+     "help": "As declared by the carrier.",
+     "options": null,
+     "unit": "kg"
+    },
+    {
+     "id": "docsComplete",
+     "label": "Commercial invoice, packing list and origin certificate all present",
+     "type": "boolean",
+     "required": true,
+     "help": "A missing certificate of origin is the commonest cause of a customs hold. Check before it flies, not after.",
+     "options": null,
+     "unit": null
+    }
+   ],
+   "documents": [
+    {
+     "id": "commercialInvoice",
+     "label": "Commercial invoice",
+     "required": true,
+     "help": "The value customs will assess duty on."
+    },
+    {
+     "id": "packingList",
+     "label": "Packing list",
+     "required": true,
+     "help": "What is in each carton."
+    },
+    {
+     "id": "coo",
+     "label": "Certificate of origin",
+     "required": false,
+     "help": "Where the goods were made. Determines the duty rate and any preferential treatment."
+    },
+    {
+     "id": "awbDoc",
+     "label": "Air waybill or bill of lading",
+     "required": true,
+     "help": "The carrier’s own document."
+    }
+   ],
+   "subTasks": [
+    {
+     "kind": "DOCUMENT",
+     "label": "Upload — Commercial invoice",
+     "detail": "The value customs will assess duty on.",
+     "owner": "SUPPLIER",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "DOCUMENT",
+     "label": "Upload — Packing list",
+     "detail": "What is in each carton.",
+     "owner": "SUPPLIER",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "DOCUMENT",
+     "label": "Upload — Certificate of origin",
+     "detail": "Where the goods were made. Determines the duty rate and any preferential treatment.",
+     "owner": "SUPPLIER",
+     "required": false,
+     "standard": null
+    },
+    {
+     "kind": "DOCUMENT",
+     "label": "Upload — Air waybill or bill of lading",
+     "detail": "The carrier’s own document.",
+     "owner": "SUPPLIER",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Supplier dispatches the full quantity",
+     "detail": "Against the agreed Incoterm, with the airway bill raised.",
+     "owner": "SUPPLIER",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Check the shipping documents before the goods leave",
+     "detail": "Commercial invoice, packing list and certificate of origin. A wrong HSN code here becomes a customs query later.",
+     "owner": "SUPPLIER",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "CAPTURE",
+     "label": "Record the details — 6 fields",
+     "detail": "Consignment number, Carrier, Date dispatched, Number of cartons, Commercial invoice, packing list and origin certificate all present must be recorded before the order can move on.",
+     "owner": "SUPPLIER",
+     "required": true,
+     "standard": null
+    }
+   ]
+  },
+  {
+   "id": "IN_TRANSIT_INTERNATIONAL",
+   "code": "E2",
+   "phase": "E",
+   "label": "In transit (international)",
+   "plainLabel": "On its way to India",
+   "description": "The consignment has left the origin country and is travelling to India.",
+   "exitCriteria": "Arrival at the destination port or airport.",
+   "owner": "LOGISTICS",
+   "expectedHours": 120,
+   "artifacts": [
+    "Tracking events"
+   ],
+   "nextAction": "Engage the customs agent on arrival.",
+   "nextActionOwner": "WHA",
+   "isExceptionBranch": false,
+   "isTerminal": false,
+   "conditional": false,
+   "attestation": "The shipment is moving and we know where it is.",
+   "fields": [
+    {
+     "id": "lastLocation",
+     "label": "Last known location",
+     "type": "text",
+     "required": true,
+     "help": "From the carrier’s tracking.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "lastScanOn",
+     "label": "Date of last update",
+     "type": "date",
+     "required": true,
+     "help": "How current our information is.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "etaDestination",
+     "label": "Estimated arrival",
+     "type": "date",
+     "required": true,
+     "help": "What the customer is being told.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "exceptions",
+     "label": "Any delays or exceptions",
+     "type": "longtext",
+     "required": false,
+     "help": "Weather, missed connection, carrier hold. Record it when you see it.",
+     "options": null,
+     "unit": null
+    }
+   ],
+   "documents": [],
+   "subTasks": [
+    {
+     "kind": "ACTION",
+     "label": "Track the shipment",
+     "detail": "Watch for the arrival scan; that is what starts the customs clock.",
+     "owner": "LOGISTICS",
+     "required": false,
+     "standard": null
+    },
+    {
+     "kind": "CAPTURE",
+     "label": "Record the details — 4 fields",
+     "detail": "Last known location, Date of last update, Estimated arrival must be recorded before the order can move on.",
+     "owner": "LOGISTICS",
+     "required": true,
+     "standard": null
+    }
+   ]
+  },
+  {
+   "id": "BORDER_ARRIVAL_WHA_ENGAGED",
+   "code": "E3",
+   "phase": "E",
+   "label": "Border arrival — Customs Agent engaged",
+   "plainLabel": "Arrived at customs — agent engaged",
+   "description": "The goods have reached the border and our customs agent has taken over the paperwork.",
+   "exitCriteria": "Customs Agent assigned and all documents handed over.",
+   "owner": "WHA",
+   "expectedHours": 24,
+   "artifacts": [
+    "Customs Agent engagement record"
+   ],
+   "nextAction": "File the customs entry.",
+   "nextActionOwner": "WHA",
+   "isExceptionBranch": false,
+   "isTerminal": false,
+   "conditional": false,
+   "attestation": "The goods have landed and the customs agent has what they need to file.",
+   "fields": [
+    {
+     "id": "arrivedOn",
+     "label": "Date of arrival",
+     "type": "date",
+     "required": true,
+     "help": "When it landed. Free storage time runs from here.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "agent",
+     "label": "Customs agent",
+     "type": "text",
+     "required": true,
+     "help": "Who is clearing it.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "docsHandedOn",
+     "label": "Date documents handed over",
+     "type": "date",
+     "required": true,
+     "help": "Late documents are the usual cause of demurrage.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "docSetComplete",
+     "label": "Agent confirms the document set is complete",
+     "type": "boolean",
+     "required": true,
+     "help": "Their confirmation, not our assumption.",
+     "options": null,
+     "unit": null
+    }
+   ],
+   "documents": [
+    {
+     "id": "handover",
+     "label": "Document handover note",
+     "required": false,
+     "help": "What was given to the agent and when."
+    }
+   ],
+   "subTasks": [
+    {
+     "kind": "DOCUMENT",
+     "label": "Upload — Document handover note",
+     "detail": "What was given to the agent and when.",
+     "owner": "WHA",
+     "required": false,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Engage the customs agent",
+     "detail": "Hand them the full document set. Demurrage starts accruing from arrival, not from when we get round to it.",
+     "owner": "WHA",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "CAPTURE",
+     "label": "Record the details — 4 fields",
+     "detail": "Date of arrival, Customs agent, Date documents handed over, Agent confirms the document set is complete must be recorded before the order can move on.",
+     "owner": "WHA",
+     "required": true,
+     "standard": null
+    }
+   ]
+  },
+  {
+   "id": "CUSTOMS_ENTRY_FILED_ICEGATE",
+   "code": "E4",
+   "phase": "E",
+   "label": "Customs entry filed with Indian Customs",
+   "plainLabel": "Customs form filed",
+   "description": "The customs agent has filed the Bill of Entry with Indian customs, and we track its status.",
+   "exitCriteria": "Entry number and filing acknowledgement received.",
+   "owner": "WHA",
+   "expectedHours": 24,
+   "artifacts": [
+    "Bill of Entry",
+    "Supporting documents"
+   ],
+   "nextAction": "Await assessment, then pay the duty.",
+   "nextActionOwner": "WHA",
+   "isExceptionBranch": false,
+   "isTerminal": false,
+   "conditional": false,
+   "attestation": "The entry is filed with customs and we hold its reference.",
+   "fields": [
+    {
+     "id": "beNumber",
+     "label": "Bill of entry number",
+     "type": "text",
+     "required": true,
+     "help": "The customs reference for the import. Needed to claim the import tax back later.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "filedOn",
+     "label": "Date filed",
+     "type": "date",
+     "required": true,
+     "help": "The filing date.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "assessableValue",
+     "label": "Assessable value",
+     "type": "number",
+     "required": true,
+     "help": "The value customs is assessing duty on, in rupees.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "exchangeRate",
+     "label": "Customs exchange rate applied",
+     "type": "text",
+     "required": true,
+     "help": "Customs uses its own notified rate, which will differ from ours. Record theirs.",
+     "options": null,
+     "unit": null
+    }
+   ],
+   "documents": [
+    {
+     "id": "billOfEntry",
+     "label": "Bill of entry",
+     "required": true,
+     "help": "The filed entry. Without it the import tax cannot be reclaimed."
+    }
+   ],
+   "subTasks": [
+    {
+     "kind": "DOCUMENT",
+     "label": "Upload — Bill of entry",
+     "detail": "The filed entry. Without it the import tax cannot be reclaimed.",
+     "owner": "WHA",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "File the Bill of Entry",
+     "detail": "On ICEGATE, with the CIF value and HSN codes as declared.",
+     "owner": "WHA",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "CAPTURE",
+     "label": "Record the details — 4 fields",
+     "detail": "Bill of entry number, Date filed, Assessable value, Customs exchange rate applied must be recorded before the order can move on.",
+     "owner": "WHA",
+     "required": true,
+     "standard": null
+    }
+   ]
+  },
+  {
+   "id": "DUTY_ASSESSED_AND_PAID",
+   "code": "E5",
+   "phase": "E",
+   "label": "Duty assessed and paid",
+   "plainLabel": "Import taxes worked out and paid",
+   "description": "Customs has calculated the duty and taxes, and we have paid them. Only part of this is a real cost — the IGST comes back to us as credit.",
+   "exitCriteria": "Duty and taxes computed and paid, challan on file.",
+   "owner": "ONE_BUY",
+   "expectedHours": 24,
+   "artifacts": [
+    "Duty challan",
+    "Payment receipt"
+   ],
+   "nextAction": "Await customs release.",
+   "nextActionOwner": "WHA",
+   "isExceptionBranch": false,
+   "isTerminal": false,
+   "conditional": false,
+   "attestation": "Duty has been assessed and paid, and the recoverable part is identified.",
+   "fields": [
+    {
+     "id": "bcd",
+     "label": "Basic customs duty",
+     "type": "number",
+     "required": true,
+     "help": "A real cost. It stays in the landed cost.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "sws",
+     "label": "Social welfare surcharge",
+     "type": "number",
+     "required": true,
+     "help": "Also a real cost.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "igst",
+     "label": "Integrated tax on import",
+     "type": "number",
+     "required": true,
+     "help": "Recoverable as input credit, so it is deliberately EXCLUDED from landed cost. Recording it separately is what keeps the margin honest.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "cess",
+     "label": "Compensation cess",
+     "type": "number",
+     "required": false,
+     "help": "Usually zero.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "challanRef",
+     "label": "Payment reference",
+     "type": "text",
+     "required": true,
+     "help": "The challan number, needed to trace the payment and support the credit claim.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "paidOn",
+     "label": "Date paid",
+     "type": "date",
+     "required": true,
+     "help": "The payment date.",
+     "options": null,
+     "unit": null
+    }
+   ],
+   "documents": [
+    {
+     "id": "challan",
+     "label": "Duty payment challan",
+     "required": true,
+     "help": "Proof of payment, and the basis of the input credit claim."
+    }
+   ],
+   "subTasks": [
+    {
+     "kind": "DOCUMENT",
+     "label": "Upload — Duty payment challan",
+     "detail": "Proof of payment, and the basis of the input credit claim.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Check the assessed duty against our estimate",
+     "detail": "A large variance usually means a classification dispute, and disputing it after payment is much harder.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Pay the duty",
+     "detail": "BCD and Social Welfare Surcharge are real cost; import IGST is recoverable and must not be booked as cost.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "CAPTURE",
+     "label": "Record the details — 6 fields",
+     "detail": "Basic customs duty, Social welfare surcharge, Integrated tax on import, Payment reference, Date paid must be recorded before the order can move on.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    }
+   ]
+  },
+  {
+   "id": "CUSTOMS_CLEARED",
+   "code": "E6",
+   "phase": "E",
+   "label": "Customs cleared",
+   "plainLabel": "Released by customs",
+   "description": "Customs has released the goods. They can now travel to our premises.",
+   "exitCriteria": "Out-of-charge / release confirmed.",
+   "owner": "WHA",
+   "expectedHours": 24,
+   "artifacts": [
+    "Out-of-charge document"
+   ],
+   "nextAction": "Receive the goods at our warehouse.",
+   "nextActionOwner": "ONE_BUY",
+   "isExceptionBranch": false,
+   "isTerminal": false,
+   "conditional": false,
+   "attestation": "Customs has released the goods.",
+   "fields": [
+    {
+     "id": "clearedOn",
+     "label": "Date cleared",
+     "type": "date",
+     "required": true,
+     "help": "When the release was given.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "outOfChargeRef",
+     "label": "Release reference",
+     "type": "text",
+     "required": true,
+     "help": "The out-of-charge reference confirming the goods may move.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "examined",
+     "label": "Goods were physically examined",
+     "type": "boolean",
+     "required": false,
+     "help": "If customs opened the shipment, note it — it explains any repacking and any delay.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "demurrage",
+     "label": "Demurrage or storage charged",
+     "type": "number",
+     "required": false,
+     "help": "Any charge incurred waiting. Zero is the answer we want.",
+     "options": null,
+     "unit": null
+    }
+   ],
+   "documents": [
+    {
+     "id": "outOfCharge",
+     "label": "Out-of-charge / release order",
+     "required": true,
+     "help": "Customs’ authority for the goods to leave."
+    }
+   ],
+   "subTasks": [
+    {
+     "kind": "DOCUMENT",
+     "label": "Upload — Out-of-charge / release order",
+     "detail": "Customs’ authority for the goods to leave.",
+     "owner": "WHA",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Obtain the Out of Charge",
+     "detail": "The customs release. Without it the goods do not leave the port.",
+     "owner": "WHA",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "CAPTURE",
+     "label": "Record the details — 4 fields",
+     "detail": "Date cleared, Release reference must be recorded before the order can move on.",
+     "owner": "WHA",
+     "required": true,
+     "standard": null
+    }
+   ]
+  },
+  {
+   "id": "GOODS_RECEIVED_INBOUND_AT_1BUY",
+   "code": "E7",
+   "phase": "E",
+   "label": "Goods received inbound at 1BUY",
+   "plainLabel": "Goods arrived at our warehouse",
+   "description": "The consignment has arrived with us and a goods-receipt note has been raised.",
+   "exitCriteria": "Inbound goods-receipt note raised, quantity and cartons reconciled.",
+   "owner": "ONE_BUY",
+   "expectedHours": 12,
+   "artifacts": [
+    "Goods-receipt note"
+   ],
+   "nextAction": "Start the inbound inspection.",
+   "nextActionOwner": "ONE_BUY",
+   "isExceptionBranch": false,
+   "isTerminal": false,
+   "conditional": false,
+   "attestation": "The goods are physically with us and counted.",
+   "fields": [
+    {
+     "id": "receivedOn",
+     "label": "Date received",
+     "type": "date",
+     "required": true,
+     "help": "When they arrived at our dock.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "quantityExpected",
+     "label": "Quantity expected",
+     "type": "number",
+     "required": true,
+     "help": "What the paperwork says.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "quantityReceived",
+     "label": "Quantity actually counted",
+     "type": "number",
+     "required": true,
+     "help": "The physical count. A difference here is a shortage claim, and it must be raised now.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "receivedBy",
+     "label": "Received by",
+     "type": "text",
+     "required": true,
+     "help": "Who counted it.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "packagingIntact",
+     "label": "Packaging intact",
+     "type": "boolean",
+     "required": false,
+     "help": "Damage must be recorded on receipt or the carrier will not accept a claim.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "shortfallNote",
+     "label": "Any shortage or damage",
+     "type": "longtext",
+     "required": false,
+     "help": "Exactly what is missing or damaged, and against which part number.",
+     "options": null,
+     "unit": null
+    }
+   ],
+   "documents": [
+    {
+     "id": "grn",
+     "label": "Goods receipt note",
+     "required": true,
+     "help": "Our own record of what came in."
+    },
+    {
+     "id": "photos",
+     "label": "Photographs on arrival",
+     "required": false,
+     "help": "Especially of any damage, taken before unpacking."
+    }
+   ],
+   "subTasks": [
+    {
+     "kind": "DOCUMENT",
+     "label": "Upload — Goods receipt note",
+     "detail": "Our own record of what came in.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "DOCUMENT",
+     "label": "Upload — Photographs on arrival",
+     "detail": "Especially of any damage, taken before unpacking.",
+     "owner": "ONE_BUY",
+     "required": false,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Receive the goods and raise the GRN",
+     "detail": "Count against the packing list before signing anything.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Check for transit damage before signing",
+     "detail": "Note it on the carrier’s copy. An unnoted damage claim rarely succeeds.",
+     "owner": "ONE_BUY",
+     "required": false,
+     "standard": null
+    },
+    {
+     "kind": "CAPTURE",
+     "label": "Record the details — 6 fields",
+     "detail": "Date received, Quantity expected, Quantity actually counted, Received by must be recorded before the order can move on.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    }
+   ]
+  },
+  {
+   "id": "INBOUND_INSPECTION_IN_PROGRESS",
+   "code": "F1",
+   "phase": "F",
+   "label": "Inbound inspection in progress",
+   "plainLabel": "Checking what arrived",
+   "description": "We are checking count, condition, part numbers, date codes, packaging and paperwork, with photo evidence.",
+   "exitCriteria": "Inspection checklist completed with evidence.",
+   "owner": "ONE_BUY",
+   "expectedHours": 24,
+   "artifacts": [
+    "Inspection report",
+    "Evidence photos"
+   ],
+   "nextAction": "Sign off the inspection.",
+   "nextActionOwner": "ONE_BUY",
+   "isExceptionBranch": false,
+   "isTerminal": false,
+   "conditional": false,
+   "attestation": "Inspection has started against a defined checklist.",
+   "fields": [
+    {
+     "id": "inspector",
+     "label": "Inspector",
+     "type": "text",
+     "required": true,
+     "help": "Who is doing the inspection.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "startedOn",
+     "label": "Date started",
+     "type": "date",
+     "required": true,
+     "help": "When it began.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "checkCount",
+     "label": "Number of checks",
+     "type": "number",
+     "required": true,
+     "help": "How many items are on the checklist.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "checklist",
+     "label": "What is being checked",
+     "type": "longtext",
+     "required": true,
+     "help": "Marking, date code, quantity, packaging, documentation. Written down so the verdict is repeatable.",
+     "options": null,
+     "unit": null
+    }
+   ],
+   "documents": [],
+   "subTasks": [
+    {
+     "kind": "ACTION",
+     "label": "Start the inbound inspection",
+     "detail": "Quantity, part numbers, date codes and marking against the order and the test report.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": "IDEA-STD-1010"
+    },
+    {
+     "kind": "CAPTURE",
+     "label": "Record the details — 4 fields",
+     "detail": "Inspector, Date started, Number of checks, What is being checked must be recorded before the order can move on.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    }
+   ]
+  },
+  {
+   "id": "INSPECTION_PASSED",
+   "code": "F2",
+   "phase": "F",
+   "label": "Inspection passed",
+   "plainLabel": "Goods checked and accepted",
+   "description": "Everything checked out. This is the gate that unlocks the final payment to the supplier.",
+   "exitCriteria": "Signed off by an authorised inspector.",
+   "owner": "ONE_BUY",
+   "expectedHours": 8,
+   "artifacts": [
+    "Signed inspection report"
+   ],
+   "nextAction": "Authorise the final payment to the supplier.",
+   "nextActionOwner": "ONE_BUY",
+   "isExceptionBranch": false,
+   "isTerminal": false,
+   "conditional": false,
+   "attestation": "The goods are verified as correct. This is the gate that releases the final payment, so it carries the most weight of any stage.",
+   "fields": [
+    {
+     "id": "reportNumber",
+     "label": "Inspection report number",
+     "type": "text",
+     "required": true,
+     "help": "Our report’s reference.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "passedOn",
+     "label": "Date passed",
+     "type": "date",
+     "required": true,
+     "help": "When it was signed off.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "quantityInspected",
+     "label": "Quantity inspected",
+     "type": "number",
+     "required": true,
+     "help": "How many pieces were examined.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "quantityAccepted",
+     "label": "Quantity accepted",
+     "type": "number",
+     "required": true,
+     "help": "Anything not accepted must be explained below before payment is released.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "signedBy",
+     "label": "Signed by",
+     "type": "text",
+     "required": true,
+     "help": "The named inspector taking responsibility.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "dateCodeVerified",
+     "label": "Date code and marking verified against the order",
+     "type": "boolean",
+     "required": true,
+     "help": "The specific check that catches relabelled or older stock.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "observations",
+     "label": "Observations",
+     "type": "longtext",
+     "required": false,
+     "help": "Anything noted but accepted, so it is on record if the customer raises it later.",
+     "options": null,
+     "unit": null
+    }
+   ],
+   "documents": [
+    {
+     "id": "inspectionReport",
+     "label": "Signed inspection report",
+     "required": true,
+     "help": "The document the final payment is released against. It must be signed."
+    },
+    {
+     "id": "photos",
+     "label": "Inspection photographs",
+     "required": false,
+     "help": "Marking, packaging and date codes as found."
+    }
+   ],
+   "subTasks": [
+    {
+     "kind": "DOCUMENT",
+     "label": "Upload — Signed inspection report",
+     "detail": "The document the final payment is released against. It must be signed.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "DOCUMENT",
+     "label": "Upload — Inspection photographs",
+     "detail": "Marking, packaging and date codes as found.",
+     "owner": "ONE_BUY",
+     "required": false,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Sign off the inspection",
+     "detail": "This is the gate that releases the final payment, so it carries more weight than any other stage.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Record anything not accepted, with the reason",
+     "detail": "Anything short or rejected has to be explained before money moves.",
+     "owner": "ONE_BUY",
+     "required": false,
+     "standard": null
+    },
+    {
+     "kind": "CAPTURE",
+     "label": "Record the details — 7 fields",
+     "detail": "Inspection report number, Date passed, Quantity inspected, Quantity accepted, Signed by, Date code and marking verified against the order must be recorded before the order can move on.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    }
+   ]
+  },
+  {
+   "id": "ESCROW_FINAL_RELEASE_AUTHORISED",
+   "code": "F3",
+   "phase": "F",
+   "label": "Escrow final release authorised",
+   "plainLabel": "Final payment approved",
+   "description": "Two Finance approvers have instructed the escrow provider to release the remaining money to the supplier.",
+   "exitCriteria": "Release instruction issued with two Finance authorisations.",
+   "owner": "ONE_BUY",
+   "expectedHours": 12,
+   "artifacts": [
+    "Release instruction"
+   ],
+   "nextAction": "Await confirmation that the supplier has been paid.",
+   "nextActionOwner": "ESCROW",
+   "isExceptionBranch": false,
+   "isTerminal": false,
+   "conditional": true,
+   "attestation": "Two Finance approvers have authorised the balance, with a passed inspection behind them.",
+   "fields": [
+    {
+     "id": "amountReleased",
+     "label": "Amount released",
+     "type": "number",
+     "required": true,
+     "help": "The balance being paid out.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "firstApprover",
+     "label": "First approver",
+     "type": "text",
+     "required": true,
+     "help": "The first Finance signature.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "secondApprover",
+     "label": "Second approver",
+     "type": "text",
+     "required": true,
+     "help": "A different Finance signature. One person can never release alone.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "inspectionVerified",
+     "label": "Passed inspection confirmed before authorising",
+     "type": "boolean",
+     "required": true,
+     "help": "Releasing before verifying removes the only leverage we have if the goods are wrong.",
+     "options": null,
+     "unit": null
+    }
+   ],
+   "documents": [
+    {
+     "id": "releaseInstruction",
+     "label": "Signed release instruction",
+     "required": true,
+     "help": "The instruction to the provider, carrying both signatures."
+    }
+   ],
+   "subTasks": [
+    {
+     "kind": "DOCUMENT",
+     "label": "Upload — Signed release instruction",
+     "detail": "The instruction to the provider, carrying both signatures.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Get two different Finance approvers to authorise",
+     "detail": "One person can never release the full balance alone. The system enforces it; this is the reminder that it needs arranging.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Instruct the escrow provider to release",
+     "detail": "Against the inspection report, for the remaining balance.",
+     "owner": "ESCROW",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "CAPTURE",
+     "label": "Record the details — 4 fields",
+     "detail": "Amount released, First approver, Second approver, Passed inspection confirmed before authorising must be recorded before the order can move on.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    }
+   ]
+  },
+  {
+   "id": "SUPPLIER_PAID_IN_FULL",
+   "code": "F4",
+   "phase": "F",
+   "label": "Supplier paid in full",
+   "plainLabel": "Supplier fully paid",
+   "description": "The supplier has received the full amount owed.",
+   "exitCriteria": "Payment confirmed; escrow balance zeroed where applicable.",
+   "owner": "ESCROW",
+   "expectedHours": 24,
+   "artifacts": [
+    "Payment confirmation"
+   ],
+   "nextAction": "Start rebranding and repacking.",
+   "nextActionOwner": "ONE_BUY",
+   "isExceptionBranch": false,
+   "isTerminal": false,
+   "conditional": false,
+   "attestation": "The supplier has been paid everything owed and confirms it.",
+   "fields": [
+    {
+     "id": "totalPaid",
+     "label": "Total paid across all payments",
+     "type": "number",
+     "required": true,
+     "help": "Advance plus balance. Should reconcile to the purchase order value.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "finalPaymentOn",
+     "label": "Date of final payment",
+     "type": "date",
+     "required": true,
+     "help": "The value date.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "supplierConfirmed",
+     "label": "Supplier confirms full settlement",
+     "type": "boolean",
+     "required": true,
+     "help": "Their confirmation closes the buy side and prevents a later claim.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "variance",
+     "label": "Any difference from the order value",
+     "type": "longtext",
+     "required": false,
+     "help": "Discounts, deductions or claims settled. Explain any gap.",
+     "options": null,
+     "unit": null
+    }
+   ],
+   "documents": [
+    {
+     "id": "finalRemittance",
+     "label": "Final remittance advice",
+     "required": true,
+     "help": "Proof of the closing payment."
+    }
+   ],
+   "subTasks": [
+    {
+     "kind": "DOCUMENT",
+     "label": "Upload — Final remittance advice",
+     "detail": "Proof of the closing payment.",
+     "owner": "ESCROW",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Confirm the supplier has the money",
+     "detail": "Their acknowledgement closes the buy side of the order.",
+     "owner": "ESCROW",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "CAPTURE",
+     "label": "Record the details — 4 fields",
+     "detail": "Total paid across all payments, Date of final payment, Supplier confirms full settlement must be recorded before the order can move on.",
+     "owner": "ESCROW",
+     "required": true,
+     "standard": null
+    }
+   ]
+  },
+  {
+   "id": "REBRAND_AND_REPACK_IN_PROGRESS",
+   "code": "G1",
+   "phase": "G",
+   "label": "Rebrand and repack in progress",
+   "plainLabel": "Relabelling and repacking",
+   "description": "We are applying 1BUY labelling and repacking the goods, capturing serials and before/after photos.",
+   "exitCriteria": "Labelling, cartonisation, serial/lot capture and photos complete.",
+   "owner": "ONE_BUY",
+   "expectedHours": 24,
+   "artifacts": [
+    "Repack job sheet",
+    "Before/after photos"
+   ],
+   "nextAction": "Pass repack QC and mark ready to ship.",
+   "nextActionOwner": "ONE_BUY",
+   "isExceptionBranch": false,
+   "isTerminal": false,
+   "conditional": false,
+   "attestation": "Repacking has started to the agreed specification.",
+   "fields": [
+    {
+     "id": "startedOn",
+     "label": "Date started",
+     "type": "date",
+     "required": true,
+     "help": "When repacking began.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "spec",
+     "label": "Repack specification",
+     "type": "longtext",
+     "required": true,
+     "help": "What is being changed — outer carton and paperwork only, unless the order says otherwise. Being explicit protects the original packing.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "innerPackUntouched",
+     "label": "Inner packing left untouched",
+     "type": "boolean",
+     "required": true,
+     "help": "Opening sealed inner packing can void the manufacturer’s traceability.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "operator",
+     "label": "Carried out by",
+     "type": "text",
+     "required": true,
+     "help": "Who did the work.",
+     "options": null,
+     "unit": null
+    }
+   ],
+   "documents": [
+    {
+     "id": "beforePhotos",
+     "label": "Photographs before repacking",
+     "required": false,
+     "help": "The original packing as received, in case traceability is later questioned."
+    }
+   ],
+   "subTasks": [
+    {
+     "kind": "DOCUMENT",
+     "label": "Upload — Photographs before repacking",
+     "detail": "The original packing as received, in case traceability is later questioned.",
+     "owner": "ONE_BUY",
+     "required": false,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Rebrand and repack to the customer’s specification",
+     "detail": "Their labelling, their carton, their unit count.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Preserve moisture-barrier packaging where it applies",
+     "detail": "Breaking a dry-pack and repacking without a desiccant and indicator card ruins the parts.",
+     "owner": "ONE_BUY",
+     "required": false,
+     "standard": "IPC/JEDEC J-STD-033"
+    },
+    {
+     "kind": "CAPTURE",
+     "label": "Record the details — 4 fields",
+     "detail": "Date started, Repack specification, Inner packing left untouched, Carried out by must be recorded before the order can move on.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    }
+   ]
+  },
+  {
+   "id": "READY_FOR_OUTBOUND",
+   "code": "G2",
+   "phase": "G",
+   "label": "Ready for outbound",
+   "plainLabel": "Ready to ship to customer",
+   "description": "Repack QC has passed and the shipment is labelled and ready to go.",
+   "exitCriteria": "Outbound packing list produced and 1BUY labels applied.",
+   "owner": "ONE_BUY",
+   "expectedHours": 8,
+   "artifacts": [
+    "Outbound packing list"
+   ],
+   "nextAction": "Book the courier to the customer.",
+   "nextActionOwner": "ONE_BUY",
+   "isExceptionBranch": false,
+   "isTerminal": false,
+   "conditional": false,
+   "attestation": "The repacked goods have passed a final check and are ready to go.",
+   "fields": [
+    {
+     "id": "completedOn",
+     "label": "Date completed",
+     "type": "date",
+     "required": true,
+     "help": "When repacking finished.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "cartons",
+     "label": "Cartons ready",
+     "type": "number",
+     "required": true,
+     "help": "What will be handed to the carrier.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "qcBy",
+     "label": "Final check by",
+     "type": "text",
+     "required": true,
+     "help": "Who verified the repacked goods.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "labelsCorrect",
+     "label": "Labels and markings verified",
+     "type": "boolean",
+     "required": true,
+     "help": "The last chance to catch a wrong label before it reaches the customer.",
+     "options": null,
+     "unit": null
+    }
+   ],
+   "documents": [
+    {
+     "id": "packingList",
+     "label": "Outbound packing list",
+     "required": true,
+     "help": "What is in each carton going out."
+    },
+    {
+     "id": "afterPhotos",
+     "label": "Photographs after repacking",
+     "required": false,
+     "help": "How it left us."
+    }
+   ],
+   "subTasks": [
+    {
+     "kind": "DOCUMENT",
+     "label": "Upload — Outbound packing list",
+     "detail": "What is in each carton going out.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "DOCUMENT",
+     "label": "Upload — Photographs after repacking",
+     "detail": "How it left us.",
+     "owner": "ONE_BUY",
+     "required": false,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Final check before it leaves",
+     "detail": "Right parts, right count, right labels, right address.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "CAPTURE",
+     "label": "Record the details — 4 fields",
+     "detail": "Date completed, Cartons ready, Final check by, Labels and markings verified must be recorded before the order can move on.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    }
+   ]
+  },
+  {
+   "id": "OUTBOUND_BOOKED",
+   "code": "G3",
+   "phase": "G",
+   "label": "Outbound booked & invoiced",
+   "plainLabel": "Courier booked and bill raised",
+   "description": "A courier is booked, and the tax invoice is raised so it travels with the goods. The law requires the invoice to exist before the goods leave us.",
+   "exitCriteria": "Carrier, tracking number and pickup confirmed; tax invoice raised and e-way bill generated.",
+   "owner": "ONE_BUY",
+   "expectedHours": 8,
+   "artifacts": [
+    "Outbound shipment (Leg 4)",
+    "Shipping label",
+    "Tax invoice",
+    "E-way bill"
+   ],
+   "nextAction": "Track the delivery.",
+   "nextActionOwner": "LOGISTICS",
+   "isExceptionBranch": false,
+   "isTerminal": false,
+   "conditional": false,
+   "attestation": "The consignment is booked and the tax invoice has been raised. The invoice must exist before the goods move.",
+   "fields": [
+    {
+     "id": "awb",
+     "label": "Consignment number",
+     "type": "text",
+     "required": true,
+     "help": "The outbound tracking reference.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "carrier",
+     "label": "Carrier",
+     "type": "text",
+     "required": true,
+     "help": "Who is delivering.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "bookedOn",
+     "label": "Date booked",
+     "type": "date",
+     "required": true,
+     "help": "When the collection was arranged.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "invoiceNumber",
+     "label": "Tax invoice number",
+     "type": "text",
+     "required": true,
+     "help": "The invoice raised for this dispatch. The law requires it to be issued before or at removal of the goods.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "ewayBillNumber",
+     "label": "Way bill number",
+     "type": "text",
+     "required": false,
+     "help": "Required above the threshold. If the portal was unreachable, leave blank and record it here as soon as you have it — but the goods should not move without one.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "invoiceBeforeDispatch",
+     "label": "Invoice raised before the goods left",
+     "type": "boolean",
+     "required": true,
+     "help": "This is a legal requirement, not a preference.",
+     "options": null,
+     "unit": null
+    }
+   ],
+   "documents": [
+    {
+     "id": "taxInvoice",
+     "label": "Tax invoice",
+     "required": true,
+     "help": "The invoice as issued to the customer."
+    },
+    {
+     "id": "ewayBill",
+     "label": "Way bill",
+     "required": false,
+     "help": "Required to accompany the goods above the threshold."
+    }
+   ],
+   "subTasks": [
+    {
+     "kind": "DOCUMENT",
+     "label": "Upload — Tax invoice",
+     "detail": "The invoice as issued to the customer.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "DOCUMENT",
+     "label": "Upload — Way bill",
+     "detail": "Required to accompany the goods above the threshold.",
+     "owner": "ONE_BUY",
+     "required": false,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Raise the tax invoice",
+     "detail": "With the correct place of supply — it decides CGST+SGST versus IGST, and a wrong one is a credit note and a reissue.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Generate the e-way bill where the value requires it",
+     "detail": "Above the threshold the consignment cannot legally move without one.",
+     "owner": "ONE_BUY",
+     "required": false,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Book the outbound carrier",
+     "detail": "With the delivery window we promised the customer.",
+     "owner": "LOGISTICS",
+     "required": false,
+     "standard": null
+    },
+    {
+     "kind": "CAPTURE",
+     "label": "Record the details — 6 fields",
+     "detail": "Consignment number, Carrier, Date booked, Tax invoice number, Invoice raised before the goods left must be recorded before the order can move on.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    }
+   ]
+  },
+  {
+   "id": "OUT_FOR_DELIVERY",
+   "code": "G4",
+   "phase": "G",
+   "label": "Out for delivery",
+   "plainLabel": "Out for delivery",
+   "description": "The shipment has been dispatched and is on its way to the customer.",
+   "exitCriteria": "Delivery attempted.",
+   "owner": "LOGISTICS",
+   "expectedHours": 24,
+   "artifacts": [
+    "Tracking events"
+   ],
+   "nextAction": "Confirm the customer has received the goods.",
+   "nextActionOwner": "LOGISTICS",
+   "isExceptionBranch": false,
+   "isTerminal": false,
+   "conditional": false,
+   "attestation": "The consignment is with the delivery courier.",
+   "fields": [
+    {
+     "id": "outForDeliveryOn",
+     "label": "Date out for delivery",
+     "type": "date",
+     "required": true,
+     "help": "From the carrier’s tracking.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "expectedDelivery",
+     "label": "Expected delivery date",
+     "type": "date",
+     "required": true,
+     "help": "What the customer has been told.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "customerInformed",
+     "label": "Customer told it is coming",
+     "type": "boolean",
+     "required": false,
+     "help": "A delivery nobody is expecting is a delivery that gets refused.",
+     "options": null,
+     "unit": null
+    }
+   ],
+   "documents": [],
+   "subTasks": [
+    {
+     "kind": "ACTION",
+     "label": "Track to delivery",
+     "detail": "The customer will ask; have the answer before they do.",
+     "owner": "LOGISTICS",
+     "required": false,
+     "standard": null
+    },
+    {
+     "kind": "CAPTURE",
+     "label": "Record the details — 3 fields",
+     "detail": "Date out for delivery, Expected delivery date must be recorded before the order can move on.",
+     "owner": "LOGISTICS",
+     "required": true,
+     "standard": null
+    }
+   ]
+  },
+  {
+   "id": "DELIVERED",
+   "code": "G5",
+   "phase": "G",
+   "label": "Delivered",
+   "plainLabel": "Customer received the goods",
+   "description": "The customer has taken delivery of the shipment.",
+   "exitCriteria": "Receipt confirmed by the customer.",
+   "owner": "CUSTOMER",
+   "expectedHours": 12,
+   "artifacts": [
+    "Delivery confirmation"
+   ],
+   "nextAction": "Capture and share the Proof of Delivery.",
+   "nextActionOwner": "ONE_BUY",
+   "isExceptionBranch": false,
+   "isTerminal": false,
+   "conditional": false,
+   "attestation": "The customer has physically taken delivery.",
+   "fields": [
+    {
+     "id": "deliveredOn",
+     "label": "Date delivered",
+     "type": "date",
+     "required": true,
+     "help": "The carrier’s delivery date.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "receivedBy",
+     "label": "Received by",
+     "type": "text",
+     "required": true,
+     "help": "The named person who signed for it.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "cartonsDelivered",
+     "label": "Cartons delivered",
+     "type": "number",
+     "required": true,
+     "help": "Should match what was dispatched.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "conditionAccepted",
+     "label": "Accepted without damage noted",
+     "type": "boolean",
+     "required": false,
+     "help": "If damage was noted on delivery, record it below — it will be the basis of any claim.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "deliveryNotes",
+     "label": "Anything noted on delivery",
+     "type": "longtext",
+     "required": false,
+     "help": "Shortages, damage, or a refusal to sign.",
+     "options": null,
+     "unit": null
+    }
+   ],
+   "documents": [],
+   "subTasks": [
+    {
+     "kind": "ACTION",
+     "label": "Customer confirms receipt",
+     "detail": "Signed, with the name of whoever signed.",
+     "owner": "CUSTOMER",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "CAPTURE",
+     "label": "Record the details — 5 fields",
+     "detail": "Date delivered, Received by, Cartons delivered must be recorded before the order can move on.",
+     "owner": "CUSTOMER",
+     "required": true,
+     "standard": null
+    }
+   ]
+  },
+  {
+   "id": "POD_ISSUED_TO_CUSTOMER",
+   "code": "G6",
+   "phase": "G",
+   "label": "Proof of Delivery issued to customer",
+   "plainLabel": "Delivery proof sent",
+   "description": "The signed Proof of Delivery is on file and has been shared with the customer.",
+   "exitCriteria": "Signed or stamped Proof of Delivery on file and shared.",
+   "owner": "ONE_BUY",
+   "expectedHours": 12,
+   "artifacts": [
+    "Proof of Delivery"
+   ],
+   "nextAction": "Raise the tax invoice and collect payment.",
+   "nextActionOwner": "ONE_BUY",
+   "isExceptionBranch": false,
+   "isTerminal": false,
+   "conditional": false,
+   "attestation": "We hold documented proof of delivery.",
+   "fields": [
+    {
+     "id": "podRef",
+     "label": "Proof of delivery reference",
+     "type": "text",
+     "required": true,
+     "help": "The carrier’s proof of delivery reference.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "podDate",
+     "label": "Date of proof",
+     "type": "date",
+     "required": true,
+     "help": "The date on the proof.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "signatory",
+     "label": "Signed by",
+     "type": "text",
+     "required": true,
+     "help": "Who signed at the customer.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "sentToCustomer",
+     "label": "Copy sent to the customer",
+     "type": "boolean",
+     "required": false,
+     "help": "Sending it with the invoice removes the commonest reason for a delayed payment.",
+     "options": null,
+     "unit": null
+    }
+   ],
+   "documents": [
+    {
+     "id": "pod",
+     "label": "Proof of delivery",
+     "required": true,
+     "help": "The signed proof. This is what supports the collection."
+    }
+   ],
+   "subTasks": [
+    {
+     "kind": "DOCUMENT",
+     "label": "Upload — Proof of delivery",
+     "detail": "The signed proof. This is what supports the collection.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Issue the proof of delivery",
+     "detail": "Their evidence the order was completed, and ours if payment is later disputed.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "CAPTURE",
+     "label": "Record the details — 4 fields",
+     "detail": "Proof of delivery reference, Date of proof, Signed by must be recorded before the order can move on.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    }
+   ]
+  },
+  {
+   "id": "CUSTOMER_INVOICED_AND_SETTLED",
+   "code": "G7",
+   "phase": "G",
+   "label": "Customer payment settled",
+   "plainLabel": "Customer has paid",
+   "description": "The invoice raised at dispatch has been paid, or the credit clock has run its course and collection is reconciled.",
+   "exitCriteria": "Payment received and reconciled, or credit terms discharged.",
+   "owner": "ONE_BUY",
+   "expectedHours": 48,
+   "artifacts": [
+    "Payment receipt",
+    "Collection reconciliation"
+   ],
+   "nextAction": "Close the order.",
+   "nextActionOwner": "ONE_BUY",
+   "isExceptionBranch": false,
+   "isTerminal": false,
+   "conditional": false,
+   "attestation": "The customer’s payment has been received and reconciled against the invoice.",
+   "fields": [
+    {
+     "id": "amountReceived",
+     "label": "Amount received",
+     "type": "number",
+     "required": true,
+     "help": "What actually reached our account.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "receivedOn",
+     "label": "Date received",
+     "type": "date",
+     "required": true,
+     "help": "The value date of the credit.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "paymentRef",
+     "label": "Payment reference",
+     "type": "text",
+     "required": true,
+     "help": "The customer’s reference, so the receipt can be matched.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "reconciled",
+     "label": "Reconciled against the invoice",
+     "type": "boolean",
+     "required": true,
+     "help": "Confirms the amount matches. A short payment is a dispute, not a settlement.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "shortPayment",
+     "label": "Any deduction or short payment",
+     "type": "longtext",
+     "required": false,
+     "help": "What was withheld and the reason given.",
+     "options": null,
+     "unit": null
+    }
+   ],
+   "documents": [
+    {
+     "id": "bankAdvice",
+     "label": "Bank credit advice",
+     "required": true,
+     "help": "Proof the money arrived."
+    }
+   ],
+   "subTasks": [
+    {
+     "kind": "DOCUMENT",
+     "label": "Upload — Bank credit advice",
+     "detail": "Proof the money arrived.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Collect payment against the invoice",
+     "detail": "Chase from the due date, not from the date somebody notices.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "CAPTURE",
+     "label": "Record the details — 5 fields",
+     "detail": "Amount received, Date received, Payment reference, Reconciled against the invoice must be recorded before the order can move on.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    }
+   ]
+  },
+  {
+   "id": "ORDER_CLOSED",
+   "code": "G8",
+   "phase": "G",
+   "label": "Order closed",
+   "plainLabel": "Order complete",
+   "description": "Everything is discharged — goods, money and paperwork. The final margin is locked in.",
+   "exitCriteria": "Financial, physical and documentary closure complete.",
+   "owner": "ONE_BUY",
+   "expectedHours": 0,
+   "artifacts": [
+    "Order closure summary"
+   ],
+   "nextAction": "Nothing further — this order is complete.",
+   "nextActionOwner": "ONE_BUY",
+   "isExceptionBranch": false,
+   "isTerminal": true,
+   "conditional": false,
+   "attestation": "Financially, physically and documentarily complete. Nothing is left open on this order.",
+   "fields": [
+    {
+     "id": "allDocsFiled",
+     "label": "All documents filed",
+     "type": "boolean",
+     "required": true,
+     "help": "Everything the order produced is on file and findable.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "supplierSettled",
+     "label": "Supplier fully settled",
+     "type": "boolean",
+     "required": true,
+     "help": "Nothing owed on the buy side.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "customerSettled",
+     "label": "Customer fully settled",
+     "type": "boolean",
+     "required": true,
+     "help": "Nothing owed on the sell side.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "creditsClaimed",
+     "label": "Input tax credits claimed",
+     "type": "boolean",
+     "required": true,
+     "help": "The recoverable import and input tax has been taken. Forgetting this quietly destroys the margin.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "realisedMargin",
+     "label": "Realised margin",
+     "type": "number",
+     "required": true,
+     "help": "The final figure, after every actual cost. This is the number the business is judged on.",
+     "options": null,
+     "unit": null
+    },
+    {
+     "id": "lessons",
+     "label": "Anything to do differently",
+     "type": "longtext",
+     "required": false,
+     "help": "What went wrong, what took too long, what to change next time.",
+     "options": null,
+     "unit": null
+    }
+   ],
+   "documents": [],
+   "subTasks": [
+    {
+     "kind": "ACTION",
+     "label": "Reconcile the final margin against the quote",
+     "detail": "What we actually made, against what we said we would. This is the number that improves the next quote.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    },
+    {
+     "kind": "ACTION",
+     "label": "Confirm every document is on file",
+     "detail": "A closed order is an audit record. Gaps are found years later, by someone who cannot fill them.",
+     "owner": "ONE_BUY",
+     "required": false,
+     "standard": null
+    },
+    {
+     "kind": "CAPTURE",
+     "label": "Record the details — 6 fields",
+     "detail": "All documents filed, Supplier fully settled, Customer fully settled, Input tax credits claimed, Realised margin must be recorded before the order can move on.",
+     "owner": "ONE_BUY",
+     "required": true,
+     "standard": null
+    }
+   ]
+  }
+ ],
+ "nav": [
+  {
+   "id": "work",
+   "label": null,
+   "items": [
+    {
+     "href": "/dashboard",
+     "label": "Dashboard",
+     "plainLabel": "Overview",
+     "hint": "Control tower — where every order stands right now.",
+     "children": []
+    }
+   ]
+  },
+  {
+   "id": "create",
+   "label": "Create",
+   "items": [
+    {
+     "href": "/create-po",
+     "label": "Create Purchase Order",
+     "plainLabel": "Create purchase order",
+     "hint": "Enter a customer's order, or raise our order to a supplier.",
+     "children": [
+      {
+       "href": "/create-po?mode=customer",
+       "label": "Customer Purchase Order",
+       "plainLabel": "Customer's order"
+      },
+      {
+       "href": "/create-po?mode=supplier",
+       "label": "Our Purchase Order to supplier",
+       "plainLabel": "Our order to supplier"
+      }
+     ]
+    },
+    {
+     "href": "/create-pi",
+     "label": "Create Proforma Invoice",
+     "plainLabel": "Create price quote",
+     "hint": "Issue a Proforma Invoice to a customer, or record a supplier one.",
+     "children": [
+      {
+       "href": "/create-pi?mode=customer",
+       "label": "Customer Proforma Invoice",
+       "plainLabel": "Quote to customer"
+      },
+      {
+       "href": "/create-pi?mode=supplier",
+       "label": "Supplier Proforma Invoice capture",
+       "plainLabel": "Supplier's quote"
+      }
+     ]
+    },
+    {
+     "href": "/purchase-orders",
+     "label": "Created Purchase Orders",
+     "plainLabel": "Purchase orders",
+     "hint": "Every purchase order raised — from customers, and to suppliers.",
+     "children": [
+      {
+       "href": "/purchase-orders?tab=customer",
+       "label": "From customers",
+       "plainLabel": "Customer orders"
+      },
+      {
+       "href": "/purchase-orders?tab=supplier",
+       "label": "To suppliers",
+       "plainLabel": "Our orders out"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "operate",
+   "label": "Operate",
+   "items": [
+    {
+     "href": "/orders",
+     "label": "Orders",
+     "plainLabel": "Jobs",
+     "hint": "Internal work orders — the operational heart of the platform.",
+     "children": []
+    },
+    {
+     "href": "/escrow",
+     "label": "Escrow",
+     "plainLabel": "Held money",
+     "hint": "Money held by a neutral third party, and its releases.",
+     "children": []
+    },
+    {
+     "href": "/testing",
+     "label": "Testing Laboratory",
+     "plainLabel": "Lab testing",
+     "hint": "Independent laboratory checks before the full shipment moves.",
+     "children": []
+    },
+    {
+     "href": "/logistics",
+     "label": "Logistics",
+     "plainLabel": "Shipping",
+     "hint": "All four shipping legs, with tracking.",
+     "children": []
+    },
+    {
+     "href": "/customs",
+     "label": "Customs & Compliance",
+     "plainLabel": "Customs",
+     "hint": "Bills of Entry, duty and clearance via the customs agent.",
+     "children": []
+    },
+    {
+     "href": "/warehouse",
+     "label": "Warehouse",
+     "plainLabel": "Warehouse",
+     "hint": "Receiving, inspection, rebranding and repacking, and outbound delivery.",
+     "children": []
+    }
+   ]
+  },
+  {
+   "id": "finance",
+   "label": "Finance & Tax",
+   "items": [
+    {
+     "href": "/tax",
+     "label": "Tax & Goods and Services Tax",
+     "plainLabel": "Tax",
+     "hint": "Output tax, input credits, registers and return working sheets.",
+     "children": []
+    }
+   ]
+  },
+  {
+   "id": "reference",
+   "label": "Reference",
+   "items": [
+    {
+     "href": "/avl",
+     "label": "Approved Vendor List",
+     "plainLabel": "Approved suppliers",
+     "hint": "The only suppliers we are allowed to buy from.",
+     "children": []
+    },
+    {
+     "href": "/masters",
+     "label": "Masters",
+     "plainLabel": "Reference data",
+     "hint": "Customers, suppliers, parts, carriers, laboratories and tax rates.",
+     "children": []
+    },
+    {
+     "href": "/documents",
+     "label": "Documents",
+     "plainLabel": "Files",
+     "hint": "Every document, filed against its order.",
+     "children": []
+    },
+    {
+     "href": "/reports",
+     "label": "Reports & Analytics",
+     "plainLabel": "Reports",
+     "hint": "Cycle times, margins, exceptions and trends.",
+     "children": []
+    },
+    {
+     "href": "/settings",
+     "label": "Settings",
+     "plainLabel": "Settings",
+     "hint": "Users, numbering, glossary, connected systems and tax configuration.",
+     "children": []
+    }
+   ]
+  }
+ ],
+ "incoterms": [
+  {
+   "code": "EXW",
+   "name": "Ex Works",
+   "mode": "ANY",
+   "deliveryPoint": "At the supplier's own premises, goods not loaded",
+   "riskTransfersAt": "The supplier's premises, before loading",
+   "carriage": {
+    "party": "BUYER",
+    "note": "We arrange and pay everything from their door onwards."
+   },
+   "insurance": {
+    "party": "BUYER",
+    "mandatory": false,
+    "note": "Nothing is insured unless we insure it. Cover should start at their loading bay."
+   },
+   "exportClearance": "BUYER",
+   "importClearance": "BUYER",
+   "implies": "The supplier does the least of any term: they make the goods available and nothing more. Loading, export clearance, carriage, insurance, import clearance and duty are all ours.",
+   "watchOut": "We are named as exporter in the supplier's country, which we usually cannot be as a foreign entity. In practice most \"EXW\" deals quietly become FCA, with the supplier handling export clearance. Agree that explicitly rather than discovering it at the port."
+  },
+  {
+   "code": "FCA",
+   "name": "Free Carrier",
+   "mode": "ANY",
+   "deliveryPoint": "Handed to the carrier we nominate, at the named place, export cleared",
+   "riskTransfersAt": "The moment our nominated carrier takes charge",
+   "carriage": {
+    "party": "BUYER",
+    "note": "We book the main carriage; they get the goods to it."
+   },
+   "insurance": {
+    "party": "BUYER",
+    "mandatory": false,
+    "note": "Ours from the handover point. Nothing is covered unless we arrange it."
+   },
+   "exportClearance": "SELLER",
+   "importClearance": "BUYER",
+   "implies": "The supplier delivers to our carrier and clears the goods for export. We pay the main carriage and everything after it. The workable version of EXW for a cross-border purchase.",
+   "watchOut": "The named place has to be precise. \"FCA Penang\" and \"FCA Penang Airport\" put the cost of getting to the airport on different parties."
+  },
+  {
+   "code": "FAS",
+   "name": "Free Alongside Ship",
+   "mode": "SEA",
+   "deliveryPoint": "Alongside the vessel at the named port of shipment",
+   "riskTransfersAt": "Once placed alongside the ship",
+   "carriage": {
+    "party": "BUYER",
+    "note": "We book the ocean carriage and pay loading onwards."
+   },
+   "insurance": {
+    "party": "BUYER",
+    "mandatory": false,
+    "note": "Ours from the quayside."
+   },
+   "exportClearance": "SELLER",
+   "importClearance": "BUYER",
+   "implies": "The supplier gets the goods to the quay; loading them onto the vessel is already our cost. Sea and inland waterway only.",
+   "watchOut": "Never use this for air or courier freight — there is no ship to be alongside. For electronics it is almost always the wrong choice; FCA covers the same intent for any mode."
+  },
+  {
+   "code": "FOB",
+   "name": "Free On Board",
+   "mode": "SEA",
+   "deliveryPoint": "On board the vessel at the named port of shipment",
+   "riskTransfersAt": "Once the goods are on board",
+   "carriage": {
+    "party": "BUYER",
+    "note": "We book and pay the ocean freight from the port of shipment."
+   },
+   "insurance": {
+    "party": "BUYER",
+    "mandatory": false,
+    "note": "Ours from the moment it is on board. If we do not buy marine cover, the whole voyage is uninsured."
+   },
+   "exportClearance": "SELLER",
+   "importClearance": "BUYER",
+   "implies": "The supplier gets the goods loaded and export cleared; from that point the voyage, the insurance, the import clearance and every Indian levy are ours.",
+   "watchOut": "INDIA: customs value is CIF-based, so freight and insurance are added to the FOB price to arrive at the assessable value before duty. If the actual figures cannot be evidenced, Rule 10(2) of the Customs Valuation Rules applies notional amounts — 20% of FOB for freight and 1.125% of FOB for insurance. Buying FOB and failing to insure therefore costs duty on notional insurance we never bought."
+  },
+  {
+   "code": "CFR",
+   "name": "Cost and Freight",
+   "mode": "SEA",
+   "deliveryPoint": "On board the vessel at the port of shipment",
+   "riskTransfersAt": "On board at the port of shipment — NOT at the destination",
+   "carriage": {
+    "party": "SELLER",
+    "note": "They pay the ocean freight to the named destination port."
+   },
+   "insurance": {
+    "party": "BUYER",
+    "mandatory": false,
+    "note": "Nobody is obliged to insure. The supplier has no reason to, and the risk is ours the whole way."
+   },
+   "exportClearance": "SELLER",
+   "importClearance": "BUYER",
+   "implies": "The supplier pays to get the goods to the destination port. But risk passed to us back at the loading port, so a loss at sea is our loss on a voyage they paid for.",
+   "watchOut": "The cost point and the risk point are in different countries. This is the classic Incoterms trap: under CFR an uninsured sinking is entirely our loss even though the freight was on their invoice. Always buy marine cover on a C-term, or negotiate CIF."
+  },
+  {
+   "code": "CIF",
+   "name": "Cost, Insurance and Freight",
+   "mode": "SEA",
+   "deliveryPoint": "On board the vessel at the port of shipment",
+   "riskTransfersAt": "On board at the port of shipment — NOT at the destination",
+   "carriage": {
+    "party": "SELLER",
+    "note": "They pay ocean freight to the named destination port."
+   },
+   "insurance": {
+    "party": "SELLER",
+    "mandatory": true,
+    "note": "They must insure, but only to Institute Cargo Clauses (C) — the narrowest cover — at 110% of the contract value."
+   },
+   "exportClearance": "SELLER",
+   "importClearance": "BUYER",
+   "implies": "Freight and a minimum level of marine insurance are inside the supplier price. Import clearance, duty and delivery from the port are still ours.",
+   "watchOut": "Clauses (C) is a named-perils cover: it does NOT pay for water damage, theft or handling damage in the ordinary case. For high-value semiconductors that is thin. Either specify Clauses (A) in the contract, or take our own top-up cover. Also note the claim is theirs to make but the loss is ours to bear, which makes recovery slow."
+  },
+  {
+   "code": "CPT",
+   "name": "Carriage Paid To",
+   "mode": "ANY",
+   "deliveryPoint": "Handed to the first carrier",
+   "riskTransfersAt": "At the first carrier — NOT at the named destination",
+   "carriage": {
+    "party": "SELLER",
+    "note": "They pay carriage all the way to the named place."
+   },
+   "insurance": {
+    "party": "BUYER",
+    "mandatory": false,
+    "note": "Not required of either party, and the risk is ours from the first carrier."
+   },
+   "exportClearance": "SELLER",
+   "importClearance": "BUYER",
+   "implies": "The any-mode version of CFR. They pay the carriage to the named place; risk passed to us as soon as the first carrier took the goods.",
+   "watchOut": "Same cost-versus-risk split as CFR, so the same answer: insure it ourselves."
+  },
+  {
+   "code": "CIP",
+   "name": "Carriage and Insurance Paid To",
+   "mode": "ANY",
+   "deliveryPoint": "Handed to the first carrier",
+   "riskTransfersAt": "At the first carrier — NOT at the named destination",
+   "carriage": {
+    "party": "SELLER",
+    "note": "They pay carriage to the named place."
+   },
+   "insurance": {
+    "party": "SELLER",
+    "mandatory": true,
+    "note": "They must insure to Institute Cargo Clauses (A) — all-risks — at 110% of value. This is the widest cover any Incoterm obliges."
+   },
+   "exportClearance": "SELLER",
+   "importClearance": "BUYER",
+   "implies": "The strongest term for us short of a D-term: carriage and all-risks insurance are the supplier's, for any mode of transport. Import clearance and duty remain ours.",
+   "watchOut": "Risk still passes at the first carrier, so we are the ones claiming under a policy someone else bought. Ask for the certificate up front, not after a loss."
+  },
+  {
+   "code": "DAP",
+   "name": "Delivered At Place",
+   "mode": "ANY",
+   "deliveryPoint": "At the named place, ready for unloading, import duty NOT paid",
+   "riskTransfersAt": "At the named place on arrival",
+   "carriage": {
+    "party": "SELLER",
+    "note": "They pay carriage all the way to the named address."
+   },
+   "insurance": {
+    "party": "SELLER",
+    "mandatory": false,
+    "note": "Not obliged, but they carry the risk to the door, so they normally insure their own exposure. That policy is theirs, not ours."
+   },
+   "exportClearance": "SELLER",
+   "importClearance": "BUYER",
+   "implies": "The supplier gets the goods to our address and carries the risk the whole way. We are still the importer of record: clearance, BCD, SWS and IGST are ours.",
+   "watchOut": "The split at the border is the thing to hold on to. DAP means they cannot walk away mid-voyage, but it does not make them the importer — the Bill of Entry is still in our name and the duty is still our cash."
+  },
+  {
+   "code": "DPU",
+   "name": "Delivered at Place Unloaded",
+   "mode": "ANY",
+   "deliveryPoint": "At the named place, unloaded, import duty NOT paid",
+   "riskTransfersAt": "Once unloaded at the named place",
+   "carriage": {
+    "party": "SELLER",
+    "note": "They pay carriage to the named place and unload."
+   },
+   "insurance": {
+    "party": "SELLER",
+    "mandatory": false,
+    "note": "Not obliged, but their risk runs until unloading, so they usually cover it."
+   },
+   "exportClearance": "SELLER",
+   "importClearance": "BUYER",
+   "implies": "DAP plus unloading. The only Incoterm where the seller is responsible for taking the goods off the vehicle.",
+   "watchOut": "Only agree it if the supplier can actually unload at the site — if the address has no dock or forklift, the obligation is theoretical and someone will argue about it on the day."
+  },
+  {
+   "code": "DDP",
+   "name": "Delivered Duty Paid",
+   "mode": "ANY",
+   "deliveryPoint": "At the named place, import cleared and duty paid",
+   "riskTransfersAt": "At the named place on arrival",
+   "carriage": {
+    "party": "SELLER",
+    "note": "They pay carriage all the way to the door."
+   },
+   "insurance": {
+    "party": "SELLER",
+    "mandatory": false,
+    "note": "Not obliged, but they carry risk to the door, so cover is normally theirs."
+   },
+   "exportClearance": "SELLER",
+   "importClearance": "SELLER",
+   "implies": "The maximum obligation on the seller: carriage, risk, import clearance and every import tax, delivered to the buyer's door. The buyer receives goods and nothing else to do.",
+   "watchOut": "INDIA: a foreign supplier normally cannot be the importer of record without an Indian IEC and GST registration. \"DDP\" from an overseas supplier therefore usually means they pay a broker while the Bill of Entry is still filed in the Indian buyer's name — the duty is recorded against us and the IGST credit accrues to us, whoever actually funded it. Confirm who is on the Bill of Entry before treating the duty as somebody else's cost."
+  },
+  {
+   "code": "FOR",
+   "name": "Free On Road / Rail (Indian domestic convention)",
+   "mode": "DOM",
+   "deliveryPoint": "At the buyer's premises within India",
+   "riskTransfersAt": "On delivery at the buyer’s premises",
+   "carriage": {
+    "party": "SELLER",
+    "note": "Freight to our premises is inside the price."
+   },
+   "insurance": {
+    "party": "SELLER",
+    "mandatory": false,
+    "note": "Transit cover is usually the supplier’s, but it is a matter of contract, not of rule."
+   },
+   "exportClearance": "NONE",
+   "importClearance": "NONE",
+   "implies": "A domestic Indian term, not an Incoterm. Goods move within India, so there is no import: no Bill of Entry, no BCD, no SWS. GST is charged on the supplier's invoice and is creditable to us in the normal way.",
+   "watchOut": "Because it is not an Incoterm it has no agreed definition, so what \"FOR\" covers varies by supplier. Write the delivery point and who insures transit into the purchase order rather than relying on the abbreviation."
+  }
+ ],
+ "standards": {
+  "authentication": "SAE AS6171",
+  "distributor": "SAE AS6081 Rev A",
+  "visual": "IDEA-STD-1010",
+  "astmEds": "ASTM E1508",
+  "astmXrf": "ASTM B568",
+  "astmXray": "ASTM E1742",
+  "astmPackaging": "ASTM D3951",
+  "moisture": "IPC/JEDEC J-STD-033",
+  "solderability": "IPC/JEDEC J-STD-002"
+ },
+ "stakeholders": {
+  "ONE_BUY": {
+   "label": "1BUY",
+   "short": "1BUY",
+   "plainLabel": "Us (1BUY)",
+   "token": "onebuy"
+  },
+  "CUSTOMER": {
+   "label": "Customer",
+   "short": "Customer",
+   "plainLabel": "Customer",
+   "token": "customer"
+  },
+  "SUPPLIER": {
+   "label": "Supplier",
+   "short": "Supplier",
+   "plainLabel": "Supplier",
+   "token": "supplier"
+  },
+  "ESCROW": {
+   "label": "Escrow Provider",
+   "short": "Escrow",
+   "plainLabel": "Escrow provider (holds the money)",
+   "token": "escrow"
+  },
+  "WHL": {
+   "label": "Testing Laboratory",
+   "short": "Testing Lab",
+   "plainLabel": "Independent testing laboratory",
+   "token": "whl"
+  },
+  "WHA": {
+   "label": "Customs Agent",
+   "short": "Customs Agent",
+   "plainLabel": "Customs and compliance agent",
+   "token": "wha"
+  },
+  "LOGISTICS": {
+   "label": "Logistics Partner",
+   "short": "Logistics",
+   "plainLabel": "Courier or freight partner",
+   "token": "logistics"
+  }
+ },
+ "paymentMethods": {
+  "ADVANCE": {
+   "label": "Advance",
+   "plainLabel": "Paid up front"
+  },
+  "ESCROW": {
+   "label": "Escrow",
+   "plainLabel": "Money held by a neutral third party"
+  },
+  "CREDIT": {
+   "label": "Credit",
+   "plainLabel": "Pay later, on agreed terms"
+  }
+ },
+ "testScopes": {
+  "LOT_SAMPLE": {
+   "label": "Lot sample",
+   "plainLabel": "Test a sample from the lot"
+  },
+  "FULL_BATCH": {
+   "label": "Full batch",
+   "plainLabel": "Test every piece"
+  }
+ }
+}

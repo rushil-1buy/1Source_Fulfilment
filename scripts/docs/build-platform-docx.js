@@ -465,10 +465,9 @@ body.push(
   numbered('Save. The order appears under Created Purchase Orders, ready to be linked to a supplier order.'),
 
   h2('7.3 Linking supply to demand'),
-  numbered('From a supplier purchase order, choose to link it to customer orders. Several customer orders can be selected at once.'),
-  numbered('The allocation matrix shows supplier lines down the side and the chosen customer orders across, with editable quantities and column totals. Over-allocating a supplier line is refused, with the exact figures.'),
-  numbered('One work order is created per customer order. A customer order split across several suppliers produces several work orders; a bulk supplier order serving several customers produces one work order each. Both are visible from the order.'),
-  numbered('For repeated demand across customers, use Demand Aggregation: pool the same part across several customer orders and float a single bulk order to one supplier. A customer line can only contribute what it has left unallocated — the platform refuses to promise the same pieces twice.'),
+  numbered('Open the customer order\u2019s sourcing view from Created Purchase Orders. It shows each line ordered against covered against short, naming the supplier order that covers each part.'),
+  numbered('Link a supplier purchase order to the customer order from there. Lines are matched by part number and the quantity taken is the lesser of what the customer wants and what was bought.'),
+  numbered('That link is what creates the work order. Where a line is only partly covered, the order says so \u2014 the shortfall is shown on the order itself rather than left to be discovered at delivery.'),
 
   h2('7.4 Working an order'),
   numbered('Open the order. The progress rail shows the seven phases and, inside the open phase, its stages. The stage the order is on is marked.'),

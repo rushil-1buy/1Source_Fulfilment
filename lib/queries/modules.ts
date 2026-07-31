@@ -523,9 +523,7 @@ export async function listPurchaseOrders() {
       include: {
         supplier: { select: { name: true, code: true, country: true, isForeign: true } },
         lines: { select: { id: true, quantity: true, testingRequired: true, leadTimeDays: true } },
-        // The customer orders behind the work orders. Plural on purpose: a bulk
-        // order raised from a demand aggregation serves several customers at
-        // once, and taking only the first would hide the rest.
+        // The customer order behind the work order, via the work order itself.
         workOrders: {
           select: {
             id: true,
@@ -535,8 +533,6 @@ export async function listPurchaseOrders() {
           },
           orderBy: { alias: 'asc' },
         },
-        // Set when this order came out of a pool rather than a single demand.
-        aggregation: { select: { id: true, reference: true } },
         proformas: { select: { id: true, piNumber: true, externalRef: true } },
       },
     }),
@@ -598,8 +594,6 @@ export async function listPurchaseOrders() {
     supplierPos: supplierPos.map((p) => {
       const wo = p.workOrders[0];
       const theirPi = p.proformas[0];
-      /** More than one work order means this order is serving pooled demand. */
-      const isBulk = p.workOrders.length > 1;
       const customerOrders = p.workOrders.map((w) => w.customerPo.poNumber);
       const customers = [...new Set(p.workOrders.map((w) => w.customerPo.customer.name))];
       const leads = p.lines.map((l) => l.leadTimeDays).filter((x): x is number => x != null);
@@ -623,25 +617,13 @@ export async function listPurchaseOrders() {
         testingLines: p.lines.filter((l) => l.testingRequired).length,
         theirQuote: theirPi?.externalRef ?? theirPi?.piNumber ?? 'Awaited',
         // Whether this order is spoken for, and by whom.
-        linked: isBulk ? `Bulk · ${p.workOrders.length} customer orders` : wo ? 'Linked' : 'Not linked',
+        linked: wo ? 'Linked' : 'Not linked',
         customerOrder: customerOrders.length ? customerOrders.join(', ') : '—',
         customer: customers.length ? customers.join(', ') : 'No customer yet',
-        customerOrderCount: p.workOrders.length,
-        aggregationRef: p.aggregation?.reference ?? '—',
-        ourQuote: isBulk
-          ? `${p.workOrders.filter((w) => w.customerPi).length} of ${p.workOrders.length} quoted`
-          : (wo?.customerPi?.piNumber ?? '—'),
+        ourQuote: wo?.customerPi?.piNumber ?? '—',
         workOrder: p.workOrders.length ? p.workOrders.map((w) => w.alias).join(', ') : '—',
         status: p.status,
-        // A bulk order has no single work order to open, so it opens the pool it
-        // came from instead — the only page that shows all of its customers.
-        href: isBulk
-          ? p.aggregation
-            ? `/demand-aggregation?pool=${p.aggregation.id}`
-            : undefined
-          : wo
-            ? `/orders/${wo.id}`
-            : undefined,
+        href: wo ? `/orders/${wo.id}` : undefined,
       } satisfies RecordRow;
     }),
   };

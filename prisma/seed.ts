@@ -19,8 +19,6 @@ import { computeGstInvoice, makeRateLookup, type HsnRateRow } from '../lib/tax/g
 import { computeLandedCost } from '../lib/tax/landed-cost';
 import { amountInWords, convertMinor, pctOf, toMinor } from '../lib/domain/money';
 import { GLOSSARY } from '../lib/glossary';
-import { seedSplitSourcing } from './seed-split-sourcing';
-import { seedDemandPool } from './seed-demand-pool';
 import { seedDemoOrder } from './seed-demo-order';
 import {
   AVL,
@@ -2006,24 +2004,6 @@ async function main() {
       `  ${spec.key.padEnd(20)} ${spec.targetStage.padEnd(38)} sell ₹${(r.sellValue / 100).toLocaleString('en-IN')}  landed ₹${(r.landed.landedCost / 100).toLocaleString('en-IN')}`,
     );
   }
-
-  // One customer order sourced across three suppliers — kept in its own module
-  // because it is the one shape buildWorkOrder cannot express: that builder pairs
-  // exactly one customer order with one supplier order.
-  console.log('Building the split-sourcing scenario…');
-  const split = await seedSplitSourcing(db, NOW);
-  console.log(
-    `  ${split.customerPo} → ${split.workOrders.join(', ')} · ${split.allocated} of ${split.ordered} units covered, ${split.shortfall} still to buy`,
-  );
-
-  // Overlapping demand across customers, waiting to be pooled. Kept unsourced on
-  // purpose: aggregation starts from open demand, so a fully-sourced seed leaves
-  // the feature with nothing to work on.
-  console.log('Building the overlapping-demand scenario…');
-  const pool = await seedDemandPool(db, NOW);
-  console.log(
-    `  ${pool.customerPos.join(', ')} · shared: ${pool.sharedParts.map((s) => `${s.mpn} ×${s.orders}`).join(', ')}`,
-  );
 
   // A clean one-to-one order held at "supplier PI received", for demos. Seeded
   // last so a reset always leaves it in the same untouched state.

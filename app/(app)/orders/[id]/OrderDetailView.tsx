@@ -1046,8 +1046,7 @@ function OverviewTab({ order }: { order: OrderDetail }) {
         </ul>
       </Panel>
 
-      <SplitSourcingPanel order={order} />
-      <BulkOrderPanel order={order} />
+      <SourcingCoveragePanel order={order} />
 
       <div className="grid min-w-0 gap-4 xl:grid-cols-2">
         <Panel>
@@ -1128,18 +1127,10 @@ function OverviewTab({ order }: { order: OrderDetail }) {
 
         <div className="grid min-w-0 grid-cols-1 gap-4">
           <Panel>
-            <PanelHeader
-              title="Who is involved"
-              description={
-                order.siblings.length > 1
-                  ? `This customer order is split across ${order.siblings.length} suppliers. All of them are shown — scroll sideways for the rest.`
-                  : undefined
-              }
-            />
-            {/* Fixed-width tiles in a horizontal scroller rather than a grid: when
-                a customer order is split across several suppliers the tiles must
-                keep their size and scroll, not shrink until the addresses and
-                registration numbers stop being readable. */}
+            <PanelHeader title="Who is involved" />
+            {/* Fixed-width tiles in a horizontal scroller rather than a grid, so
+                the addresses and registration numbers keep their size on a narrow
+                viewport instead of shrinking until they stop being readable. */}
             <div className="-mx-1 flex min-w-0 snap-x gap-2.5 overflow-x-auto px-1 pb-1">
               <PartyCard
                 stakeholder="CUSTOMER"
@@ -1158,32 +1149,23 @@ function OverviewTab({ order }: { order: OrderDetail }) {
                 ].filter(Boolean) as string[]}
                 fixedWidth
               />
-              {order.siblings.map((s) => (
-                <PartyCard
-                  key={s.id}
-                  stakeholder="SUPPLIER"
-                  name={s.supplier.name}
-                  lines={[
-                    s.supplier.contactName,
-                    s.supplier.contactEmail,
-                    `${s.supplier.city}, ${s.supplier.country}`,
-                    s.supplier.gstin
-                      ? `GSTIN ${s.supplier.gstin}`
-                      : 'Overseas supplier — no GSTIN',
-                  ]}
-                  badges={[
-                    s.supplier.isForeign ? 'Import' : 'Domestic',
-                    s.incoterms,
-                    // Only worth saying when there is more than one to tell apart.
-                    ...(order.siblings.length > 1
-                      ? [s.isThisOrder ? 'This work order' : s.alias]
-                      : []),
-                  ]}
-                  fixedWidth
-                  muted={order.siblings.length > 1 && !s.isThisOrder}
-                  href={s.isThisOrder ? undefined : `/orders/${s.id}`}
-                />
-              ))}
+              <PartyCard
+                stakeholder="SUPPLIER"
+                name={order.supplierPo.supplier.name}
+                lines={[
+                  order.supplierPo.supplier.contactName,
+                  order.supplierPo.supplier.contactEmail,
+                  `${order.supplierPo.supplier.city}, ${order.supplierPo.supplier.country}`,
+                  order.supplierPo.supplier.gstin
+                    ? `GSTIN ${order.supplierPo.supplier.gstin}`
+                    : 'Overseas supplier — no GSTIN',
+                ]}
+                badges={[
+                  order.supplierPo.supplier.isForeign ? 'Import' : 'Domestic',
+                  order.incoterms,
+                ]}
+                fixedWidth
+              />
             </div>
           </Panel>
 
@@ -1372,30 +1354,32 @@ function FlowTab({ order }: { order: OrderDetail }) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * One customer order, several supplier orders.
+ * How much of the customer's order has actually been bought.
  *
- * Shown whenever the customer's order is served by more than one work order, or
- * when part of it has not been bought at all. Without it, three work orders
- * against the same customer PO look like three near-identical duplicates, and
- * the operator on any one of them has no way of knowing that two thirds of the
- * customer's order is somebody else's problem — or that a slice of it is nobody's.
+ * Shown only when there is a gap. The work order covers what we purchased; the
+ * customer ordered some quantity, and those two are not automatically the same
+ * number. An operator looking at a healthy-looking job has no other way of
+ * seeing that a slice of what the customer asked for was never bought at all.
+ *
+ * Coverage is read from `coverageByLine`, which counts allocations against the
+ * CUSTOMER's line — so it stays correct if a line is ever covered by more than
+ * one purchase.
  */
-function SplitSourcingPanel({ order }: { order: OrderDetail }) {
-  const legs = order.siblings;
+function SourcingCoveragePanel({ order }: { order: OrderDetail }) {
   const orderedQty = order.customerPo.lines.reduce((a, l) => a + l.quantity, 0);
-  const coveredQty = legs.reduce((a, s) => a + s.allocatedQty, 0);
+  const coveredQty = order.customerPo.lines.reduce(
+    (a, l) => a + Math.min(l.quantity, order.coverageByLine[l.id] ?? 0),
+    0,
+  );
   const shortfallQty = Math.max(0, orderedQty - coveredQty);
-  const isSplit = legs.length > 1;
 
-  // A single supplier covering the whole order needs no explanation.
-  if (!isSplit && shortfallQty === 0) return null;
+  // Nothing to explain when the whole order was bought.
+  if (shortfallQty === 0) return null;
 
   const pct = (q: number) => (orderedQty > 0 ? (q / orderedQty) * 100 : 0);
   /** Which customer lines are still short, and by how much. */
   const shortLines = order.customerPo.lines
     .map((l) => {
-      // Allocations from every leg, not just this one — the question is whether
-      // the CUSTOMER's line is covered, by anybody.
       const covered = order.coverageByLine[l.id] ?? 0;
       return { l, covered, short: Math.max(0, l.quantity - covered) };
     })
@@ -1404,13 +1388,9 @@ function SplitSourcingPanel({ order }: { order: OrderDetail }) {
   return (
     <Panel>
       <PanelHeader
-        title={isSplit ? `Sourced across ${legs.length} suppliers` : 'Sourcing this customer order'}
+        title="Sourcing this customer order"
         termKey="coverage"
-        description={
-          isSplit
-            ? `${order.customerPo.poNumber} is bought from ${legs.length} suppliers, so it runs as ${legs.length} work orders — one per supplier. They are separate because they move at different speeds: each has its own quote, its own payment terms and its own shipment.`
-            : `Part of ${order.customerPo.poNumber} has not been bought yet.`
-        }
+        description={`Part of ${order.customerPo.poNumber} has not been bought yet.`}
       />
 
       {/* Where the customer's order actually is, in one bar. */}
@@ -1419,306 +1399,59 @@ function SplitSourcingPanel({ order }: { order: OrderDetail }) {
           <span className="text-fg text-[12.5px] font-medium">
             {coveredQty.toLocaleString('en-IN')} of {orderedQty.toLocaleString('en-IN')} units bought
           </span>
-          <span
-            className={cn(
-              'text-[11.5px]',
-              shortfallQty > 0 ? 'text-warning font-medium' : 'text-success',
-            )}
-          >
-            {shortfallQty > 0
-              ? `${shortfallQty.toLocaleString('en-IN')} still to source`
-              : 'Fully sourced'}
+          <span className="text-warning text-[11.5px] font-medium">
+            {shortfallQty.toLocaleString('en-IN')} still to source
           </span>
         </div>
-        {/* Segmented by leg rather than one total bar: the point is that the
-            customer's order is divided, and by how much each way. */}
         <div className="bg-surface-3 flex h-2.5 w-full overflow-hidden rounded-full">
-          {legs.map((s, i) => (
-            <Hint
-              key={s.id}
-              content={
-                <span>
-                  {s.supplier.name} — {s.allocatedQty.toLocaleString('en-IN')} units (
-                  {pct(s.allocatedQty).toFixed(1)}%)
-                </span>
-              }
-            >
-              <span
-                className={cn(
-                  'h-full transition-[width]',
-                  // Ownership, not rank: the leg being viewed is the accent, the
-                  // others are neutral, so the colour never changes meaning as
-                  // the operator moves between siblings.
-                  s.isThisOrder ? 'bg-accent' : 'bg-fg-tertiary/55',
-                  i > 0 && 'border-surface-1 border-l-2',
-                )}
-                style={{ width: `${pct(s.allocatedQty)}%` }}
-              />
-            </Hint>
-          ))}
+          <Hint
+            content={
+              <span>
+                Bought — {coveredQty.toLocaleString('en-IN')} units ({pct(coveredQty).toFixed(1)}%)
+              </span>
+            }
+          >
+            <span className="bg-accent h-full transition-[width]" style={{ width: `${pct(coveredQty)}%` }} />
+          </Hint>
           {/* The gap is drawn, not left as empty track. An unfilled tail reads as
               "the bar ends here"; a warning-toned segment reads as "this part is
               missing", which is what it is. */}
-          {shortfallQty > 0 && (
-            <Hint
-              content={
-                <span>
-                  Not bought from anyone — {shortfallQty.toLocaleString('en-IN')} units (
-                  {pct(shortfallQty).toFixed(1)}%)
-                </span>
-              }
-            >
-              <span
-                className="bg-warning/45 border-surface-1 h-full border-l-2"
-                style={{ width: `${pct(shortfallQty)}%` }}
-              />
-            </Hint>
-          )}
+          <Hint
+            content={
+              <span>
+                Not bought — {shortfallQty.toLocaleString('en-IN')} units (
+                {pct(shortfallQty).toFixed(1)}%)
+              </span>
+            }
+          >
+            <span
+              className="bg-warning/45 border-surface-1 h-full border-l-2"
+              style={{ width: `${pct(shortfallQty)}%` }}
+            />
+          </Hint>
         </div>
       </div>
 
-      {/* One row per leg. */}
-      <ul className="grid gap-2">
-        {legs.map((s) => {
-          const stage = getStage(s.stage);
-          const row = (
-            <>
-              <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <span className="flex min-w-0 flex-wrap items-center gap-1.5">
-                  <MonoId value={s.alias} copyable={false} />
-                  {s.isThisOrder ? (
-                    <Chip tone="accent" size="sm">
-                      You are here
-                    </Chip>
-                  ) : (
-                    <Chip tone="neutral" size="sm">
-                      {s.supplierPoNumber}
-                    </Chip>
-                  )}
-                  <span className="text-fg min-w-0 truncate text-[12.5px] font-medium">
-                    {s.supplier.name}
-                  </span>
-                </span>
-                <span className="text-fg-secondary text-[11.5px]">
-                  {stage ? `${stage.code} · ${stage.label}` : s.stage}
-                  <span className="text-fg-tertiary">
-                    {' · '}
-                    {PAYMENT_METHOD_META[s.paymentMethod as 'ESCROW']?.label ?? s.paymentMethod}
-                    {' · '}
-                    {s.incoterms}
-                  </span>
-                </span>
-              </span>
-              <span className="flex shrink-0 flex-col items-end gap-0.5">
-                <span className="tnum text-fg text-[12.5px] font-medium">
-                  {s.allocatedQty.toLocaleString('en-IN')} units
-                </span>
-                <span className="text-fg-tertiary tnum text-[11px]">
-                  {pct(s.allocatedQty).toFixed(1)}% · <Money amount={s.sellValue} withCode={false} />
-                </span>
-              </span>
-            </>
-          );
-          return (
-            <li key={s.id} className="min-w-0">
-              {s.isThisOrder ? (
-                <div className="border-accent-border bg-accent-subtle flex min-w-0 items-center gap-3 rounded-[9px] border px-3 py-2">
-                  {row}
-                </div>
-              ) : (
-                <Link
-                  href={`/orders/${s.id}`}
-                  className="border-line-subtle hover:bg-surface-3 hover:border-line flex min-w-0 items-center gap-3 rounded-[9px] border px-3 py-2 transition-colors"
-                >
-                  {row}
-                </Link>
-              )}
+      <div className="border-warning/40 bg-warning-subtle rounded-[9px] border px-3 py-2.5">
+        <div className="text-warning flex items-center gap-1.5 text-[12px] font-semibold">
+          <AlertTriangle className="size-3.5 shrink-0" aria-hidden />
+          {shortfallQty.toLocaleString('en-IN')} units have not been bought
+        </div>
+        <ul className="text-fg-secondary mt-1.5 grid gap-0.5 text-[11.5px] leading-relaxed">
+          {shortLines.map(({ l, covered, short }) => (
+            <li key={l.id} className="min-w-0">
+              <span className="font-mono text-[11px]">{l.mpn}</span> — {short.toLocaleString('en-IN')}{' '}
+              of {l.quantity.toLocaleString('en-IN')} not bought
+              {covered > 0 ? ` (${covered.toLocaleString('en-IN')} covered)` : ' (nothing bought yet)'}
             </li>
-          );
-        })}
-      </ul>
-
-      {shortfallQty > 0 && (
-        <div className="border-warning/40 bg-warning-subtle mt-3 rounded-[9px] border px-3 py-2.5">
-          <div className="text-warning flex items-center gap-1.5 text-[12px] font-semibold">
-            <AlertTriangle className="size-3.5 shrink-0" aria-hidden />
-            {shortfallQty.toLocaleString('en-IN')} units are on no work order at all
-          </div>
-          <ul className="text-fg-secondary mt-1.5 grid gap-0.5 text-[11.5px] leading-relaxed">
-            {shortLines.map(({ l, covered, short }) => (
-              <li key={l.id} className="min-w-0">
-                <span className="font-mono text-[11px]">{l.mpn}</span> — {short.toLocaleString('en-IN')}{' '}
-                of {l.quantity.toLocaleString('en-IN')} not bought
-                {covered > 0 ? ` (${covered.toLocaleString('en-IN')} covered)` : ' (nothing bought yet)'}
-              </li>
-            ))}
-          </ul>
-          <p className="text-fg-tertiary mt-1.5 text-[11.5px] leading-relaxed">
-            Normal while sourcing is still in progress. It becomes a problem if the gap is still open
-            near {formatDate(order.customerPo.requestedDeliveryDate)}, the date the customer wants
-            delivery. Close it from Created Purchase Orders → the customer order&rsquo;s sourcing view.
-          </p>
-        </div>
-      )}
-    </Panel>
-  );
-}
-
-/**
- * The other direction: several customer orders sharing ONE supplier order.
- *
- * SplitSourcingPanel answers "who else is supplying this customer". This answers
- * "who else is on our order" — the demand-aggregation case. Without it, a work
- * order looks like a normal single-customer job and nobody knows that a delay on
- * the shared shipment lands on four other customers too.
- */
-function BulkOrderPanel({ order }: { order: OrderDetail }) {
-  const peers = order.bulkPeers;
-  // A supplier order serving one customer needs no explanation.
-  if (peers.length <= 1) return null;
-
-  const totalUnits = peers.reduce((a, p) => a + p.allocatedQty, 0);
-  const mine = peers.find((p) => p.isThisOrder);
-  const others = peers.filter((p) => !p.isThisOrder);
-  const customers = new Set(peers.map((p) => p.customerName)).size;
-  const pct = (q: number) => (totalUnits > 0 ? (q / totalUnits) * 100 : 0);
-
-  return (
-    <Panel>
-      <PanelHeader
-        title={`One supplier order shared with ${others.length} other customer order${others.length === 1 ? '' : 's'}`}
-        termKey="coverage"
-        description={
-          order.aggregation
-            ? `${order.supplierPo.poNumber} was raised from demand aggregation ${order.aggregation.reference}, pooling ${peers.length} customer orders across ${customers} customer${customers === 1 ? '' : 's'} to buy at volume. Each keeps its own job, quote and delivery — only the buying was combined.`
-            : `${order.supplierPo.poNumber} covers ${peers.length} customer orders. Each keeps its own job, quote and delivery — only the buying is shared.`
-        }
-        actions={
-          order.aggregation ? (
-            <Link
-              href={`/demand-aggregation?pool=${order.aggregation.id}`}
-              className="border-line-subtle text-fg-secondary hover:bg-surface-3 rounded-[7px] border px-2 py-1 text-[11.5px] transition-colors"
-            >
-              Open the pool
-            </Link>
-          ) : undefined
-        }
-      />
-
-      {/* Why the consolidation happened. The first question anyone asks when
-          they find their customer's parts on somebody else's purchase order. */}
-      {order.aggregation && (
-        <div className="border-accent-border bg-accent-subtle mb-3 rounded-[9px] border px-3 py-2.5">
-          <SectionLabel>Why these orders were pooled</SectionLabel>
-          <p className="text-fg text-[12.5px] leading-relaxed">{order.aggregation.rationale}</p>
-          <p className="text-fg-tertiary mt-1.5 text-[11.5px]">
-            {order.aggregation.title} · {order.aggregation.createdBy}
-            {order.aggregation.floatedAt ? ` · ${formatDate(order.aggregation.floatedAt)}` : ''}
-          </p>
-        </div>
-      )}
-
-      {/* Share of the shared order. */}
-      <div className="mb-3">
-        <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-          <span className="text-fg text-[12.5px] font-medium">
-            {mine ? `${mine.allocatedQty.toLocaleString('en-IN')} of ` : ''}
-            {totalUnits.toLocaleString('en-IN')} units on {order.supplierPo.poNumber}
-          </span>
-          {mine && (
-            <span className="text-accent-text text-[11.5px] font-medium">
-              This order is {pct(mine.allocatedQty).toFixed(1)}% of it
-            </span>
-          )}
-        </div>
-        <div className="bg-surface-3 flex h-2.5 w-full overflow-hidden rounded-full">
-          {peers.map((p, i) => (
-            <Hint
-              key={p.id}
-              content={
-                <span>
-                  {p.customerPoNumber} · {p.customerName} — {p.allocatedQty.toLocaleString('en-IN')}{' '}
-                  units ({pct(p.allocatedQty).toFixed(1)}%)
-                </span>
-              }
-            >
-              <span
-                className={cn(
-                  'h-full',
-                  // Same rule as the split panel: the accent marks the order being
-                  // viewed, never a rank, so colour keeps its meaning as you move
-                  // between peers.
-                  p.isThisOrder ? 'bg-accent' : 'bg-fg-tertiary/55',
-                  i > 0 && 'border-surface-1 border-l-2',
-                )}
-                style={{ width: `${pct(p.allocatedQty)}%` }}
-              />
-            </Hint>
           ))}
-        </div>
+        </ul>
+        <p className="text-fg-tertiary mt-1.5 text-[11.5px] leading-relaxed">
+          Normal while sourcing is still in progress. It becomes a problem if the gap is still open
+          near {formatDate(order.customerPo.requestedDeliveryDate)}, the date the customer wants
+          delivery. Close it from Created Purchase Orders → the customer order&rsquo;s sourcing view.
+        </p>
       </div>
-
-      <ul className="grid gap-2">
-        {peers.map((p) => {
-          const stage = getStage(p.stage);
-          const row = (
-            <>
-              <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <span className="flex min-w-0 flex-wrap items-center gap-1.5">
-                  <MonoId value={p.alias} copyable={false} />
-                  {p.isThisOrder ? (
-                    <Chip tone="accent" size="sm">
-                      You are here
-                    </Chip>
-                  ) : (
-                    <Chip tone="neutral" size="sm">
-                      {p.customerPoNumber}
-                    </Chip>
-                  )}
-                  <span className="text-fg min-w-0 truncate text-[12.5px] font-medium">
-                    {p.customerName}
-                  </span>
-                </span>
-                <span className="text-fg-secondary text-[11.5px]">
-                  {stage ? `${stage.code} · ${stage.label}` : p.stage}
-                  <span className="text-fg-tertiary"> · {p.status.toLowerCase()}</span>
-                </span>
-              </span>
-              <span className="flex shrink-0 flex-col items-end gap-0.5">
-                <span className="tnum text-fg text-[12.5px] font-medium">
-                  {p.allocatedQty.toLocaleString('en-IN')} units
-                </span>
-                <span className="text-fg-tertiary tnum text-[11px]">
-                  {pct(p.allocatedQty).toFixed(1)}% · <Money amount={p.sellValue} withCode={false} />
-                </span>
-              </span>
-            </>
-          );
-          return (
-            <li key={p.id} className="min-w-0">
-              {p.isThisOrder ? (
-                <div className="border-accent-border bg-accent-subtle flex min-w-0 items-center gap-3 rounded-[9px] border px-3 py-2">
-                  {row}
-                </div>
-              ) : (
-                <Link
-                  href={`/orders/${p.id}`}
-                  className="border-line-subtle hover:bg-surface-3 hover:border-line flex min-w-0 items-center gap-3 rounded-[9px] border px-3 py-2 transition-colors"
-                >
-                  {row}
-                </Link>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-
-      {/* The consequence nobody thinks about until it happens. */}
-      <p className="text-fg-tertiary mt-3 text-[11.5px] leading-relaxed">
-        These jobs move independently — each has its own quote, invoice and delivery — but they share
-        one inbound shipment. A delay, a customs hold or a failed inspection on{' '}
-        {order.supplierPo.poNumber} lands on all {peers.length} of them at once.
-      </p>
     </Panel>
   );
 }
@@ -1743,11 +1476,10 @@ function LineItemsTab({ order }: { order: OrderDetail }) {
     .filter((r): r is NonNullable<typeof r> => r !== null)
     .sort((a, b) => a.cl.lineNo - b.cl.lineNo || a.sl.lineNo - b.sl.lineNo);
 
-  // Customer lines this job does not touch at all — they belong to a sibling.
+  // Customer lines this job does not touch at all — nothing was bought for them.
   const untouched = order.customerPo.lines.filter(
     (l) => !order.mappings.some((m) => m.customerPoLineId === l.id),
   );
-  const isSplit = order.siblings.length > 1;
   const allocatedTotal = rows.reduce((a, r) => a + r.m.allocatedQty, 0);
 
   return (
@@ -1755,11 +1487,8 @@ function LineItemsTab({ order }: { order: OrderDetail }) {
       <div className="p-4 pb-0">
         <PanelHeader
           title="Parts on this order"
-          description={
-            isSplit
-              ? 'What this job is responsible for. The customer ordered more of some lines than this supplier is covering — the rest sits on the other work orders against the same customer order.'
-              : 'Customer side and supplier side, mapped line by line with the margin on each.'
-          }
+          description="Customer side and supplier side, mapped line by line with the margin on each."
+
         />
       </div>
       <div className="overflow-x-auto">
@@ -1771,7 +1500,6 @@ function LineItemsTab({ order }: { order: OrderDetail }) {
               <Th align="right" termKey="quantity">
                 Qty on this order
               </Th>
-              {isSplit && <Th align="right">Customer ordered</Th>}
               <Th align="right" termKey="unitPrice">
                 Sell price
               </Th>
@@ -1787,12 +1515,6 @@ function LineItemsTab({ order }: { order: OrderDetail }) {
               const buyInInr = sl.unitPrice * order.fxRate;
               const marginPerUnit = cl.unitPrice - buyInInr;
               const marginPct = cl.unitPrice > 0 ? (marginPerUnit / cl.unitPrice) * 100 : 0;
-              // "Elsewhere" and "not bought" are different facts and must not be
-              // conflated: one is another team's problem, the other is nobody's
-              // yet. The total across all legs is what tells them apart.
-              const coveredAll = order.coverageByLine[cl.id] ?? m.allocatedQty;
-              const elsewhere = Math.max(0, coveredAll - m.allocatedQty);
-              const unbought = Math.max(0, cl.quantity - coveredAll);
               return (
                 <tr key={m.id} className="border-line-subtle border-b last:border-0">
                   <td className="px-3 py-2">
@@ -1803,21 +1525,6 @@ function LineItemsTab({ order }: { order: OrderDetail }) {
                   <td className="tnum px-3 py-2 text-right">
                     {m.allocatedQty.toLocaleString('en-IN')}
                   </td>
-                  {isSplit && (
-                    <td className="tnum text-fg-secondary px-3 py-2 text-right">
-                      {cl.quantity.toLocaleString('en-IN')}
-                      {elsewhere > 0 && (
-                        <span className="text-fg-tertiary block text-[10.5px] whitespace-nowrap">
-                          {elsewhere.toLocaleString('en-IN')} on another order
-                        </span>
-                      )}
-                      {unbought > 0 && (
-                        <span className="text-warning block text-[10.5px] whitespace-nowrap">
-                          {unbought.toLocaleString('en-IN')} not bought
-                        </span>
-                      )}
-                    </td>
-                  )}
                   <td className="tnum px-3 py-2 text-right">{cl.unitPrice}</td>
                   <td className="tnum px-3 py-2 text-right">
                     {order.supplierPo.currency} {sl.unitPrice}
@@ -1862,19 +1569,11 @@ function LineItemsTab({ order }: { order: OrderDetail }) {
                 </td>
                 <td className="px-3 py-2 font-mono text-[11.5px]">{l.hsnCode}</td>
                 <td className="text-fg-tertiary px-3 py-2 text-right text-[11.5px]">—</td>
-                {isSplit && (
-                  <td className="tnum text-fg-secondary px-3 py-2 text-right">
-                    {l.quantity.toLocaleString('en-IN')}
-                  </td>
-                )}
-                {/* colSpan 6 lands on the last column either way: 3 leading cells
-                    of 9 without the ordered column, 4 of 10 with it. */}
+                {/* 3 leading cells of 9, so colSpan 6 reaches the last column. */}
                 <td className="text-fg-tertiary px-3 py-2 text-right text-[11.5px]" colSpan={6}>
                   {coveredAll === 0
                     ? `Nothing bought against this line yet — ${l.quantity.toLocaleString('en-IN')} still to source`
-                    : coveredAll < l.quantity
-                      ? `Not on this order — ${coveredAll.toLocaleString('en-IN')} bought elsewhere, ${(l.quantity - coveredAll).toLocaleString('en-IN')} still to source`
-                      : 'Not on this order — fully covered by another work order against the same customer order'}
+                    : `Not on this order — ${coveredAll.toLocaleString('en-IN')} bought, ${Math.max(0, l.quantity - coveredAll).toLocaleString('en-IN')} still to source`}
                 </td>
               </tr>
               );
@@ -1888,11 +1587,6 @@ function LineItemsTab({ order }: { order: OrderDetail }) {
               <td className="tnum px-3 py-2 text-right">
                 {allocatedTotal.toLocaleString('en-IN')}
               </td>
-              {isSplit && (
-                <td className="tnum text-fg-secondary px-3 py-2 text-right">
-                  {order.customerPo.lines.reduce((a, l) => a + l.quantity, 0).toLocaleString('en-IN')}
-                </td>
-              )}
               <td />
               <td />
               <td className="tnum px-3 py-2 text-right">

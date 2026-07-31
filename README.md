@@ -20,7 +20,7 @@ npm install
 cp .env.example .env
 npx prisma db push        # create the SQLite file
 npx prisma generate       # build the client into lib/generated/prisma
-npm run seed              # demo data — masters, orders, four scenarios
+npm run seed              # demo data — masters, orders, the demo order
 npm run dev               # http://localhost:4100
 ```
 
@@ -28,7 +28,7 @@ npm run dev               # http://localhost:4100
 |---|---|
 | `npm run dev` | Dev server on **:4100** |
 | `npm run typecheck` | `tsc --noEmit` |
-| `npm test` | Vitest — **201 tests**, all pure domain logic |
+| `npm test` | Vitest — **170 tests**, all pure domain logic |
 | `npm run lint` | ESLint |
 | `npm run seed` | Rebuild the whole demo database |
 | `npm run db:push` | Apply `schema.prisma` to SQLite |
@@ -94,7 +94,7 @@ changes from what most people have memorised. Read the relevant guide in
 | File | What it is |
 |---|---|
 | [`CONTEXT.md`](CONTEXT.md) | Engineering context — architecture, rules, domain model, known gaps |
-| `database-design.html` | 63 tables, 13 ERDs with crow's-foot notation, two-level DFD, searchable. Open in any browser; fully self-contained |
+| `database-design.html` | 60 tables, 12 ERDs with crow's-foot notation, two-level DFD, searchable. Open in any browser; fully self-contained |
 | `1BUY-Fulfilment-Platform.docx` | Problem statement, objectives, methodology, full user guide, every field |
 | [`scripts/docs/`](scripts/docs) | The generators for the two above |
 
@@ -118,7 +118,7 @@ lib/
   queries/        server-side reads
   tax/            GST engine + landed cost
   adapters/       three-mode integration layer (mock / manual / live)
-prisma/           schema.prisma (63 models) + seeds
+prisma/           schema.prisma (60 models) + seeds
 ```
 
 ### The core idea

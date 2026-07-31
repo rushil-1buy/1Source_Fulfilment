@@ -174,7 +174,7 @@
   <aside>
     <h1>Database design</h1>
     <p class="sub">1BUY Fulfilment Platform</p>
-    <ul><li><a href="#g-diagrams">Diagrams</a> <span class="n">ERD · DFD</span></li><li><a href="#g-identity">Identity &amp; configuration</a> <span class="n">5</span></li><li><a href="#g-integrations">Integrations</a> <span class="n">2</span></li><li><a href="#g-masters">Master data</a> <span class="n">8</span></li><li><a href="#g-orders">Orders, quotes &amp; the work order</a> <span class="n">9</span></li><li><a href="#g-escrow">Escrow</a> <span class="n">4</span></li><li><a href="#g-testing">Independent testing</a> <span class="n">3</span></li><li><a href="#g-logistics">Logistics</a> <span class="n">3</span></li><li><a href="#g-customs">Customs</a> <span class="n">3</span></li><li><a href="#g-warehouse">Receipt, inspection &amp; value-add</a> <span class="n">5</span></li><li><a href="#g-tax">Tax &amp; statutory</a> <span class="n">7</span></li><li><a href="#g-evidence">Evidence, flow overlays &amp; audit</a> <span class="n">6</span></li><li><a href="#g-ops">Communication, tasks &amp; exceptions</a> <span class="n">5</span></li><li><a href="#g-aggregation">Demand aggregation</a> <span class="n">3</span></li></ul>
+    <ul><li><a href="#g-diagrams">Diagrams</a> <span class="n">ERD · DFD</span></li><li><a href="#g-identity">Identity &amp; configuration</a> <span class="n">5</span></li><li><a href="#g-integrations">Integrations</a> <span class="n">2</span></li><li><a href="#g-masters">Master data</a> <span class="n">8</span></li><li><a href="#g-orders">Orders, quotes &amp; the work order</a> <span class="n">9</span></li><li><a href="#g-escrow">Escrow</a> <span class="n">4</span></li><li><a href="#g-testing">Independent testing</a> <span class="n">3</span></li><li><a href="#g-logistics">Logistics</a> <span class="n">3</span></li><li><a href="#g-customs">Customs</a> <span class="n">3</span></li><li><a href="#g-warehouse">Receipt, inspection &amp; value-add</a> <span class="n">5</span></li><li><a href="#g-tax">Tax &amp; statutory</a> <span class="n">7</span></li><li><a href="#g-evidence">Evidence, flow overlays &amp; audit</a> <span class="n">6</span></li><li><a href="#g-ops">Communication, tasks &amp; exceptions</a> <span class="n">5</span></li></ul>
     <ul style="margin-top:14px;border-top:1px solid var(--line);padding-top:10px">
       <li><a href="#raw">Raw schema</a></li>
     </ul>
@@ -188,12 +188,12 @@
     </div>
 
     <div class="stats">
-      <div class="stat"><b>63</b><span>Tables</span></div>
-      <div class="stat"><b>915</b><span>Columns</span></div>
-      <div class="stat"><b>77</b><span>Foreign keys</span></div>
-      <div class="stat"><b>154</b><span>Relation fields</span></div>
-      <div class="stat"><b>38</b><span>Unique constraints</span></div>
-      <div class="stat"><b>12</b><span>Composite indexes</span></div>
+      <div class="stat"><b>60</b><span>Tables</span></div>
+      <div class="stat"><b>881</b><span>Columns</span></div>
+      <div class="stat"><b>72</b><span>Foreign keys</span></div>
+      <div class="stat"><b>144</b><span>Relation fields</span></div>
+      <div class="stat"><b>34</b><span>Unique constraints</span></div>
+      <div class="stat"><b>10</b><span>Composite indexes</span></div>
     </div>
 
     <div class="note">
@@ -213,7 +213,7 @@
 
     <section class="group" id="g-diagrams">
       <h2>Diagrams</h2>
-      <p class="blurb">An entity-relationship diagram of the order spine and a two-level data-flow diagram. Per-domain ERDs sit at the head of each section below, so no single canvas has to carry 63 entities.</p>
+      <p class="blurb">An entity-relationship diagram of the order spine and a two-level data-flow diagram. Per-domain ERDs sit at the head of each section below, so no single canvas has to carry 60 entities.</p>
 
       <div class="legend">
         <b>Crow's foot notation</b>
@@ -225,7 +225,7 @@
 
       <figure class="fig">
         <div class="figscroll"><svg viewBox="0 0 1516 437" class="erd" role="img" aria-label="Entity relationship diagram"><g class="rel"><path d="M252,60.5 H284 V68 H316" class="rl"/><path d="M241,54.5 L241,66.5" class="cf"/><path d="M332,68 L321,62 M332,68 L321,68 M332,68 L321,74" class="cf"/><path d="M317,62 L317,74" class="cf"/><title>Customer 1 → CustomerPO many (customerId)</title></g><g class="rel"><path d="M568,68 H600 V68 H632" class="rl"/><path d="M557,62 L557,74" class="cf"/><path d="M648,68 L637,62 M648,68 L637,68 M648,68 L637,74" class="cf"/><path d="M633,62 L633,74" class="cf"/><title>CustomerPO 1 → CustomerPOLine many (customerPoId, on delete Cascade)</title></g><g class="rel"><path d="M568,68 H600 V205.5 H632" class="rl"/><path d="M557,62 L557,74" class="cf"/><path d="M648,205.5 L637,199.5 M648,205.5 L637,205.5 M648,205.5 L637,211.5" class="cf"/><circle cx="629.5" cy="205.5" r="3.5" class="cf-o"/><title>CustomerPO 1 → ProformaInvoice many (customerPoId)</title></g><g class="rel"><path d="M568,198 H600 V205.5 H632" class="rl"/><path d="M557,192 L557,204" class="cf"/><path d="M648,205.5 L637,199.5 M648,205.5 L637,205.5 M648,205.5 L637,211.5" class="cf"/><circle cx="629.5" cy="205.5" r="3.5" class="cf-o"/><title>SupplierPO 1 → ProformaInvoice many (supplierPoId)</title></g><g class="rel"><path d="M252,175.5 H284 V198 H316" class="rl"/><path d="M241,169.5 L241,181.5" class="cf"/><path d="M332,198 L321,192 M332,198 L321,198 M332,198 L321,204" class="cf"/><path d="M317,192 L317,204" class="cf"/><title>Supplier 1 → SupplierPO many (supplierId)</title></g><g class="rel"><path d="M568,198 H600 V343 H632" class="rl"/><path d="M557,192 L557,204" class="cf"/><path d="M648,343 L637,337 M648,343 L637,343 M648,343 L637,349" class="cf"/><path d="M633,337 L633,349" class="cf"/><title>SupplierPO 1 → SupplierPOLine many (supplierPoId, on delete Cascade)</title></g><g class="rel"><path d="M1200,90.5 H1232 V83 H1264" class="rl"/><path d="M1189,84.5 L1189,96.5" class="cf"/><path d="M1280,83 L1269,77 M1280,83 L1269,83 M1280,83 L1269,89" class="cf"/><path d="M1265,77 L1265,89" class="cf"/><title>WorkOrder 1 → POLinkMapping many (workOrderId, on delete Cascade)</title></g><g class="rel"><path d="M884,68 H1074 V83 H1264" class="rl"/><path d="M873,62 L873,74" class="cf"/><path d="M1280,83 L1269,77 M1280,83 L1269,83 M1280,83 L1269,89" class="cf"/><path d="M1265,77 L1265,89" class="cf"/><title>CustomerPOLine 1 → POLinkMapping many (customerPoLineId)</title></g><g class="rel"><path d="M884,343 H1074 V83 H1264" class="rl"/><path d="M873,337 L873,349" class="cf"/><path d="M1280,83 L1269,77 M1280,83 L1269,83 M1280,83 L1269,89" class="cf"/><path d="M1265,77 L1265,89" class="cf"/><title>SupplierPOLine 1 → POLinkMapping many (supplierPoLineId)</title></g><g class="rel"><path d="M568,68 H758 V90.5 H948" class="rl"/><path d="M557,62 L557,74" class="cf"/><path d="M964,90.5 L953,84.5 M964,90.5 L953,90.5 M964,90.5 L953,96.5" class="cf"/><path d="M949,84.5 L949,96.5" class="cf"/><title>CustomerPO 1 → WorkOrder many (customerPoId)</title></g><g class="rel"><path d="M884,205.5 H916 V90.5 H948" class="rl"/><path d="M873,199.5 L873,211.5" class="cf"/><path d="M964,90.5 L953,84.5 M964,90.5 L953,90.5 M964,90.5 L953,96.5" class="cf"/><circle cx="945.5" cy="90.5" r="3.5" class="cf-o"/><title>ProformaInvoice 1 → WorkOrder many (customerPiId)</title></g><g class="rel"><path d="M568,198 H758 V90.5 H948" class="rl"/><path d="M557,192 L557,204" class="cf"/><path d="M964,90.5 L953,84.5 M964,90.5 L953,90.5 M964,90.5 L953,96.5" class="cf"/><path d="M949,84.5 L949,96.5" class="cf"/><title>SupplierPO 1 → WorkOrder many (supplierPoId)</title></g><g class="rel"><path d="M884,205.5 H916 V90.5 H948" class="rl"/><path d="M873,199.5 L873,211.5" class="cf"/><path d="M964,90.5 L953,84.5 M964,90.5 L953,90.5 M964,90.5 L953,96.5" class="cf"/><circle cx="945.5" cy="90.5" r="3.5" class="cf-o"/><title>ProformaInvoice 1 → WorkOrder many (supplierPiId)</title></g><g class="rel"><path d="M1200,90.5 H1232 V235.5 H1264" class="rl"/><path d="M1189,84.5 L1189,96.5" class="cf"/><path d="M1280,235.5 L1269,229.5 M1280,235.5 L1269,235.5 M1280,235.5 L1269,241.5" class="cf"/><path d="M1265,229.5 L1265,241.5" class="cf"/><title>WorkOrder 1 → StageTransition many (workOrderId, on delete Cascade)</title></g><g class="ent"><rect x="16" y="16" width="220" height="89" rx="5"/><rect x="16" y="16" width="220" height="22" rx="5" class="ehead"/><rect x="16" y="33" width="220" height="5" class="ehead"/><text x="126" y="31" text-anchor="middle" class="en">Customer</text><text x="23" y="49" class="ek">PK</text><text x="42" y="49" class="ef key">id</text><text x="229" y="49" class="et" text-anchor="end">String</text><text x="23" y="64" class="ek"></text><text x="42" y="64" class="ef">code</text><text x="229" y="64" class="et" text-anchor="end">String</text><text x="23" y="79" class="ek"></text><text x="42" y="79" class="ef">name</text><text x="229" y="79" class="et" text-anchor="end">String</text><text x="23" y="94" class="ek"></text><text x="42" y="94" class="ef">gstin</text><text x="229" y="94" class="et" text-anchor="end">String?</text></g><g class="ent"><rect x="332" y="16" width="220" height="104" rx="5"/><rect x="332" y="16" width="220" height="22" rx="5" class="ehead"/><rect x="332" y="33" width="220" height="5" class="ehead"/><text x="442" y="31" text-anchor="middle" class="en">CustomerPO</text><text x="339" y="49" class="ek">PK</text><text x="358" y="49" class="ef key">id</text><text x="545" y="49" class="et" text-anchor="end">String</text><text x="339" y="64" class="ek">FK</text><text x="358" y="64" class="ef key">customerId</text><text x="545" y="64" class="et" text-anchor="end">→ Customer</text><text x="339" y="79" class="ek"></text><text x="358" y="79" class="ef">poNumber</text><text x="545" y="79" class="et" text-anchor="end">String</text><text x="339" y="94" class="ek"></text><text x="358" y="94" class="ef">poDate</text><text x="545" y="94" class="et" text-anchor="end">DateTime</text><text x="339" y="109" class="ek"></text><text x="358" y="109" class="ef">currency</text><text x="545" y="109" class="et" text-anchor="end">String</text></g><g class="ent"><rect x="648" y="16" width="220" height="104" rx="5"/><rect x="648" y="16" width="220" height="22" rx="5" class="ehead"/><rect x="648" y="33" width="220" height="5" class="ehead"/><text x="758" y="31" text-anchor="middle" class="en">CustomerPOLine</text><text x="655" y="49" class="ek">PK</text><text x="674" y="49" class="ef key">id</text><text x="861" y="49" class="et" text-anchor="end">String</text><text x="655" y="64" class="ek">FK</text><text x="674" y="64" class="ef key">customerPoId</text><text x="861" y="64" class="et" text-anchor="end">→ CustomerPO</text><text x="655" y="79" class="ek"></text><text x="674" y="79" class="ef">lineNo</text><text x="861" y="79" class="et" text-anchor="end">Int</text><text x="655" y="94" class="ek"></text><text x="674" y="94" class="ef">mpn</text><text x="861" y="94" class="et" text-anchor="end">String</text><text x="655" y="109" class="ek"></text><text x="674" y="109" class="ef">manufacturer</text><text x="861" y="109" class="et" text-anchor="end">String</text></g><g class="ent"><rect x="648" y="146" width="220" height="119" rx="5"/><rect x="648" y="146" width="220" height="22" rx="5" class="ehead"/><rect x="648" y="163" width="220" height="5" class="ehead"/><text x="758" y="161" text-anchor="middle" class="en">ProformaInvoice</text><text x="655" y="179" class="ek">PK</text><text x="674" y="179" class="ef key">id</text><text x="861" y="179" class="et" text-anchor="end">String</text><text x="655" y="194" class="ek">FK</text><text x="674" y="194" class="ef key">customerPoId</text><text x="861" y="194" class="et" text-anchor="end">→ CustomerPO</text><text x="655" y="209" class="ek">FK</text><text x="674" y="209" class="ef key">supplierPoId</text><text x="861" y="209" class="et" text-anchor="end">→ SupplierPO</text><text x="655" y="224" class="ek"></text><text x="674" y="224" class="ef">piNumber</text><text x="861" y="224" class="et" text-anchor="end">String</text><text x="655" y="239" class="ek"></text><text x="674" y="239" class="ef">direction</text><text x="861" y="239" class="et" text-anchor="end">String</text><text x="655" y="254" class="ek"></text><text x="674" y="254" class="ef">piDate</text><text x="861" y="254" class="et" text-anchor="end">DateTime</text></g><g class="ent"><rect x="16" y="131" width="220" height="89" rx="5"/><rect x="16" y="131" width="220" height="22" rx="5" class="ehead"/><rect x="16" y="148" width="220" height="5" class="ehead"/><text x="126" y="146" text-anchor="middle" class="en">Supplier</text><text x="23" y="164" class="ek">PK</text><text x="42" y="164" class="ef key">id</text><text x="229" y="164" class="et" text-anchor="end">String</text><text x="23" y="179" class="ek"></text><text x="42" y="179" class="ef">code</text><text x="229" y="179" class="et" text-anchor="end">String</text><text x="23" y="194" class="ek"></text><text x="42" y="194" class="ef">name</text><text x="229" y="194" class="et" text-anchor="end">String</text><text x="23" y="209" class="ek"></text><text x="42" y="209" class="ef">gstin</text><text x="229" y="209" class="et" text-anchor="end">String?</text></g><g class="ent"><rect x="332" y="146" width="220" height="104" rx="5"/><rect x="332" y="146" width="220" height="22" rx="5" class="ehead"/><rect x="332" y="163" width="220" height="5" class="ehead"/><text x="442" y="161" text-anchor="middle" class="en">SupplierPO</text><text x="339" y="179" class="ek">PK</text><text x="358" y="179" class="ef key">id</text><text x="545" y="179" class="et" text-anchor="end">String</text><text x="339" y="194" class="ek">FK</text><text x="358" y="194" class="ef key">supplierId</text><text x="545" y="194" class="et" text-anchor="end">→ Supplier</text><text x="339" y="209" class="ek"></text><text x="358" y="209" class="ef">poNumber</text><text x="545" y="209" class="et" text-anchor="end">String</text><text x="339" y="224" class="ek"></text><text x="358" y="224" class="ef">poDate</text><text x="545" y="224" class="et" text-anchor="end">DateTime</text><text x="339" y="239" class="ek"></text><text x="358" y="239" class="ef">currency</text><text x="545" y="239" class="et" text-anchor="end">String</text></g><g class="ent"><rect x="648" y="291" width="220" height="104" rx="5"/><rect x="648" y="291" width="220" height="22" rx="5" class="ehead"/><rect x="648" y="308" width="220" height="5" class="ehead"/><text x="758" y="306" text-anchor="middle" class="en">SupplierPOLine</text><text x="655" y="324" class="ek">PK</text><text x="674" y="324" class="ef key">id</text><text x="861" y="324" class="et" text-anchor="end">String</text><text x="655" y="339" class="ek">FK</text><text x="674" y="339" class="ef key">supplierPoId</text><text x="861" y="339" class="et" text-anchor="end">→ SupplierPO</text><text x="655" y="354" class="ek"></text><text x="674" y="354" class="ef">lineNo</text><text x="861" y="354" class="et" text-anchor="end">Int</text><text x="655" y="369" class="ek"></text><text x="674" y="369" class="ef">mpn</text><text x="861" y="369" class="et" text-anchor="end">String</text><text x="655" y="384" class="ek"></text><text x="674" y="384" class="ef">manufacturer</text><text x="861" y="384" class="et" text-anchor="end">String</text></g><g class="ent"><rect x="1280" y="16" width="220" height="134" rx="5"/><rect x="1280" y="16" width="220" height="22" rx="5" class="ehead"/><rect x="1280" y="33" width="220" height="5" class="ehead"/><text x="1390" y="31" text-anchor="middle" class="en">POLinkMapping</text><text x="1287" y="49" class="ek">PK</text><text x="1306" y="49" class="ef key">id</text><text x="1493" y="49" class="et" text-anchor="end">String</text><text x="1287" y="64" class="ek">FK</text><text x="1306" y="64" class="ef key">workOrderId</text><text x="1493" y="64" class="et" text-anchor="end">→ WorkOrder</text><text x="1287" y="79" class="ek">FK</text><text x="1306" y="79" class="ef key">customerPoLineId</text><text x="1493" y="79" class="et" text-anchor="end">→ CustomerPOLine</text><text x="1287" y="94" class="ek">FK</text><text x="1306" y="94" class="ef key">supplierPoLineId</text><text x="1493" y="94" class="et" text-anchor="end">→ SupplierPOLine</text><text x="1287" y="109" class="ek"></text><text x="1306" y="109" class="ef">allocatedQty</text><text x="1493" y="109" class="et" text-anchor="end">Int</text><text x="1287" y="124" class="ek"></text><text x="1306" y="124" class="ef">sellUnitPrice</text><text x="1493" y="124" class="et" text-anchor="end">Float</text><text x="1287" y="139" class="ek"></text><text x="1306" y="139" class="ef">buyUnitPrice</text><text x="1493" y="139" class="et" text-anchor="end">Float</text></g><g class="ent"><rect x="964" y="16" width="220" height="149" rx="5"/><rect x="964" y="16" width="220" height="22" rx="5" class="ehead"/><rect x="964" y="33" width="220" height="5" class="ehead"/><text x="1074" y="31" text-anchor="middle" class="en">WorkOrder</text><text x="971" y="49" class="ek">PK</text><text x="990" y="49" class="ef key">id</text><text x="1177" y="49" class="et" text-anchor="end">String</text><text x="971" y="64" class="ek">FK</text><text x="990" y="64" class="ef key">customerPoId</text><text x="1177" y="64" class="et" text-anchor="end">→ CustomerPO</text><text x="971" y="79" class="ek">FK</text><text x="990" y="79" class="ef key">customerPiId</text><text x="1177" y="79" class="et" text-anchor="end">→ ProformaInvoice</text><text x="971" y="94" class="ek">FK</text><text x="990" y="94" class="ef key">supplierPoId</text><text x="1177" y="94" class="et" text-anchor="end">→ SupplierPO</text><text x="971" y="109" class="ek">FK</text><text x="990" y="109" class="ef key">supplierPiId</text><text x="1177" y="109" class="et" text-anchor="end">→ ProformaInvoice</text><text x="971" y="124" class="ek"></text><text x="990" y="124" class="ef">canonicalName</text><text x="1177" y="124" class="et" text-anchor="end">String</text><text x="971" y="139" class="ek"></text><text x="990" y="139" class="ef">alias</text><text x="1177" y="139" class="et" text-anchor="end">String</text><text x="971" y="154" class="ek"></text><text x="990" y="154" class="ef">provisionalName</text><text x="1177" y="154" class="et" text-anchor="end">String?</text></g><g class="ent"><rect x="1280" y="176" width="220" height="119" rx="5"/><rect x="1280" y="176" width="220" height="22" rx="5" class="ehead"/><rect x="1280" y="193" width="220" height="5" class="ehead"/><text x="1390" y="191" text-anchor="middle" class="en">StageTransition</text><text x="1287" y="209" class="ek">PK</text><text x="1306" y="209" class="ef key">id</text><text x="1493" y="209" class="et" text-anchor="end">String</text><text x="1287" y="224" class="ek">FK</text><text x="1306" y="224" class="ef key">workOrderId</text><text x="1493" y="224" class="et" text-anchor="end">→ WorkOrder</text><text x="1287" y="239" class="ek">FK</text><text x="1306" y="239" class="ef key">actorId</text><text x="1493" y="239" class="et" text-anchor="end">→ User</text><text x="1287" y="254" class="ek"></text><text x="1306" y="254" class="ef">fromStage</text><text x="1493" y="254" class="et" text-anchor="end">String?</text><text x="1287" y="269" class="ek"></text><text x="1306" y="269" class="ef">toStage</text><text x="1493" y="269" class="et" text-anchor="end">String</text><text x="1287" y="284" class="ek"></text><text x="1306" y="284" class="ef">actorLabel</text><text x="1493" y="284" class="et" text-anchor="end">String</text></g></svg></div>
-        <figcaption>ERD — the order spine. Customer demand enters on the left; <code>POLinkMapping</code> is the join that binds a customer line to a supplier line with its allocated quantity, which is what makes split sourcing and demand aggregation possible. Hover any connector for its foreign key and delete behaviour.</figcaption>
+        <figcaption>ERD — the order spine. Customer demand enters on the left; <code>POLinkMapping</code> is the join that binds a customer line to a supplier line with its allocated quantity and both prices. Hover any connector for its foreign key and delete behaviour.</figcaption>
       </figure>
 
       <div class="mapbox">
@@ -1091,10 +1091,10 @@
     </table>
     
     <div class="refby"><b>Referenced by</b> <a href="#m-CustomerPO">CustomerPO.customer</a>, <a href="#m-TaxInvoice">TaxInvoice.customer</a></div>
-  </section><section class="model" id="m-Supplier" data-name="supplier" data-group="masters" data-text="supplier  id  code  name  gstin  isforeign  statecode  statename  addressline1  addressline2  city  postcode  country  contactname  contactemail  contactphone  contactfax  currency  incoterms  bankname tt beneficiary details, printed on the supplier's proforma invoice. bankaddress  bankaccount  swiftcode  beneficiaryname  bankfeenote how wire charges are split, printed under the bank block. createdat  avl  purchaseorders  aggregations  ">
+  </section><section class="model" id="m-Supplier" data-name="supplier" data-group="masters" data-text="supplier  id  code  name  gstin  isforeign  statecode  statename  addressline1  addressline2  city  postcode  country  contactname  contactemail  contactphone  contactfax  currency  incoterms  bankname tt beneficiary details, printed on the supplier's proforma invoice. bankaddress  bankaccount  swiftcode  beneficiaryname  bankfeenote how wire charges are split, printed under the bank block. createdat  avl  purchaseorders  ">
     <header class="mh">
       <h3>Supplier</h3>
-      <span class="mstat">25 fields · 3 relations</span>
+      <span class="mstat">25 fields · 2 relations</span>
     </header>
     
     <table class="ftab">
@@ -1261,16 +1261,10 @@
     <td class="fd"></td>
     <td class="fx"> ↔ <a href="#m-SupplierPO">SupplierPO</a></td>
     <td class="fc"></td>
-  </tr><tr class="relrow">
-    <td class="fn">aggregations<span class="req" title="Required">*</span></td>
-    <td class="ft"><code>DemandAggregation[]</code></td>
-    <td class="fd"></td>
-    <td class="fx"> ↔ <a href="#m-DemandAggregation">DemandAggregation</a></td>
-    <td class="fc"></td>
   </tr></tbody>
     </table>
     
-    <div class="refby"><b>Referenced by</b> <a href="#m-AVLRecord">AVLRecord.supplier</a>, <a href="#m-SupplierPO">SupplierPO.supplier</a>, <a href="#m-DemandAggregation">DemandAggregation.supplier</a></div>
+    <div class="refby"><b>Referenced by</b> <a href="#m-AVLRecord">AVLRecord.supplier</a>, <a href="#m-SupplierPO">SupplierPO.supplier</a></div>
   </section><section class="model" id="m-AVLRecord" data-name="avlrecord" data-group="masters" data-text="avlrecord approved vendor list. a supplier may only be selected on a supplier po when status = approved and approvedupto is in the future (§3.1b, ac#3). id  supplierid  supplier  status  approvedon  approvedupto  categories  certifications  qualityrating  deliveryrating  riskscore  notes  foreign key fk">
     <header class="mh">
       <h3>AVLRecord</h3>
@@ -1679,7 +1673,7 @@
   </section>
   </section><section class="group" id="g-orders">
     <h2>Orders, quotes &amp; the work order</h2>
-    <p class="blurb">The four documents that define an order, the lines on each, the mapping between customer demand and supplier supply, and the work order that ties them together. POLinkMapping is the join that makes split sourcing and demand aggregation possible.</p>
+    <p class="blurb">The four documents that define an order, the lines on each, the mapping between customer demand and supplier supply, and the work order that ties them together. POLinkMapping is the join that carries the allocated quantity and both prices, line by line.</p>
     <figure class="fig">
          <div class="figscroll"><svg viewBox="0 0 1160 437" class="erd" role="img" aria-label="Entity relationship diagram"><g class="rel"><path d="M242,68 H274 V68 H306" class="rl"/><path d="M231,62 L231,74" class="cf"/><path d="M322,68 L311,62 M322,68 L311,68 M322,68 L311,74" class="cf"/><path d="M307,62 L307,74" class="cf"/><title>CustomerPO 1 → CustomerPOLine many (customerPoId, on delete Cascade)</title></g><g class="rel"><path d="M242,68 H274 V205.5 H306" class="rl"/><path d="M231,62 L231,74" class="cf"/><path d="M322,205.5 L311,199.5 M322,205.5 L311,205.5 M322,205.5 L311,211.5" class="cf"/><circle cx="303.5" cy="205.5" r="3.5" class="cf-o"/><title>CustomerPO 1 → ProformaInvoice many (customerPoId)</title></g><g class="rel"><path d="M242,198 H274 V205.5 H306" class="rl"/><path d="M231,192 L231,204" class="cf"/><path d="M322,205.5 L311,199.5 M322,205.5 L311,205.5 M322,205.5 L311,211.5" class="cf"/><circle cx="303.5" cy="205.5" r="3.5" class="cf-o"/><title>SupplierPO 1 → ProformaInvoice many (supplierPoId)</title></g><g class="rel"><path d="M548,205.5 H580 V68 H612" class="rl"/><path d="M537,199.5 L537,211.5" class="cf"/><path d="M628,68 L617,62 M628,68 L617,68 M628,68 L617,74" class="cf"/><path d="M613,62 L613,74" class="cf"/><title>ProformaInvoice 1 → PILine many (piId, on delete Cascade)</title></g><g class="rel"><path d="M242,198 H274 V343 H306" class="rl"/><path d="M231,192 L231,204" class="cf"/><path d="M322,343 L311,337 M322,343 L311,343 M322,343 L311,349" class="cf"/><path d="M307,337 L307,349" class="cf"/><title>SupplierPO 1 → SupplierPOLine many (supplierPoId, on delete Cascade)</title></g><g class="rel"><path d="M854,220.5 H886 V83 H918" class="rl"/><path d="M843,214.5 L843,226.5" class="cf"/><path d="M934,83 L923,77 M934,83 L923,83 M934,83 L923,89" class="cf"/><path d="M919,77 L919,89" class="cf"/><title>WorkOrder 1 → POLinkMapping many (workOrderId, on delete Cascade)</title></g><g class="rel"><path d="M548,68 H733 V83 H918" class="rl"/><path d="M537,62 L537,74" class="cf"/><path d="M934,83 L923,77 M934,83 L923,83 M934,83 L923,89" class="cf"/><path d="M919,77 L919,89" class="cf"/><title>CustomerPOLine 1 → POLinkMapping many (customerPoLineId)</title></g><g class="rel"><path d="M548,343 H733 V83 H918" class="rl"/><path d="M537,337 L537,349" class="cf"/><path d="M934,83 L923,77 M934,83 L923,83 M934,83 L923,89" class="cf"/><path d="M919,77 L919,89" class="cf"/><title>SupplierPOLine 1 → POLinkMapping many (supplierPoLineId)</title></g><g class="rel"><path d="M242,68 H427 V220.5 H612" class="rl"/><path d="M231,62 L231,74" class="cf"/><path d="M628,220.5 L617,214.5 M628,220.5 L617,220.5 M628,220.5 L617,226.5" class="cf"/><path d="M613,214.5 L613,226.5" class="cf"/><title>CustomerPO 1 → WorkOrder many (customerPoId)</title></g><g class="rel"><path d="M548,205.5 H580 V220.5 H612" class="rl"/><path d="M537,199.5 L537,211.5" class="cf"/><path d="M628,220.5 L617,214.5 M628,220.5 L617,220.5 M628,220.5 L617,226.5" class="cf"/><circle cx="609.5" cy="220.5" r="3.5" class="cf-o"/><title>ProformaInvoice 1 → WorkOrder many (customerPiId)</title></g><g class="rel"><path d="M242,198 H427 V220.5 H612" class="rl"/><path d="M231,192 L231,204" class="cf"/><path d="M628,220.5 L617,214.5 M628,220.5 L617,220.5 M628,220.5 L617,226.5" class="cf"/><path d="M613,214.5 L613,226.5" class="cf"/><title>SupplierPO 1 → WorkOrder many (supplierPoId)</title></g><g class="rel"><path d="M548,205.5 H580 V220.5 H612" class="rl"/><path d="M537,199.5 L537,211.5" class="cf"/><path d="M628,220.5 L617,214.5 M628,220.5 L617,220.5 M628,220.5 L617,226.5" class="cf"/><circle cx="609.5" cy="220.5" r="3.5" class="cf-o"/><title>ProformaInvoice 1 → WorkOrder many (supplierPiId)</title></g><g class="rel"><path d="M854,220.5 H886 V235.5 H918" class="rl"/><path d="M843,214.5 L843,226.5" class="cf"/><path d="M934,235.5 L923,229.5 M934,235.5 L923,235.5 M934,235.5 L923,241.5" class="cf"/><path d="M919,229.5 L919,241.5" class="cf"/><title>WorkOrder 1 → StageTransition many (workOrderId, on delete Cascade)</title></g><g class="ent"><rect x="16" y="16" width="210" height="104" rx="5"/><rect x="16" y="16" width="210" height="22" rx="5" class="ehead"/><rect x="16" y="33" width="210" height="5" class="ehead"/><text x="121" y="31" text-anchor="middle" class="en">CustomerPO</text><text x="23" y="49" class="ek">PK</text><text x="42" y="49" class="ef key">id</text><text x="219" y="49" class="et" text-anchor="end">String</text><text x="23" y="64" class="ek">FK</text><text x="42" y="64" class="ef key">customerId</text><text x="219" y="64" class="et" text-anchor="end">→ Customer</text><text x="23" y="79" class="ek"></text><text x="42" y="79" class="ef">poNumber</text><text x="219" y="79" class="et" text-anchor="end">String</text><text x="23" y="94" class="ek"></text><text x="42" y="94" class="ef">poDate</text><text x="219" y="94" class="et" text-anchor="end">DateTime</text><text x="23" y="109" class="ek"></text><text x="42" y="109" class="ef">currency</text><text x="219" y="109" class="et" text-anchor="end">String</text></g><g class="ent"><rect x="322" y="16" width="210" height="104" rx="5"/><rect x="322" y="16" width="210" height="22" rx="5" class="ehead"/><rect x="322" y="33" width="210" height="5" class="ehead"/><text x="427" y="31" text-anchor="middle" class="en">CustomerPOLine</text><text x="329" y="49" class="ek">PK</text><text x="348" y="49" class="ef key">id</text><text x="525" y="49" class="et" text-anchor="end">String</text><text x="329" y="64" class="ek">FK</text><text x="348" y="64" class="ef key">customerPoId</text><text x="525" y="64" class="et" text-anchor="end">→ CustomerPO</text><text x="329" y="79" class="ek"></text><text x="348" y="79" class="ef">lineNo</text><text x="525" y="79" class="et" text-anchor="end">Int</text><text x="329" y="94" class="ek"></text><text x="348" y="94" class="ef">mpn</text><text x="525" y="94" class="et" text-anchor="end">String</text><text x="329" y="109" class="ek"></text><text x="348" y="109" class="ef">manufacturer</text><text x="525" y="109" class="et" text-anchor="end">String</text></g><g class="ent"><rect x="322" y="146" width="210" height="119" rx="5"/><rect x="322" y="146" width="210" height="22" rx="5" class="ehead"/><rect x="322" y="163" width="210" height="5" class="ehead"/><text x="427" y="161" text-anchor="middle" class="en">ProformaInvoice</text><text x="329" y="179" class="ek">PK</text><text x="348" y="179" class="ef key">id</text><text x="525" y="179" class="et" text-anchor="end">String</text><text x="329" y="194" class="ek">FK</text><text x="348" y="194" class="ef key">customerPoId</text><text x="525" y="194" class="et" text-anchor="end">→ CustomerPO</text><text x="329" y="209" class="ek">FK</text><text x="348" y="209" class="ef key">supplierPoId</text><text x="525" y="209" class="et" text-anchor="end">→ SupplierPO</text><text x="329" y="224" class="ek"></text><text x="348" y="224" class="ef">piNumber</text><text x="525" y="224" class="et" text-anchor="end">String</text><text x="329" y="239" class="ek"></text><text x="348" y="239" class="ef">direction</text><text x="525" y="239" class="et" text-anchor="end">String</text><text x="329" y="254" class="ek"></text><text x="348" y="254" class="ef">piDate</text><text x="525" y="254" class="et" text-anchor="end">DateTime</text></g><g class="ent"><rect x="628" y="16" width="210" height="104" rx="5"/><rect x="628" y="16" width="210" height="22" rx="5" class="ehead"/><rect x="628" y="33" width="210" height="5" class="ehead"/><text x="733" y="31" text-anchor="middle" class="en">PILine</text><text x="635" y="49" class="ek">PK</text><text x="654" y="49" class="ef key">id</text><text x="831" y="49" class="et" text-anchor="end">String</text><text x="635" y="64" class="ek">FK</text><text x="654" y="64" class="ef key">piId</text><text x="831" y="64" class="et" text-anchor="end">→ ProformaInvoice</text><text x="635" y="79" class="ek"></text><text x="654" y="79" class="ef">lineNo</text><text x="831" y="79" class="et" text-anchor="end">Int</text><text x="635" y="94" class="ek"></text><text x="654" y="94" class="ef">mpn</text><text x="831" y="94" class="et" text-anchor="end">String</text><text x="635" y="109" class="ek"></text><text x="654" y="109" class="ef">description</text><text x="831" y="109" class="et" text-anchor="end">String</text></g><g class="ent"><rect x="16" y="146" width="210" height="104" rx="5"/><rect x="16" y="146" width="210" height="22" rx="5" class="ehead"/><rect x="16" y="163" width="210" height="5" class="ehead"/><text x="121" y="161" text-anchor="middle" class="en">SupplierPO</text><text x="23" y="179" class="ek">PK</text><text x="42" y="179" class="ef key">id</text><text x="219" y="179" class="et" text-anchor="end">String</text><text x="23" y="194" class="ek">FK</text><text x="42" y="194" class="ef key">supplierId</text><text x="219" y="194" class="et" text-anchor="end">→ Supplier</text><text x="23" y="209" class="ek"></text><text x="42" y="209" class="ef">poNumber</text><text x="219" y="209" class="et" text-anchor="end">String</text><text x="23" y="224" class="ek"></text><text x="42" y="224" class="ef">poDate</text><text x="219" y="224" class="et" text-anchor="end">DateTime</text><text x="23" y="239" class="ek"></text><text x="42" y="239" class="ef">currency</text><text x="219" y="239" class="et" text-anchor="end">String</text></g><g class="ent"><rect x="322" y="291" width="210" height="104" rx="5"/><rect x="322" y="291" width="210" height="22" rx="5" class="ehead"/><rect x="322" y="308" width="210" height="5" class="ehead"/><text x="427" y="306" text-anchor="middle" class="en">SupplierPOLine</text><text x="329" y="324" class="ek">PK</text><text x="348" y="324" class="ef key">id</text><text x="525" y="324" class="et" text-anchor="end">String</text><text x="329" y="339" class="ek">FK</text><text x="348" y="339" class="ef key">supplierPoId</text><text x="525" y="339" class="et" text-anchor="end">→ SupplierPO</text><text x="329" y="354" class="ek"></text><text x="348" y="354" class="ef">lineNo</text><text x="525" y="354" class="et" text-anchor="end">Int</text><text x="329" y="369" class="ek"></text><text x="348" y="369" class="ef">mpn</text><text x="525" y="369" class="et" text-anchor="end">String</text><text x="329" y="384" class="ek"></text><text x="348" y="384" class="ef">manufacturer</text><text x="525" y="384" class="et" text-anchor="end">String</text></g><g class="ent"><rect x="934" y="16" width="210" height="134" rx="5"/><rect x="934" y="16" width="210" height="22" rx="5" class="ehead"/><rect x="934" y="33" width="210" height="5" class="ehead"/><text x="1039" y="31" text-anchor="middle" class="en">POLinkMapping</text><text x="941" y="49" class="ek">PK</text><text x="960" y="49" class="ef key">id</text><text x="1137" y="49" class="et" text-anchor="end">String</text><text x="941" y="64" class="ek">FK</text><text x="960" y="64" class="ef key">workOrderId</text><text x="1137" y="64" class="et" text-anchor="end">→ WorkOrder</text><text x="941" y="79" class="ek">FK</text><text x="960" y="79" class="ef key">customerPoLineId</text><text x="1137" y="79" class="et" text-anchor="end">→ CustomerPOLine</text><text x="941" y="94" class="ek">FK</text><text x="960" y="94" class="ef key">supplierPoLineId</text><text x="1137" y="94" class="et" text-anchor="end">→ SupplierPOLine</text><text x="941" y="109" class="ek"></text><text x="960" y="109" class="ef">allocatedQty</text><text x="1137" y="109" class="et" text-anchor="end">Int</text><text x="941" y="124" class="ek"></text><text x="960" y="124" class="ef">sellUnitPrice</text><text x="1137" y="124" class="et" text-anchor="end">Float</text><text x="941" y="139" class="ek"></text><text x="960" y="139" class="ef">buyUnitPrice</text><text x="1137" y="139" class="et" text-anchor="end">Float</text></g><g class="ent"><rect x="628" y="146" width="210" height="149" rx="5"/><rect x="628" y="146" width="210" height="22" rx="5" class="ehead"/><rect x="628" y="163" width="210" height="5" class="ehead"/><text x="733" y="161" text-anchor="middle" class="en">WorkOrder</text><text x="635" y="179" class="ek">PK</text><text x="654" y="179" class="ef key">id</text><text x="831" y="179" class="et" text-anchor="end">String</text><text x="635" y="194" class="ek">FK</text><text x="654" y="194" class="ef key">customerPoId</text><text x="831" y="194" class="et" text-anchor="end">→ CustomerPO</text><text x="635" y="209" class="ek">FK</text><text x="654" y="209" class="ef key">customerPiId</text><text x="831" y="209" class="et" text-anchor="end">→ ProformaInvoice</text><text x="635" y="224" class="ek">FK</text><text x="654" y="224" class="ef key">supplierPoId</text><text x="831" y="224" class="et" text-anchor="end">→ SupplierPO</text><text x="635" y="239" class="ek">FK</text><text x="654" y="239" class="ef key">supplierPiId</text><text x="831" y="239" class="et" text-anchor="end">→ ProformaInvoice</text><text x="635" y="254" class="ek"></text><text x="654" y="254" class="ef">canonicalName</text><text x="831" y="254" class="et" text-anchor="end">String</text><text x="635" y="269" class="ek"></text><text x="654" y="269" class="ef">alias</text><text x="831" y="269" class="et" text-anchor="end">String</text><text x="635" y="284" class="ek"></text><text x="654" y="284" class="ef">provisionalName</text><text x="831" y="284" class="et" text-anchor="end">String?</text></g><g class="ent"><rect x="934" y="176" width="210" height="119" rx="5"/><rect x="934" y="176" width="210" height="22" rx="5" class="ehead"/><rect x="934" y="193" width="210" height="5" class="ehead"/><text x="1039" y="191" text-anchor="middle" class="en">StageTransition</text><text x="941" y="209" class="ek">PK</text><text x="960" y="209" class="ef key">id</text><text x="1137" y="209" class="et" text-anchor="end">String</text><text x="941" y="224" class="ek">FK</text><text x="960" y="224" class="ef key">workOrderId</text><text x="1137" y="224" class="et" text-anchor="end">→ WorkOrder</text><text x="941" y="239" class="ek">FK</text><text x="960" y="239" class="ef key">actorId</text><text x="1137" y="239" class="et" text-anchor="end">→ User</text><text x="941" y="254" class="ek"></text><text x="960" y="254" class="ef">fromStage</text><text x="1137" y="254" class="et" text-anchor="end">String?</text><text x="941" y="269" class="ek"></text><text x="960" y="269" class="ef">toStage</text><text x="1137" y="269" class="et" text-anchor="end">String</text><text x="941" y="284" class="ek"></text><text x="960" y="284" class="ef">actorLabel</text><text x="1137" y="284" class="et" text-anchor="end">String</text></g></svg></div>
          <figcaption>ERD — Orders, quotes &amp; the work order. 13 relationships inside this domain; foreign keys pointing outside it are listed on each table.</figcaption>
@@ -1831,10 +1825,10 @@
             
            </div>
     <div class="refby"><b>Referenced by</b> <a href="#m-CustomerPOLine">CustomerPOLine.customerPo</a> <span class="od">Cascade</span>, <a href="#m-ProformaInvoice">ProformaInvoice.customerPo</a>, <a href="#m-WorkOrder">WorkOrder.customerPo</a>, <a href="#m-Document">Document.customerPo</a></div>
-  </section><section class="model" id="m-CustomerPOLine" data-name="customerpoline" data-group="orders" data-text="customerpoline  id  customerpoid  customerpo  lineno  mpn  manufacturer  description  hsncode  quantity  uom  unitprice  linetotal  requesteddate  leadtimedays what the customer was promised, per line. held on the line rather than the order because a mixed order can have one part on the shelf and another on a twelve-week lead. datecodelot the date code or lot the customer requires, e.g. &quot;2419+&quot;. this is a hard acceptance criterion on electronic components — the wrong date code is a rejected delivery, not a negotiation — so it is captured on their order and carried through to what we ask the supplier for. testingrequired  remarks  mappings  aggregationlines slices of this line contributed to a demand-aggregation pool. minor units money cascade foreign key fk">
+  </section><section class="model" id="m-CustomerPOLine" data-name="customerpoline" data-group="orders" data-text="customerpoline  id  customerpoid  customerpo  lineno  mpn  manufacturer  description  hsncode  quantity  uom  unitprice  linetotal  requesteddate  leadtimedays what the customer was promised, per line. held on the line rather than the order because a mixed order can have one part on the shelf and another on a twelve-week lead. datecodelot the date code or lot the customer requires, e.g. &quot;2419+&quot;. this is a hard acceptance criterion on electronic components — the wrong date code is a rejected delivery, not a negotiation — so it is captured on their order and carried through to what we ask the supplier for. testingrequired  remarks  mappings  minor units money cascade foreign key fk">
     <header class="mh">
       <h3>CustomerPOLine</h3>
-      <span class="mstat">16 fields · 3 relations</span>
+      <span class="mstat">16 fields · 2 relations</span>
     </header>
     
     <table class="ftab">
@@ -1947,16 +1941,10 @@
     <td class="fd"></td>
     <td class="fx"> ↔ <a href="#m-POLinkMapping">POLinkMapping</a></td>
     <td class="fc"></td>
-  </tr><tr class="relrow">
-    <td class="fn">aggregationLines<span class="req" title="Required">*</span></td>
-    <td class="ft"><code>DemandAggregationLine[]</code></td>
-    <td class="fd"></td>
-    <td class="fx"> ↔ <a href="#m-DemandAggregationLine">DemandAggregationLine</a></td>
-    <td class="fc">Slices of this line contributed to a demand-aggregation pool.</td>
   </tr></tbody>
     </table>
     
-    <div class="refby"><b>Referenced by</b> <a href="#m-POLinkMapping">POLinkMapping.customerPoLine</a>, <a href="#m-DemandAggregationLine">DemandAggregationLine.customerPoLine</a> <span class="od">Cascade</span></div>
+    <div class="refby"><b>Referenced by</b> <a href="#m-POLinkMapping">POLinkMapping.customerPoLine</a></div>
   </section><section class="model" id="m-ProformaInvoice" data-name="proformainvoice" data-group="orders" data-text="proformainvoice  id  pinumber  direction  customerpoid  customerpo  supplierpoid  supplierpo  pidate  validuntil  currency  subtotal  freightamount  insuranceamount  taxamount  totalvalue  bankdetails  terms  attention &quot;attn&quot; line — the named people at the receiving entity. shipmentmethod e.g. &quot;by air or courier nominated and paid by the buyer&quot;. originlocation where the goods ship from, printed as &quot;from&quot;. destination where they are going, printed as &quot;destination&quot;. deliverytime free text, because it is usually conditional on payment (&quot;within agreed 2–4 days after the seller's receipt of tt payment&quot;). paymentterm the payment term as written on the document, e.g. &quot;100% tt in advance from the buyer to the seller before shipping.&quot; remarks one remark per line, printed as a numbered list. status  issuedat  sentat  acceptedat  acceptanceref  supersededbyid  externalref  sourcingref the enquiry or sourcing reference this came from — the rfq / sourcing id carried over from the sourcing step, which lives upstream of this platform. free text on purpose: the format belongs to that system, not this one, and guessing a pattern would reject valid references. leadtimedays  createdat  lines  documents  woascustomerpi  woassupplierpi  minor units money foreign key fk">
     <header class="mh">
       <h3>ProformaInvoice</h3>
@@ -2293,10 +2281,10 @@
     </table>
     
     
-  </section><section class="model" id="m-SupplierPO" data-name="supplierpo" data-group="orders" data-text="supplierpo  id  ponumber  supplierid  supplier  podate  currency  fxrate  incoterms  paymentmethod  creditdays  shiptoaddress  requireddeliverydate  notes  voucherno accounting voucher number, e.g. po/sgspl/26-27/0234. distinct from ponumber: this is what the finance team quotes and what the supplier sees. referenceno the enquiry or quote bundle this order answers, printed as &quot;reference no. &amp; date&quot;. referencedate  sourcingref the enquiry or sourcing reference this came from — the rfq / sourcing id carried over from the sourcing step, which lives upstream of this platform. free text on purpose: the format belongs to that system, not this one, and guessing a pattern would reject valid references. billtoaddress registered billing address of the buying entity. held per order because the entity may bill from a different registration than it ships to. dispatchedthrough carrier or hand-off named on the voucher; &quot;—&quot; when not yet nominated. destination final delivery point, e.g. &quot;bengaluru, ka · dap&quot;. termsofdelivery the delivery term itself, e.g. cip. separate from `incoterms` because the voucher prints the agreed carriage term alongside the destination's own. termsandconditions one condition per line, printed as a numbered list. totalvalue  status  issuedat  createdat  lines  proformas  workorders  documents  aggregation set when this order was raised from a pooled demand aggregation. minor units money foreign key fk">
+  </section><section class="model" id="m-SupplierPO" data-name="supplierpo" data-group="orders" data-text="supplierpo  id  ponumber  supplierid  supplier  podate  currency  fxrate  incoterms  paymentmethod  creditdays  shiptoaddress  requireddeliverydate  notes  voucherno accounting voucher number, e.g. po/sgspl/26-27/0234. distinct from ponumber: this is what the finance team quotes and what the supplier sees. referenceno the enquiry or quote bundle this order answers, printed as &quot;reference no. &amp; date&quot;. referencedate  sourcingref the enquiry or sourcing reference this came from — the rfq / sourcing id carried over from the sourcing step, which lives upstream of this platform. free text on purpose: the format belongs to that system, not this one, and guessing a pattern would reject valid references. billtoaddress registered billing address of the buying entity. held per order because the entity may bill from a different registration than it ships to. dispatchedthrough carrier or hand-off named on the voucher; &quot;—&quot; when not yet nominated. destination final delivery point, e.g. &quot;bengaluru, ka · dap&quot;. termsofdelivery the delivery term itself, e.g. cip. separate from `incoterms` because the voucher prints the agreed carriage term alongside the destination's own. termsandconditions one condition per line, printed as a numbered list. totalvalue  status  issuedat  createdat  lines  proformas  workorders  documents  minor units money foreign key fk">
     <header class="mh">
       <h3>SupplierPO</h3>
-      <span class="mstat">25 fields · 6 relations</span>
+      <span class="mstat">25 fields · 5 relations</span>
     </header>
     
     <table class="ftab">
@@ -2481,16 +2469,10 @@
     <td class="fd"></td>
     <td class="fx"> ↔ <a href="#m-Document">Document</a></td>
     <td class="fc"></td>
-  </tr><tr class="relrow">
-    <td class="fn">aggregation</td>
-    <td class="ft"><code>DemandAggregation?</code></td>
-    <td class="fd"></td>
-    <td class="fx"> ↔ <a href="#m-DemandAggregation">DemandAggregation</a></td>
-    <td class="fc">Set when this order was raised from a pooled demand aggregation.</td>
   </tr></tbody>
     </table>
     
-    <div class="refby"><b>Referenced by</b> <a href="#m-ProformaInvoice">ProformaInvoice.supplierPo</a>, <a href="#m-SupplierPOLine">SupplierPOLine.supplierPo</a> <span class="od">Cascade</span>, <a href="#m-WorkOrder">WorkOrder.supplierPo</a>, <a href="#m-Document">Document.supplierPo</a>, <a href="#m-DemandAggregation">DemandAggregation.supplierPo</a></div>
+    <div class="refby"><b>Referenced by</b> <a href="#m-ProformaInvoice">ProformaInvoice.supplierPo</a>, <a href="#m-SupplierPOLine">SupplierPOLine.supplierPo</a> <span class="od">Cascade</span>, <a href="#m-WorkOrder">WorkOrder.supplierPo</a>, <a href="#m-Document">Document.supplierPo</a></div>
   </section><section class="model" id="m-SupplierPOLine" data-name="supplierpoline" data-group="orders" data-text="supplierpoline  id  supplierpoid  supplierpo  lineno  mpn  manufacturer  description  hsncode  quantity  uom  unitprice  linetotal  leadtimedays  countryoforigin  datecodelot  msl  rohs  packaging  testingrequired  testscope  samplesize  aql  remarks  mappings  minor units money cascade foreign key fk">
     <header class="mh">
       <h3>SupplierPOLine</h3>
@@ -7275,312 +7257,13 @@
     
     
   </section>
-  </section><section class="group" id="g-aggregation">
-    <h2>Demand aggregation</h2>
-    <p class="blurb">Pooling the same part across several customer orders so it can be bought once, in bulk, from one supplier.</p>
-    <figure class="fig">
-         <div class="figscroll"><svg viewBox="0 0 548 292" class="erd" role="img" aria-label="Entity relationship diagram"><g class="rel"><path d="M242,75.5 H274 V68 H306" class="rl"/><path d="M231,69.5 L231,81.5" class="cf"/><path d="M322,68 L311,62 M322,68 L311,68 M322,68 L311,74" class="cf"/><path d="M307,62 L307,74" class="cf"/><title>DemandAggregation 1 → DemandAggregationPart many (aggregationId, on delete Cascade)</title></g><g class="rel"><path d="M242,75.5 H274 V198 H306" class="rl"/><path d="M231,69.5 L231,81.5" class="cf"/><path d="M322,198 L311,192 M322,198 L311,198 M322,198 L311,204" class="cf"/><path d="M307,192 L307,204" class="cf"/><title>DemandAggregation 1 → DemandAggregationLine many (aggregationId, on delete Cascade)</title></g><g class="ent"><rect x="16" y="16" width="210" height="119" rx="5"/><rect x="16" y="16" width="210" height="22" rx="5" class="ehead"/><rect x="16" y="33" width="210" height="5" class="ehead"/><text x="121" y="31" text-anchor="middle" class="en">DemandAggregation</text><text x="23" y="49" class="ek">PK</text><text x="42" y="49" class="ef key">id</text><text x="219" y="49" class="et" text-anchor="end">String</text><text x="23" y="64" class="ek">FK</text><text x="42" y="64" class="ef key">supplierId</text><text x="219" y="64" class="et" text-anchor="end">→ Supplier</text><text x="23" y="79" class="ek">FK</text><text x="42" y="79" class="ef key">supplierPoId</text><text x="219" y="79" class="et" text-anchor="end">→ SupplierPO</text><text x="23" y="94" class="ek"></text><text x="42" y="94" class="ef">reference</text><text x="219" y="94" class="et" text-anchor="end">String</text><text x="23" y="109" class="ek"></text><text x="42" y="109" class="ef">title</text><text x="219" y="109" class="et" text-anchor="end">String</text><text x="23" y="124" class="ek"></text><text x="42" y="124" class="ef">rationale</text><text x="219" y="124" class="et" text-anchor="end">String</text></g><g class="ent"><rect x="322" y="16" width="210" height="104" rx="5"/><rect x="322" y="16" width="210" height="22" rx="5" class="ehead"/><rect x="322" y="33" width="210" height="5" class="ehead"/><text x="427" y="31" text-anchor="middle" class="en">DemandAggregationPart</text><text x="329" y="49" class="ek">PK</text><text x="348" y="49" class="ef key">id</text><text x="525" y="49" class="et" text-anchor="end">String</text><text x="329" y="64" class="ek">FK</text><text x="348" y="64" class="ef key">aggregationId</text><text x="525" y="64" class="et" text-anchor="end">→ DemandAggregation</text><text x="329" y="79" class="ek"></text><text x="348" y="79" class="ef">mpn</text><text x="525" y="79" class="et" text-anchor="end">String</text><text x="329" y="94" class="ek"></text><text x="348" y="94" class="ef">manufacturer</text><text x="525" y="94" class="et" text-anchor="end">String</text><text x="329" y="109" class="ek"></text><text x="348" y="109" class="ef">description</text><text x="525" y="109" class="et" text-anchor="end">String</text></g><g class="ent"><rect x="322" y="146" width="210" height="104" rx="5"/><rect x="322" y="146" width="210" height="22" rx="5" class="ehead"/><rect x="322" y="163" width="210" height="5" class="ehead"/><text x="427" y="161" text-anchor="middle" class="en">DemandAggregationLine</text><text x="329" y="179" class="ek">PK</text><text x="348" y="179" class="ef key">id</text><text x="525" y="179" class="et" text-anchor="end">String</text><text x="329" y="194" class="ek">FK</text><text x="348" y="194" class="ef key">aggregationId</text><text x="525" y="194" class="et" text-anchor="end">→ DemandAggregation</text><text x="329" y="209" class="ek">FK</text><text x="348" y="209" class="ef key">customerPoLineId</text><text x="525" y="209" class="et" text-anchor="end">→ CustomerPOLine</text><text x="329" y="224" class="ek"></text><text x="348" y="224" class="ef">quantity</text><text x="525" y="224" class="et" text-anchor="end">Int</text><text x="329" y="239" class="ek"></text><text x="348" y="239" class="ef">createdAt</text><text x="525" y="239" class="et" text-anchor="end">DateTime</text></g></svg></div>
-         <figcaption>ERD — Demand aggregation. 2 relationships inside this domain; foreign keys pointing outside it are listed on each table.</figcaption>
-       </figure>
-    <section class="model" id="m-DemandAggregation" data-name="demandaggregation" data-group="aggregation" data-text="demandaggregation pooling demand from several customer orders into one bulk supplier order.  the point is economies of scale on the buy side: consolidate the same mpn across customers, negotiate one price for the combined quantity, place one purchase order, ship one consignment inbound.  what it deliberately does not do is merge the customers. each customer keeps their own work order against the shared supplier po, because each needs their own proforma invoice, their own tax invoice, their own e-way bill, their own delivery and their own proof of delivery. those are statutory documents naming one buyer — they cannot be pooled. so the shape is:    many customer pos → one demandaggregation → one bulk supplierpo                                             → one workorder per customer po  combined with split sourcing (one customer po across several supplier pos), that gives a genuine many-to-many between the two sides, with the allocation carried line by line in polinkmapping. id  reference  title  rationale why these orders were pooled. required: a consolidation nobody explained is indistinguishable from a mistake once the prices differ per customer. status draft | floated | cancelled supplierid  supplier  supplierpoid the bulk order this produced. one aggregation floats exactly once. supplierpo  sourcingref  requiredby  currency  incoterms  paymentmethod advance | escrow | credit — carried onto the bulk po and every work order. notes  createdby  createdat  floatedat  cancelledat  cancelreason  parts  lines  foreign key fk">
-    <header class="mh">
-      <h3>DemandAggregation</h3>
-      <span class="mstat">18 fields · 4 relations · 1 index</span>
-    </header>
-    <p class="mdoc">Pooling demand from several customer orders into one bulk supplier order.  The point is economies of scale on the BUY side: consolidate the same MPN across customers, negotiate one price for the combined quantity, place one purchase order, ship one consignment inbound.  What it deliberately does NOT do is merge the customers. Each customer keeps their own work order against the shared supplier PO, because each needs their own proforma invoice, their own tax invoice, their own e-way bill, their own delivery and their own proof of delivery. Those are statutory documents naming one buyer — they cannot be pooled. So the shape is:    many customer POs → one DemandAggregation → one bulk SupplierPO                                             → one WorkOrder per customer PO  Combined with split sourcing (one customer PO across several supplier POs), that gives a genuine many-to-many between the two sides, with the allocation carried line by line in POLinkMapping.</p>
-    <table class="ftab">
-      <thead><tr><th>Field</th><th>Type</th><th>Default</th><th>Keys / relation</th><th>Note</th></tr></thead>
-      <tbody><tr class="">
-    <td class="fn">id<span class="req" title="Required">*</span></td>
-    <td class="ft"><code>String</code></td>
-    <td class="fd"><code>cuid(</code></td>
-    <td class="fx"><span class="fl id">PK</span></td>
-    <td class="fc"></td>
-  </tr><tr class="">
-    <td class="fn">reference<span class="req" title="Required">*</span></td>
-    <td class="ft"><code>String</code></td>
-    <td class="fd"></td>
-    <td class="fx"><span class="fl uq">unique</span></td>
-    <td class="fc"></td>
-  </tr><tr class="">
-    <td class="fn">title<span class="req" title="Required">*</span></td>
-    <td class="ft"><code>String</code></td>
-    <td class="fd"></td>
-    <td class="fx"></td>
-    <td class="fc"></td>
-  </tr><tr class="">
-    <td class="fn">rationale<span class="req" title="Required">*</span></td>
-    <td class="ft"><code>String</code></td>
-    <td class="fd"></td>
-    <td class="fx"></td>
-    <td class="fc">Why these orders were pooled. Required: a consolidation nobody explained is indistinguishable from a mistake once the prices differ per customer.</td>
-  </tr><tr class="">
-    <td class="fn">status<span class="req" title="Required">*</span></td>
-    <td class="ft"><code>String</code></td>
-    <td class="fd"><code>&quot;DRAFT&quot;</code></td>
-    <td class="fx"></td>
-    <td class="fc">DRAFT | FLOATED | CANCELLED</td>
-  </tr><tr class="">
-    <td class="fn">supplierId</td>
-    <td class="ft"><code>String?</code></td>
-    <td class="fd"></td>
-    <td class="fx"></td>
-    <td class="fc"></td>
-  </tr><tr class="relrow">
-    <td class="fn">supplier</td>
-    <td class="ft"><code>Supplier?</code></td>
-    <td class="fd"></td>
-    <td class="fx"><span class="fl fk">FK</span> → <a href="#m-Supplier">Supplier</a></td>
-    <td class="fc"></td>
-  </tr><tr class="">
-    <td class="fn">supplierPoId</td>
-    <td class="ft"><code>String?</code></td>
-    <td class="fd"></td>
-    <td class="fx"><span class="fl uq">unique</span></td>
-    <td class="fc">The bulk order this produced. One aggregation floats exactly once.</td>
-  </tr><tr class="relrow">
-    <td class="fn">supplierPo</td>
-    <td class="ft"><code>SupplierPO?</code></td>
-    <td class="fd"></td>
-    <td class="fx"><span class="fl fk">FK</span> → <a href="#m-SupplierPO">SupplierPO</a></td>
-    <td class="fc"></td>
-  </tr><tr class="">
-    <td class="fn">sourcingRef</td>
-    <td class="ft"><code>String?</code></td>
-    <td class="fd"></td>
-    <td class="fx"></td>
-    <td class="fc"></td>
-  </tr><tr class="">
-    <td class="fn">requiredBy</td>
-    <td class="ft"><code>DateTime?</code></td>
-    <td class="fd"></td>
-    <td class="fx"></td>
-    <td class="fc"></td>
-  </tr><tr class="">
-    <td class="fn">currency<span class="req" title="Required">*</span></td>
-    <td class="ft"><code>String</code></td>
-    <td class="fd"><code>&quot;USD&quot;</code></td>
-    <td class="fx"></td>
-    <td class="fc"></td>
-  </tr><tr class="">
-    <td class="fn">incoterms<span class="req" title="Required">*</span></td>
-    <td class="ft"><code>String</code></td>
-    <td class="fd"><code>&quot;FOB&quot;</code></td>
-    <td class="fx"></td>
-    <td class="fc"></td>
-  </tr><tr class="">
-    <td class="fn">paymentMethod<span class="req" title="Required">*</span></td>
-    <td class="ft"><code>String</code></td>
-    <td class="fd"><code>&quot;ESCROW&quot;</code></td>
-    <td class="fx"></td>
-    <td class="fc">ADVANCE | ESCROW | CREDIT — carried onto the bulk PO and every work order.</td>
-  </tr><tr class="">
-    <td class="fn">notes</td>
-    <td class="ft"><code>String?</code></td>
-    <td class="fd"></td>
-    <td class="fx"></td>
-    <td class="fc"></td>
-  </tr><tr class="">
-    <td class="fn">createdBy<span class="req" title="Required">*</span></td>
-    <td class="ft"><code>String</code></td>
-    <td class="fd"></td>
-    <td class="fx"></td>
-    <td class="fc"></td>
-  </tr><tr class="">
-    <td class="fn">createdAt<span class="req" title="Required">*</span></td>
-    <td class="ft"><code>DateTime</code></td>
-    <td class="fd"><code>now(</code></td>
-    <td class="fx"></td>
-    <td class="fc"></td>
-  </tr><tr class="">
-    <td class="fn">floatedAt</td>
-    <td class="ft"><code>DateTime?</code></td>
-    <td class="fd"></td>
-    <td class="fx"></td>
-    <td class="fc"></td>
-  </tr><tr class="">
-    <td class="fn">cancelledAt</td>
-    <td class="ft"><code>DateTime?</code></td>
-    <td class="fd"></td>
-    <td class="fx"></td>
-    <td class="fc"></td>
-  </tr><tr class="">
-    <td class="fn">cancelReason</td>
-    <td class="ft"><code>String?</code></td>
-    <td class="fd"></td>
-    <td class="fx"></td>
-    <td class="fc"></td>
-  </tr><tr class="relrow">
-    <td class="fn">parts<span class="req" title="Required">*</span></td>
-    <td class="ft"><code>DemandAggregationPart[]</code></td>
-    <td class="fd"></td>
-    <td class="fx"> ↔ <a href="#m-DemandAggregationPart">DemandAggregationPart</a></td>
-    <td class="fc"></td>
-  </tr><tr class="relrow">
-    <td class="fn">lines<span class="req" title="Required">*</span></td>
-    <td class="ft"><code>DemandAggregationLine[]</code></td>
-    <td class="fd"></td>
-    <td class="fx"> ↔ <a href="#m-DemandAggregationLine">DemandAggregationLine</a></td>
-    <td class="fc"></td>
-  </tr></tbody>
-    </table>
-    <div class="cons">
-            
-            <span class="cons-i"><b>index</b> (status)</span>
-           </div>
-    <div class="refby"><b>Referenced by</b> <a href="#m-DemandAggregationPart">DemandAggregationPart.aggregation</a> <span class="od">Cascade</span>, <a href="#m-DemandAggregationLine">DemandAggregationLine.aggregation</a> <span class="od">Cascade</span></div>
-  </section><section class="model" id="m-DemandAggregationPart" data-name="demandaggregationpart" data-group="aggregation" data-text="demandaggregationpart one mpn in the pool, with the price negotiated for the combined quantity.  separate from the lines because a bulk order has one price per part. holding the price on each customer line would let the same mpn carry two different buy prices in the same purchase order, which is the opposite of what pooling is for. id  aggregationid  aggregation  mpn  manufacturer  description  hsncode  buyunitprice negotiated bulk price per piece, in the aggregation's currency. baselineunitprice what the individual (unpooled) price would have been, for the saving figure. leadtimedays  countryoforigin  testingrequired  cascade foreign key fk">
-    <header class="mh">
-      <h3>DemandAggregationPart</h3>
-      <span class="mstat">11 fields · 1 relations</span>
-    </header>
-    <p class="mdoc">One MPN in the pool, with the price negotiated for the combined quantity.  Separate from the lines because a bulk order has ONE price per part. Holding the price on each customer line would let the same MPN carry two different buy prices in the same purchase order, which is the opposite of what pooling is for.</p>
-    <table class="ftab">
-      <thead><tr><th>Field</th><th>Type</th><th>Default</th><th>Keys / relation</th><th>Note</th></tr></thead>
-      <tbody><tr class="">
-    <td class="fn">id<span class="req" title="Required">*</span></td>
-    <td class="ft"><code>String</code></td>
-    <td class="fd"><code>cuid(</code></td>
-    <td class="fx"><span class="fl id">PK</span></td>
-    <td class="fc"></td>
-  </tr><tr class="">
-    <td class="fn">aggregationId<span class="req" title="Required">*</span></td>
-    <td class="ft"><code>String</code></td>
-    <td class="fd"></td>
-    <td class="fx"></td>
-    <td class="fc"></td>
-  </tr><tr class="relrow">
-    <td class="fn">aggregation<span class="req" title="Required">*</span></td>
-    <td class="ft"><code>DemandAggregation</code></td>
-    <td class="fd"></td>
-    <td class="fx"><span class="fl fk">FK</span> → <a href="#m-DemandAggregation">DemandAggregation</a> <span class="od">on delete Cascade</span></td>
-    <td class="fc"></td>
-  </tr><tr class="">
-    <td class="fn">mpn<span class="req" title="Required">*</span></td>
-    <td class="ft"><code>String</code></td>
-    <td class="fd"></td>
-    <td class="fx"></td>
-    <td class="fc"></td>
-  </tr><tr class="">
-    <td class="fn">manufacturer<span class="req" title="Required">*</span></td>
-    <td class="ft"><code>String</code></td>
-    <td class="fd"></td>
-    <td class="fx"></td>
-    <td class="fc"></td>
-  </tr><tr class="">
-    <td class="fn">description<span class="req" title="Required">*</span></td>
-    <td class="ft"><code>String</code></td>
-    <td class="fd"></td>
-    <td class="fx"></td>
-    <td class="fc"></td>
-  </tr><tr class="">
-    <td class="fn">hsnCode<span class="req" title="Required">*</span></td>
-    <td class="ft"><code>String</code></td>
-    <td class="fd"></td>
-    <td class="fx"></td>
-    <td class="fc"></td>
-  </tr><tr class="">
-    <td class="fn">buyUnitPrice<span class="req" title="Required">*</span></td>
-    <td class="ft"><code>Float</code></td>
-    <td class="fd"></td>
-    <td class="fx"></td>
-    <td class="fc">Negotiated bulk price per piece, in the aggregation's currency.</td>
-  </tr><tr class="">
-    <td class="fn">baselineUnitPrice</td>
-    <td class="ft"><code>Float?</code></td>
-    <td class="fd"></td>
-    <td class="fx"></td>
-    <td class="fc">What the individual (unpooled) price would have been, for the saving figure.</td>
-  </tr><tr class="">
-    <td class="fn">leadTimeDays</td>
-    <td class="ft"><code>Int?</code></td>
-    <td class="fd"></td>
-    <td class="fx"></td>
-    <td class="fc"></td>
-  </tr><tr class="">
-    <td class="fn">countryOfOrigin</td>
-    <td class="ft"><code>String?</code></td>
-    <td class="fd"></td>
-    <td class="fx"></td>
-    <td class="fc"></td>
-  </tr><tr class="">
-    <td class="fn">testingRequired<span class="req" title="Required">*</span></td>
-    <td class="ft"><code>Boolean</code></td>
-    <td class="fd"><code>false</code></td>
-    <td class="fx"></td>
-    <td class="fc"></td>
-  </tr></tbody>
-    </table>
-    <div class="cons">
-            <span class="cons-i"><b>unique</b> (aggregationId, mpn)</span>
-            
-           </div>
-    
-  </section><section class="model" id="m-DemandAggregationLine" data-name="demandaggregationline" data-group="aggregation" data-text="demandaggregationline a slice of one customer's demand contributed to the pool. id  aggregationid  aggregation  customerpolineid  customerpoline  quantity how much of that customer line goes in. never more than the line has left unallocated — enforced in lib/actions/aggregation.ts. createdat  cascade foreign key fk">
-    <header class="mh">
-      <h3>DemandAggregationLine</h3>
-      <span class="mstat">5 fields · 2 relations · 1 index</span>
-    </header>
-    <p class="mdoc">A slice of one customer's demand contributed to the pool.</p>
-    <table class="ftab">
-      <thead><tr><th>Field</th><th>Type</th><th>Default</th><th>Keys / relation</th><th>Note</th></tr></thead>
-      <tbody><tr class="">
-    <td class="fn">id<span class="req" title="Required">*</span></td>
-    <td class="ft"><code>String</code></td>
-    <td class="fd"><code>cuid(</code></td>
-    <td class="fx"><span class="fl id">PK</span></td>
-    <td class="fc"></td>
-  </tr><tr class="">
-    <td class="fn">aggregationId<span class="req" title="Required">*</span></td>
-    <td class="ft"><code>String</code></td>
-    <td class="fd"></td>
-    <td class="fx"></td>
-    <td class="fc"></td>
-  </tr><tr class="relrow">
-    <td class="fn">aggregation<span class="req" title="Required">*</span></td>
-    <td class="ft"><code>DemandAggregation</code></td>
-    <td class="fd"></td>
-    <td class="fx"><span class="fl fk">FK</span> → <a href="#m-DemandAggregation">DemandAggregation</a> <span class="od">on delete Cascade</span></td>
-    <td class="fc"></td>
-  </tr><tr class="">
-    <td class="fn">customerPoLineId<span class="req" title="Required">*</span></td>
-    <td class="ft"><code>String</code></td>
-    <td class="fd"></td>
-    <td class="fx"></td>
-    <td class="fc"></td>
-  </tr><tr class="relrow">
-    <td class="fn">customerPoLine<span class="req" title="Required">*</span></td>
-    <td class="ft"><code>CustomerPOLine</code></td>
-    <td class="fd"></td>
-    <td class="fx"><span class="fl fk">FK</span> → <a href="#m-CustomerPOLine">CustomerPOLine</a> <span class="od">on delete Cascade</span></td>
-    <td class="fc"></td>
-  </tr><tr class="">
-    <td class="fn">quantity<span class="req" title="Required">*</span></td>
-    <td class="ft"><code>Int</code></td>
-    <td class="fd"></td>
-    <td class="fx"></td>
-    <td class="fc">How much of that customer line goes in. Never more than the line has left unallocated — enforced in lib/actions/aggregation.ts.</td>
-  </tr><tr class="">
-    <td class="fn">createdAt<span class="req" title="Required">*</span></td>
-    <td class="ft"><code>DateTime</code></td>
-    <td class="fd"><code>now(</code></td>
-    <td class="fx"></td>
-    <td class="fc"></td>
-  </tr></tbody>
-    </table>
-    <div class="cons">
-            <span class="cons-i"><b>unique</b> (aggregationId, customerPoLineId)</span>
-            <span class="cons-i"><b>index</b> (aggregationId)</span>
-           </div>
-    
-  </section>
   </section>
 
     <details class="raw" id="raw">
-      <summary>Raw schema — prisma/schema.prisma (58 KB, the file the application actually runs on)</summary>
+      <summary>Raw schema — prisma/schema.prisma (55 KB, the file the application actually runs on)</summary>
       <pre>// ============================================================================
 // 1BUY Fulfilment Platform — data model
-// Master prompt §9. SQLite via Prisma.
+// Master prompt §9. Postgres via Prisma (SQLite in earlier revisions).
 //
 // CONVENTIONS
 //  * MONEY: every field named *Amount, *Value, *Total, *Price, *Cost, *Duty,
@@ -7590,8 +7273,10 @@
 //    Exception: unitPrice* fields are Float, because component prices carry up
 //    to 4 decimals. They are rounded to integer minor units at the line level
 //    immediately, so float error never accumulates.
-//  * ENUMS: SQLite has no native enum. Enum-ish columns are String, with the
-//    authoritative union types + Zod schemas in lib/domain/enums.ts.
+//  * ENUMS: enum-ish columns are String, with the authoritative union types +
+//    Zod schemas in lib/domain/enums.ts. Kept as String rather than a native
+//    Postgres enum because the permitted values change with business rules, and
+//    a migration per value is a poor trade for a check the app already makes.
 //  * PROVENANCE (§11A.0 rule 3): records that can be populated by an external
 //    API carry provenance / provenanceActor / provenanceAt / provenanceRef.
 // ============================================================================
@@ -7609,6 +7294,16 @@ generator client {
   output = &quot;../lib/generated/prisma&quot;
 }
 
+// SQLite, including on the Vercel deployment.
+//
+// The hosted build ships the seeded database file inside the deployment bundle
+// and copies it to /tmp at cold start — see lib/db.ts. /tmp is the one writable
+// path in a Vercel function, so the demo reads AND writes normally; the writes
+// simply do not outlive the instance. That is the correct trade for a prototype
+// nobody has provisioned a database for.
+//
+// Moving to Postgres later is this block plus `mode: 'insensitive'` in
+// lib/queries/search.ts, and nothing else.
 datasource db {
   provider = &quot;sqlite&quot;
   url      = env(&quot;DATABASE_URL&quot;)
@@ -7813,7 +7508,6 @@ model Supplier {
 
   avl          AVLRecord?
   purchaseOrders SupplierPO[]
-  aggregations DemandAggregation[]
 }
 
 /// Approved Vendor List. A supplier may only be selected on a Supplier PO when
@@ -7956,9 +7650,6 @@ model CustomerPOLine {
   remarks         String?
 
   mappings POLinkMapping[]
-
-  /// Slices of this line contributed to a demand-aggregation pool.
-  aggregationLines DemandAggregationLine[]
 }
 
 model ProformaInvoice {
@@ -8086,8 +7777,6 @@ model SupplierPO {
   proformas  ProformaInvoice[]
   workOrders WorkOrder[]
   documents  Document[]
-  /// Set when this order was raised from a pooled demand aggregation.
-  aggregation DemandAggregation?
 }
 
 model SupplierPOLine {
@@ -9072,98 +8761,6 @@ model OrderPhasePlan {
   @@index([workOrderId, position])
 }
 
-// ─── Demand aggregation ─────────────────────────────────────────────────────
-
-/// Pooling demand from several customer orders into one bulk supplier order.
-///
-/// The point is economies of scale on the BUY side: consolidate the same MPN
-/// across customers, negotiate one price for the combined quantity, place one
-/// purchase order, ship one consignment inbound.
-///
-/// What it deliberately does NOT do is merge the customers. Each customer keeps
-/// their own work order against the shared supplier PO, because each needs their
-/// own proforma invoice, their own tax invoice, their own e-way bill, their own
-/// delivery and their own proof of delivery. Those are statutory documents naming
-/// one buyer — they cannot be pooled. So the shape is:
-///
-///   many customer POs → one DemandAggregation → one bulk SupplierPO
-///                                             → one WorkOrder per customer PO
-///
-/// Combined with split sourcing (one customer PO across several supplier POs),
-/// that gives a genuine many-to-many between the two sides, with the allocation
-/// carried line by line in POLinkMapping.
-model DemandAggregation {
-  id            String    @id @default(cuid())
-  reference     String    @unique // AGG-2026-0001
-  title         String
-  /// Why these orders were pooled. Required: a consolidation nobody explained is
-  /// indistinguishable from a mistake once the prices differ per customer.
-  rationale     String
-  /// DRAFT | FLOATED | CANCELLED
-  status        String    @default(&quot;DRAFT&quot;)
-  supplierId    String?
-  supplier      Supplier? @relation(fields: [supplierId], references: [id])
-  /// The bulk order this produced. One aggregation floats exactly once.
-  supplierPoId  String?     @unique
-  supplierPo    SupplierPO? @relation(fields: [supplierPoId], references: [id])
-  sourcingRef   String?
-  requiredBy    DateTime?
-  currency      String    @default(&quot;USD&quot;)
-  incoterms     String    @default(&quot;FOB&quot;)
-  /// ADVANCE | ESCROW | CREDIT — carried onto the bulk PO and every work order.
-  paymentMethod String    @default(&quot;ESCROW&quot;)
-  notes         String?
-  createdBy     String
-  createdAt     DateTime  @default(now())
-  floatedAt     DateTime?
-  cancelledAt   DateTime?
-  cancelReason  String?
-
-  parts DemandAggregationPart[]
-  lines DemandAggregationLine[]
-
-  @@index([status])
-}
-
-/// One MPN in the pool, with the price negotiated for the combined quantity.
-///
-/// Separate from the lines because a bulk order has ONE price per part. Holding
-/// the price on each customer line would let the same MPN carry two different buy
-/// prices in the same purchase order, which is the opposite of what pooling is for.
-model DemandAggregationPart {
-  id            String            @id @default(cuid())
-  aggregationId String
-  aggregation   DemandAggregation @relation(fields: [aggregationId], references: [id], onDelete: Cascade)
-  mpn           String
-  manufacturer  String
-  description   String
-  hsnCode       String
-  /// Negotiated bulk price per piece, in the aggregation's currency.
-  buyUnitPrice  Float
-  /// What the individual (unpooled) price would have been, for the saving figure.
-  baselineUnitPrice Float?
-  leadTimeDays  Int?
-  countryOfOrigin String?
-  testingRequired Boolean         @default(false)
-
-  @@unique([aggregationId, mpn])
-}
-
-/// A slice of one customer's demand contributed to the pool.
-model DemandAggregationLine {
-  id               String            @id @default(cuid())
-  aggregationId    String
-  aggregation      DemandAggregation @relation(fields: [aggregationId], references: [id], onDelete: Cascade)
-  customerPoLineId String
-  customerPoLine   CustomerPOLine    @relation(fields: [customerPoLineId], references: [id], onDelete: Cascade)
-  /// How much of that customer line goes in. Never more than the line has left
-  /// unallocated — enforced in lib/actions/aggregation.ts.
-  quantity         Int
-  createdAt        DateTime          @default(now())
-
-  @@unique([aggregationId, customerPoLineId])
-  @@index([aggregationId])
-}
 </pre>
     </details>
 

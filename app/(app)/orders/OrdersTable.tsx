@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { ColumnDef } from '@tanstack/react-table';
-import { ClipboardList, GitBranch, Layers, MessageSquare, PenLine, Plus } from 'lucide-react';
+import { ClipboardList, MessageSquare, PenLine, Plus } from 'lucide-react';
 import type { OrderRow } from '@/lib/queries/orders';
 import { DataTable } from '@/components/ui/DataTable';
 import { EditOrderDialog } from './EditOrderDialog';
@@ -82,46 +82,6 @@ export function OrdersTable({ rows }: { rows: OrderRow[] }) {
                   </Hint>
                 )}
               </span>
-              {/* Without this, a customer order split across three suppliers
-                  shows three rows with the same customer and near-identical
-                  names, and the natural reading is duplicated data. */}
-              {r.splitOf > 1 && (
-                <Hint
-                  content={
-                    <span>
-                      {r.customerPoNumber} is sourced from {r.splitOf} suppliers, so it runs as{' '}
-                      {r.splitOf} work orders — one each. This is number {r.splitIndex}. Open it to
-                      see the other legs and what share each covers.
-                    </span>
-                  }
-                >
-                  <span>
-                    <Chip tone="info" size="sm" icon={GitBranch}>
-                      {r.splitIndex} of {r.splitOf}
-                    </Chip>
-                  </span>
-                </Hint>
-              )}
-              {/* The mirror of the split chip: several rows sharing one bulk
-                  supplier order differ only by customer, so without this they
-                  read as duplicated data too. */}
-              {r.bulkOf > 1 && (
-                <Hint
-                  content={
-                    <span>
-                      {r.supplierPoNumber} is one bulk order covering {r.bulkOf} customer orders —
-                      pooled demand. Each keeps its own job, quote and delivery, but they share one
-                      inbound shipment. This is number {r.bulkIndex}.
-                    </span>
-                  }
-                >
-                  <span>
-                    <Chip tone="accent" size="sm" icon={Layers}>
-                      Bulk {r.bulkIndex} of {r.bulkOf}
-                    </Chip>
-                  </span>
-                </Hint>
-              )}
               <Hint content={<span className="font-mono text-[10.5px]">{r.canonicalName}</span>}>
                 <span className="text-fg-tertiary block max-w-[190px] truncate font-mono text-[9.5px]">
                   {r.canonicalName}

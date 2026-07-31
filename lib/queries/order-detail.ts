@@ -123,57 +123,6 @@ export type OrderDetail = Serialized<RawDetail> & {
    * whether the CUSTOMER's line is covered; only whether this leg covers it.
    */
   coverageByLine: Record<string, number>;
-  /**
-   * Other work orders sharing this order's SUPPLIER purchase order — the demand
-   * aggregation case, and the mirror of `siblings`. Where siblings answer "who
-   * else is supplying this customer", these answer "who else is on our order".
-   */
-  bulkPeers: {
-    id: string;
-    alias: string;
-    isThisOrder: boolean;
-    stage: string;
-    status: string;
-    customerPoNumber: string;
-    customerName: string;
-    /** Units of the shared order allocated to this peer. */
-    allocatedQty: number;
-    sellValue: number;
-  }[];
-  /** The pool that produced the shared order, when there was one. */
-  aggregation: {
-    id: string;
-    reference: string;
-    title: string;
-    rationale: string;
-    createdBy: string;
-    floatedAt: string | null;
-  } | null;
-  siblings: {
-    id: string;
-    alias: string;
-    isThisOrder: boolean;
-    stage: string;
-    status: string;
-    incoterms: string;
-    /** Our order number to that supplier. */
-    supplierPoNumber: string;
-    paymentMethod: string;
-    /** Units of the customer order this leg is covering. */
-    allocatedQty: number;
-    /** Its share of the customer's money, at the customer's prices. */
-    sellValue: number;
-    createdAt: string;
-    supplier: {
-      name: string;
-      contactName: string;
-      contactEmail: string;
-      city: string;
-      country: string;
-      gstin: string | null;
-      isForeign: boolean;
-    };
-  }[];
 };
 
 /**
@@ -189,66 +138,6 @@ export async function getOrderDetail(idOrAlias: string): Promise<OrderDetail | n
     db.orgSetting.findFirst(),
   ]);
   if (!wo) return null;
-
-  // Split sourcing: one customer order can be served by several work orders,
-  // each with its own supplier. Fetched separately rather than as a nested
-  // include so the detail payload does not carry every sibling's full graph.
-  const siblingRows = await db.workOrder.findMany({
-    where: { customerPoId: wo.customerPoId },
-    orderBy: { createdAt: 'asc' },
-    select: {
-      id: true,
-      alias: true,
-      stage: true,
-      status: true,
-      incoterms: true,
-      paymentMethod: true,
-      sellValue: true,
-      createdAt: true,
-      // Summed rather than listed: the panel needs the size of each leg's share,
-      // and the line-by-line breakdown already lives on the coverage view.
-      mappings: { select: { allocatedQty: true } },
-      supplierPo: {
-        select: {
-          poNumber: true,
-          supplier: {
-            select: {
-              name: true,
-              contactName: true,
-              contactEmail: true,
-              city: true,
-              country: true,
-              gstin: true,
-              isForeign: true,
-            },
-          },
-        },
-      },
-    },
-  });
-
-  /**
-   * Everyone else on our supplier order. Fetched separately for the same reason
-   * as siblings: the detail payload should not carry every peer's full graph.
-   */
-  const bulkPeerRows = await db.workOrder.findMany({
-    where: { supplierPoId: wo.supplierPoId },
-    orderBy: { alias: 'asc' },
-    select: {
-      id: true,
-      alias: true,
-      stage: true,
-      status: true,
-      sellValue: true,
-      mappings: { select: { allocatedQty: true } },
-      customerPo: { select: { poNumber: true, customer: { select: { name: true } } } },
-    },
-  });
-
-  const aggregationRow = await db.demandAggregation.findUnique({
-    where: { supplierPoId: wo.supplierPoId },
-    select: { id: true, reference: true, title: true, rationale: true, createdBy: true, floatedAt: true },
-  });
 
   // Coverage of the customer's lines by all legs together.
   const allAllocations = await db.pOLinkMapping.groupBy({
@@ -301,41 +190,6 @@ export async function getOrderDetail(idOrAlias: string): Promise<OrderDetail | n
     },
     org: org ? serialize(org) : null,
     coverageByLine,
-    bulkPeers: bulkPeerRows.map((p) => ({
-      id: p.id,
-      alias: p.alias,
-      isThisOrder: p.id === wo.id,
-      stage: p.stage,
-      status: p.status,
-      customerPoNumber: p.customerPo.poNumber,
-      customerName: p.customerPo.customer.name,
-      allocatedQty: p.mappings.reduce((a, m) => a + m.allocatedQty, 0),
-      sellValue: p.sellValue,
-    })),
-    aggregation: aggregationRow
-      ? {
-          id: aggregationRow.id,
-          reference: aggregationRow.reference,
-          title: aggregationRow.title,
-          rationale: aggregationRow.rationale,
-          createdBy: aggregationRow.createdBy,
-          floatedAt: aggregationRow.floatedAt?.toISOString() ?? null,
-        }
-      : null,
-    siblings: siblingRows.map((s) => ({
-      id: s.id,
-      alias: s.alias,
-      isThisOrder: s.id === wo.id,
-      stage: s.stage,
-      status: s.status,
-      incoterms: s.incoterms,
-      supplierPoNumber: s.supplierPo.poNumber,
-      paymentMethod: s.paymentMethod,
-      allocatedQty: s.mappings.reduce((a, m) => a + m.allocatedQty, 0),
-      sellValue: s.sellValue,
-      createdAt: s.createdAt.toISOString(),
-      supplier: s.supplierPo.supplier,
-    })),
   } as OrderDetail;
 }
 

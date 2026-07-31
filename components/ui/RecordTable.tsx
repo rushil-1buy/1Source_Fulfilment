@@ -13,7 +13,6 @@ import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import type { ColumnDef } from '@tanstack/react-table';
 import { DataTable } from './DataTable';
-import { SupplierPoLinkButton } from '@/app/(app)/purchase-orders/LinkSupplierPoDialog';
 import { CoverageButton } from '@/app/(app)/purchase-orders/CoverageDialog';
 import { Chip, ProvenanceBadge, StakeholderBadge, StatusChip } from './Badges';
 import { Money, MonoId, Pct } from './Layout';
@@ -46,7 +45,7 @@ export interface ColumnSpec {
    * the spec crosses the server-to-client boundary and a function cannot.
    * The row supplies whatever the control needs.
    */
-  action?: 'supplierPoLink' | 'customerPoCoverage';
+  action?: 'customerPoCoverage';
   align?: 'left' | 'right' | 'center';
   width?: string;
   mobile?: 'primary' | 'secondary' | 'meta' | 'actions' | 'hidden';
@@ -62,19 +61,6 @@ function renderCell(spec: ColumnSpec, row: RecordRow) {
   if (spec.action === 'customerPoCoverage') {
     return <CoverageButton customerPoId={String(row.id)} sourcing={String(row.sourcing ?? '')} />;
   }
-  if (spec.action === 'supplierPoLink') {
-    return (
-      <SupplierPoLinkButton
-        supplierPoId={String(row.id)}
-        // Not `=== 'Linked'` any more: a bulk row reads "Bulk · 5 customer
-        // orders", and treating that as unlinked would offer to link it afresh.
-        linked={Number(row.customerOrderCount ?? 0) > 0}
-        claimedBy={Number(row.customerOrderCount ?? 0)}
-        workOrderHref={typeof row.href === 'string' ? row.href : undefined}
-      />
-    );
-  }
-
   const value = row[spec.key];
   const empty = spec.empty ?? '—';
   if (value === null || value === undefined || value === '') {

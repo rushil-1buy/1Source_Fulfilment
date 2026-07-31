@@ -67,7 +67,7 @@ export default async function PurchaseOrdersPage() {
       label: 'To suppliers',
       rowNoun: 'supplier orders',
       description:
-        'Orders we have placed with approved suppliers. Where an order is linked, the customer order it serves is shown alongside it. A row marked Bulk came from a demand aggregation and serves several customer orders at once — it opens the pool rather than a single job. An order placed ahead of demand starts unlinked; the last column attaches it to a customer order and creates the work order.',
+        'Orders we have placed with approved suppliers. Where an order is linked, the customer order it serves is shown alongside it, and the row opens that job. An order placed ahead of demand starts unlinked — link it from the customer order\u2019s sourcing view, which is what creates the work order.',
       rows: supplierPos,
       emptyTitle: 'No supplier orders raised yet',
       emptyDescription:
@@ -94,12 +94,9 @@ export default async function PurchaseOrdersPage() {
         // Wider and non-mono for the plural case: a bulk order lists several
         // customer order numbers here, not one.
         { key: 'customerOrder', label: "Customer's order", termKey: 'canonicalName', mobile: 'meta', width: '230px' },
-        { key: 'customerOrderCount', label: 'Customer orders served', kind: 'number', mobile: 'hidden', width: '180px' },
-        { key: 'aggregationRef', label: 'Pooled from', kind: 'mono', mobile: 'hidden', width: '150px' },
         { key: 'customer', label: 'Customer', mobile: 'meta', width: '200px' },
         { key: 'ourQuote', label: 'Our quote to them', termKey: 'proformaInvoice', kind: 'mono', mobile: 'hidden', width: '150px' },
         { key: 'workOrder', label: 'Work order', termKey: 'workOrder', mobile: 'meta', width: '210px' },
-        { key: 'link', label: '', action: 'supplierPoLink', align: 'right', mobile: 'actions', width: '190px' },
       ],
     },
   ];

@@ -50,7 +50,7 @@ const GROUPS = [
     id: 'orders',
     title: 'Orders, quotes & the work order',
     blurb:
-      'The four documents that define an order, the lines on each, the mapping between customer demand and supplier supply, and the work order that ties them together. POLinkMapping is the join that makes split sourcing and demand aggregation possible.',
+      'The four documents that define an order, the lines on each, the mapping between customer demand and supplier supply, and the work order that ties them together. POLinkMapping is the join that carries the allocated quantity and both prices, line by line.',
     models: ['CustomerPO', 'CustomerPOLine', 'ProformaInvoice', 'PILine', 'SupplierPO', 'SupplierPOLine', 'POLinkMapping', 'WorkOrder', 'StageTransition'],
   },
   {
@@ -107,13 +107,6 @@ const GROUPS = [
     blurb:
       'Everything said about an order, everything owed on it, and everything that went wrong with it.',
     models: ['Communication', 'CommunicationParticipant', 'CommunicationContext', 'Task', 'ExceptionRecord'],
-  },
-  {
-    id: 'aggregation',
-    title: 'Demand aggregation',
-    blurb:
-      'Pooling the same part across several customer orders so it can be bought once, in bulk, from one supplier.',
-    models: ['DemandAggregation', 'DemandAggregationPart', 'DemandAggregationLine'],
   },
 ];
 
@@ -505,7 +498,7 @@ const html = `<!doctype html>
 
       <figure class="fig">
         <div class="figscroll">${spineErd}</div>
-        <figcaption>ERD — the order spine. Customer demand enters on the left; <code>POLinkMapping</code> is the join that binds a customer line to a supplier line with its allocated quantity, which is what makes split sourcing and demand aggregation possible. Hover any connector for its foreign key and delete behaviour.</figcaption>
+        <figcaption>ERD — the order spine. Customer demand enters on the left; <code>POLinkMapping</code> is the join that binds a customer line to a supplier line with its allocated quantity and both prices. Hover any connector for its foreign key and delete behaviour.</figcaption>
       </figure>
 
       <div class="mapbox">

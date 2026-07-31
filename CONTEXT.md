@@ -46,7 +46,7 @@ into the domain, not bolted on.
 | Data | Prisma **6.19.3** + SQLite |
 | UI primitives | Radix UI, `cmdk`, Motion, Sonner, TanStack Table, Recharts, Lucide |
 | Validation | Zod |
-| Tests | Vitest — **201 tests across 8 files**, all pure domain logic |
+| Tests | Vitest — **170 tests across 6 files**, all pure domain logic |
 
 > ⚠️ **`AGENTS.md` in the repo root is a standing instruction:** this version of
 > Next.js has breaking changes from what most models and developers have
@@ -211,7 +211,7 @@ column that collapses.
 ```
 app/(app)/                 53 files — every screen, App Router
   orders/[id]/             the order detail page and its panels/dialogs
-  dashboard/ create-po/ create-pi/ demand-aggregation/ escrow/ testing/
+  dashboard/ create-po/ create-pi/ escrow/ testing/
   logistics/ customs/ warehouse/ tax/ avl/ masters/ documents/ reports/ settings/
 components/                22 files
   flow/FlowRail.tsx        the stage rail — a dumb renderer over railStates()
@@ -225,8 +225,8 @@ lib/                       60 files
   adapters/                the three-mode integration layer
   demo/                    the demo order fixture, shared with the seed
 prisma/
-  schema.prisma            63 models
-  seed.ts                  + seed-masters, seed-split-sourcing, seed-demand-pool, seed-demo-order
+  schema.prisma            60 models
+  seed.ts                  + seed-masters, seed-demo-order
 ```
 
 ---
@@ -245,8 +245,6 @@ prisma/
 | `incoterms.ts` | All 11 Incoterms 2020 + `FOR`, with cost/risk split and customs valuation |
 | `enums.ts` | Every enum-ish union + Zod schemas + display metadata |
 | `exceptions.ts` | Exception types and the named routes out of each |
-| `aggregation.ts` | Demand pooling maths |
-| `allocate.ts` | Supply-to-demand allocation with depletion |
 | `line-import.ts` | CSV/TSV parsing for bulk line upload |
 | `xlsx-lite.ts` | Dependency-free `.xlsx` reader — **see §8** |
 | `reconcile.ts` | Three-way match between PO, PI and what arrived |
@@ -267,19 +265,20 @@ Pending segments are named (`SPI-PENDING`), not blank. When all four exist the
 canonical name completes and **locks**; the provisional name is retained as a
 searchable alias.
 
-`WorkOrder.supplierPoId` has **no unique constraint** — this is deliberate and is
-what makes the many-to-many shapes possible:
+**The many-to-many shapes have been removed** — split sourcing (one customer PO
+across several supplier POs) and demand aggregation (one bulk supplier PO across
+several customer POs). Both are being redesigned; nothing in the prototype
+creates or displays them today. What remains is one customer order served by one
+supplier order through one work order.
 
-- **Split sourcing** — one customer PO served by several supplier POs ⇒ several work orders
-- **Demand aggregation** — one bulk supplier PO serving several customer POs ⇒ one work order each
+`WorkOrder.supplierPoId` still has **no unique constraint**, and `POLinkMapping`
+is retained deliberately — it is the join carrying the allocated quantity and
+both prices, and it is what a partially-covered customer line is measured
+against. It is also the seam a new many-to-many design would build on, which is
+why it survived the removal.
 
-> Aggregation is a **buy-side** concept. Fulfilment stays per customer, because
-> proforma invoices, tax invoices, e-way bills and PODs name one buyer and cannot
-> be pooled.
-
-`POLinkMapping` is the join carrying the allocated quantity and both prices. **A
-customer line can only contribute what it has left unallocated** — the platform
-refuses to promise the same pieces twice.
+Coverage is still read per CUSTOMER line (`coverageByLine`), so a line bought in
+part still reports honestly as short.
 
 ### The seven phases
 
@@ -363,8 +362,6 @@ dependencies of `next`.
 | Seed | Scenario |
 |---|---|
 | `seed-masters` | Customers (same-state / different-state / SEZ), suppliers, parts, HSN rates |
-| `seed-split-sourcing` | One customer PO across three suppliers, at three different stages |
-| `seed-demand-pool` | Overlapping demand across customers, left unsourced so aggregation has something to work on |
 | `seed-demo-order` | **`DEMO-ORDER`** — a clean one-to-one order parked at B3 |
 
 `DEMO-ORDER` is the demo fixture: one customer order, one supplier order, sitting
@@ -393,7 +390,7 @@ the same code as the seed — sharing it is what stops the two drifting.
 
 | File | What it is | Regenerate |
 |---|---|---|
-| `database-design.html` | Self-contained, searchable reference for all 63 tables and 915 columns, with the raw schema embedded | from `prisma/schema.prisma` |
+| `database-design.html` | Self-contained, searchable reference for all 60 tables and 881 columns, with the raw schema embedded | from `prisma/schema.prisma` |
 | `1BUY-Fulfilment-Platform.docx` | Problem statement, objectives, methodology, full user guide, every field | from `lib/domain` |
 | `CONTEXT.md` | This file | by hand |
 
