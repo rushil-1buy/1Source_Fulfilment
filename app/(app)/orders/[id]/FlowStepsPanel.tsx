@@ -31,6 +31,7 @@ import {
   ListChecks,
   Paperclip,
   UserPlus,
+  TriangleAlert,
 } from 'lucide-react';
 import {
   PHASE_DEFS,
@@ -43,6 +44,7 @@ import {
 import { evidenceFor } from '@/lib/domain/stage-evidence';
 import { subTaskProgress, subTaskStates, type SubTaskKind } from '@/lib/domain/stage-tasks';
 import { STAKEHOLDER_META } from '@/lib/domain/enums';
+import { stageLiability } from '@/lib/domain/stage-liability';
 import { Panel, PanelHeader } from '@/components/ui/Layout';
 import { Chip, StakeholderBadge } from '@/components/ui/Badges';
 import { cn, formatDate } from '@/lib/utils';
@@ -266,6 +268,9 @@ export function FlowStepsPanel({
                     <span className="font-medium">To leave this stage:</span> {stage.exitCriteria}
                   </p>
 
+                  {/* ── Who is liable, under the term we bought on ────────── */}
+                  <StageLiabilityDisclosure stageId={stage.id} ctx={ctx} />
+
                   {/* ── Sub-tasks ─────────────────────────────────────────── */}
                   <div className="border-line-subtle bg-surface-1 mt-3 overflow-hidden rounded-[9px] border">
                     <div className="text-fg-tertiary border-line-subtle border-b px-2.5 py-1.5 text-[9.5px] font-semibold tracking-[0.05em] uppercase">
@@ -427,5 +432,116 @@ export function FlowStepsPanel({
         })}
       </ol>
     </Panel>
+  );
+}
+
+/**
+ * WHO IS LIABLE FOR THIS STEP, UNDER THE TERM WE BOUGHT ON.
+ *
+ * Collapsed by default and opened by clicking, for two reasons. Most steps are
+ * worked without anyone needing to re-read the Incoterm, so open-by-default
+ * would push the sub-tasks — the thing people came for — below the fold on every
+ * one of them. And the operator who DOES need it is usually asking about one
+ * specific step, which is exactly the one they are looking at.
+ *
+ * It names only the obligation this step turns on, not all four. See
+ * lib/domain/stage-liability.ts for why.
+ */
+function StageLiabilityDisclosure({ stageId, ctx }: { stageId: string; ctx: StageContext }) {
+  const [open, setOpen] = useState(false);
+  const liability = stageLiability(stageId, ctx);
+  // Steps the Incoterm does not govern get no control at all — an expander that
+  // opens onto nothing is worse than no expander.
+  if (!liability) return null;
+
+  const ours = liability.rows.filter((r) => r.party === '1BUY').length;
+  const summary =
+    ours === liability.rows.length
+      ? 'Ours'
+      : ours === 0
+        ? 'Theirs'
+        : 'Split';
+
+  return (
+    <div className="border-line-subtle bg-surface-1 mt-3 overflow-hidden rounded-[9px] border">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="hover:bg-surface-3 flex w-full items-center gap-2 px-2.5 py-1.5 text-left transition-colors"
+      >
+        <ChevronRight
+          className={cn(
+            'text-fg-tertiary size-3.5 shrink-0 transition-transform',
+            open && 'rotate-90',
+          )}
+          strokeWidth={2}
+          aria-hidden
+        />
+        <span className="text-fg-tertiary text-[9.5px] font-semibold tracking-[0.05em] uppercase">
+          Who is liable
+        </span>
+        <span className="text-fg-tertiary ml-auto flex items-center gap-1.5 text-[10.5px]">
+          <span className="font-mono">{liability.termCode}</span>
+          <span
+            className={cn(
+              'rounded-[5px] px-1.5 py-0.5 font-medium',
+              summary === 'Ours'
+                ? 'bg-accent-subtle text-accent-text'
+                : summary === 'Theirs'
+                  ? 'bg-surface-3 text-fg-secondary'
+                  : 'bg-warning-subtle text-warning',
+            )}
+          >
+            {summary}
+          </span>
+        </span>
+      </button>
+
+      {open && (
+        <div className="border-line-subtle space-y-2 border-t px-2.5 py-2">
+          <p className="text-fg-tertiary text-[11px] leading-relaxed">
+            Bought <strong className="text-fg-secondary font-mono">{liability.termCode}</strong> —{' '}
+            {liability.termPlain.toLowerCase()}.
+          </p>
+
+          {liability.rows.map((r) => (
+            <div key={r.key} className="flex min-w-0 items-start gap-2">
+              <span
+                className={cn(
+                  'mt-0.5 shrink-0 rounded-[5px] px-1.5 py-0.5 text-[10.5px] font-medium',
+                  r.party === '1BUY'
+                    ? 'bg-accent-subtle text-accent-text'
+                    : 'bg-surface-3 text-fg-secondary',
+                )}
+              >
+                {r.party}
+              </span>
+              <span className="min-w-0">
+                <span className="text-fg text-[11.5px] font-medium">{r.label}</span>
+                {r.obligatory && (
+                  <span className="text-success ml-1.5 text-[10px]">required by the term</span>
+                )}
+                <span className="text-fg-tertiary block text-[11px] leading-relaxed">
+                  {r.detail}
+                </span>
+                {r.warning && (
+                  <span className="text-warning mt-0.5 flex items-start gap-1 text-[11px] leading-relaxed">
+                    <TriangleAlert className="mt-0.5 size-3 shrink-0" strokeWidth={2} aria-hidden />
+                    {r.warning}
+                  </span>
+                )}
+              </span>
+            </div>
+          ))}
+
+          {liability.riskNote && (
+            <p className="text-fg-secondary border-line-subtle border-t pt-2 text-[11px] leading-relaxed">
+              <strong className="text-fg font-medium">Risk transfers</strong> — {liability.riskNote}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

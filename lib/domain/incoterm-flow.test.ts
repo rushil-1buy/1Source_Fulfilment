@@ -15,6 +15,8 @@
 
 import { describe, expect, it } from 'vitest';
 import { applicableStages, getStage, stageApplies, stageOwner, type StageContext } from './stages';
+import { inboundChain } from './incoterms';
+import { stageLiability } from './stage-liability';
 
 const ctx = (incoterms: string, over: Partial<StageContext> = {}): StageContext => ({
   paymentMethod: 'ESCROW',
@@ -142,5 +144,74 @@ describe('the flow stays walkable on every term', () => {
         expect(stageOwner(stage, c), `${term} ${stage.code}`).toBeTruthy();
       }
     }
+  });
+});
+
+describe('inboundChain — who actually handles the leg', () => {
+  /**
+   * The phase header used to print one fixed chain against every order. These
+   * pin the three shapes where that string was simply untrue.
+   */
+  it('puts us first on EXW, because export clearance precedes any movement', () => {
+    expect(inboundChain('EXW')).toMatch(/^1BUY \(export clearance\)/);
+  });
+
+  it('never claims our customs agent on DDP', () => {
+    const chain = inboundChain('DDP');
+    expect(chain).not.toMatch(/Customs Agent \(ours\)/);
+    expect(chain).toMatch(/They clear import/);
+  });
+
+  it('says plainly that a domestic order has no customs', () => {
+    expect(inboundChain('FOR')).toMatch(/domestic, no customs/);
+  });
+
+  it('names our own logistics partner only when we booked the carriage', () => {
+    expect(inboundChain('FOB')).toMatch(/Logistics Partner \(ours\)/);
+    expect(inboundChain('CIF')).toMatch(/Their carrier/);
+  });
+
+  it('falls back to the common import chain on an unknown term', () => {
+    expect(inboundChain('NONSENSE')).toBe('Supplier → Logistics Partner → Customs Agent');
+    expect(inboundChain(null)).toBe('Supplier → Logistics Partner → Customs Agent');
+  });
+});
+
+describe('stageLiability — the obligation each step actually turns on', () => {
+  it('shows only who clears import on the duty step, not all four obligations', () => {
+    const l = stageLiability(DUTY, ctx('FOB'))!;
+    expect(l.rows).toHaveLength(1);
+    expect(l.rows[0].key).toBe('importClearance');
+    expect(l.rows[0].party).toBe('1BUY');
+  });
+
+  it('flips that party on DDP, where the supplier is importer of record', () => {
+    expect(stageLiability(CLEARED, ctx('DDP'))!.rows[0].party).toBe('Supplier');
+    expect(stageLiability(CLEARED, ctx('FOB'))!.rows[0].party).toBe('1BUY');
+  });
+
+  it('pairs carriage with insurance on the international leg, where both are live', () => {
+    const keys = stageLiability(TRANSIT, ctx('FOB'))!.rows.map((r) => r.key);
+    expect(keys).toEqual(['carriage', 'insurance']);
+  });
+
+  it('surfaces the uninsured-leg warning where no party is obliged to cover it', () => {
+    const ins = stageLiability(TRANSIT, ctx('FOB'))!.rows.find((r) => r.key === 'insurance')!;
+    expect(ins.warning).toMatch(/uninsured/i);
+  });
+
+  it('states where risk passes on dispatch and transit, and nowhere else', () => {
+    expect(stageLiability(TRANSIT, ctx('FOB'))!.riskNote).toBe('Once the goods are on board');
+    expect(stageLiability(DUTY, ctx('FOB'))!.riskNote).toBeNull();
+  });
+
+  it('returns nothing for steps the Incoterm does not govern', () => {
+    for (const id of ['CUSTOMER_PO_RECEIVED', 'ESCROW_FUNDED', 'INSPECTION_PASSED']) {
+      expect(stageLiability(id, ctx('FOB')), id).toBeNull();
+    }
+  });
+
+  it('returns nothing when the term is unrecognised, rather than an empty shell', () => {
+    expect(stageLiability(DUTY, ctx('NONSENSE'))).toBeNull();
   });
 });

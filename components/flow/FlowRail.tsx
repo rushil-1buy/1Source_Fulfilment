@@ -55,6 +55,7 @@ import {
   type PhaseEditability,
 } from '@/lib/domain/phase-plan';
 import { STAKEHOLDER_META, type Stakeholder } from '@/lib/domain/enums';
+import { inboundChain } from '@/lib/domain/incoterms';
 import { cn, humanDuration, relativeTime } from '@/lib/utils';
 import { StakeholderBadge, StakeholderDot } from '@/components/ui/Badges';
 import { usePreferences } from '@/components/providers/Preferences';
@@ -568,7 +569,14 @@ export function FlowRail({
               </div>
               <div className="text-fg-tertiary text-[11.5px]">
                 {PHASE_DEFS[expanded].description}
-                <span className="text-fg-tertiary/70"> · Owner: {PHASE_DEFS[expanded].owner}</span>
+                {/* Phase E's chain depends on the term we bought on. The other
+                    phases do not move with the Incoterm, so they keep the fixed
+                    line. Printing "Customs Agent" on a DDP order named a party
+                    that is not involved. */}
+                <span className="text-fg-tertiary/70">
+                  {' · Owner: '}
+                  {expanded === 'E' ? inboundChain(data.ctx.incoterms) : PHASE_DEFS[expanded].owner}
+                </span>
               </div>
             </div>
             <span className="flex shrink-0 items-center gap-1.5">

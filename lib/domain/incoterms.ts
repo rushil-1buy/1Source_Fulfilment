@@ -674,3 +674,31 @@ export const LEVY_TREATMENT = [
     treatment: 'A cost. The agent’s GST is creditable and handled with the other creditable taxes.',
   },
 ] as const;
+
+/**
+ * Who actually handles the inbound leg, end to end, under one buy-side term.
+ *
+ * The phase header used to print a fixed string — "Supplier → Logistics Partner
+ * → Customs Agent" — against every order. On a DDP order that is simply untrue:
+ * the supplier carries it to our door and no agent of ours is involved. On EXW
+ * it understates our exposure, because export clearance at origin is ours before
+ * the goods have moved at all.
+ *
+ * Returned as a chain rather than a sentence because that is how the handover
+ * actually reads, and the arrows make the transfer points obvious.
+ */
+export function inboundChain(code: string | null | undefined): string {
+  const def = incotermFor(code);
+  if (!def) return 'Supplier → Logistics Partner → Customs Agent';
+  if (def.mode === 'DOM') return 'Supplier → our warehouse (domestic, no customs)';
+
+  const links: string[] = [];
+  // Export clearance first, because on EXW it happens before anything moves.
+  if (def.exportClearance === 'BUYER') links.push('1BUY (export clearance)');
+  links.push('Supplier');
+  links.push(def.carriage.party === 'BUYER' ? 'Logistics Partner (ours)' : 'Their carrier');
+  if (def.importClearance === 'BUYER') links.push('Customs Agent (ours)');
+  else links.push('They clear import');
+  links.push('our warehouse');
+  return links.join(' → ');
+}
