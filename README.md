@@ -28,7 +28,7 @@ npm run dev               # http://localhost:4100
 |---|---|
 | `npm run dev` | Dev server on **:4100** |
 | `npm run typecheck` | `tsc --noEmit` |
-| `npm test` | Vitest — **170 tests**, all pure domain logic |
+| `npm test` | Vitest — **186 tests**, all pure domain logic |
 | `npm run lint` | ESLint |
 | `npm run seed` | Rebuild the whole demo database |
 | `npm run db:push` | Apply `schema.prisma` to SQLite |
@@ -129,7 +129,7 @@ An order is a **work order**, named from four documents:
 CustomerPO _ OurPI _ OurPO _ SupplierPI
 ```
 
-It moves along a declarative ladder of **39 stages across 7 phases**
+It moves along a declarative ladder of **40 stages across 7 phases**
 (`lib/domain/stages.ts`), which is the single source of truth for the flow rail,
 transition rules, SLA ageing, the next-action prompt, the audit trail and the
 generated documentation. Adding or reordering a stage means editing that one

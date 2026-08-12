@@ -110,6 +110,7 @@ export async function uploadStageDocument(formData: FormData): Promise<UploadRes
       paymentMethod: true,
       testingRequired: true,
       testScope: true,
+      incoterms: true,
       ...STAGE_CONTEXT_INCLUDE,
     },
   });

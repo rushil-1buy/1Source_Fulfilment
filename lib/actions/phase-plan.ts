@@ -112,6 +112,7 @@ export async function savePhasePlan(raw: SavePhasePlanInput): Promise<PhasePlanR
       paymentMethod: true,
       testingRequired: true,
       testScope: true,
+      incoterms: true,
     },
   });
   if (!wo) return { ok: false, message: 'That order no longer exists.' };
@@ -159,6 +160,7 @@ export async function savePhasePlan(raw: SavePhasePlanInput): Promise<PhasePlanR
     testingRequired: wo.testingRequired,
     testScope: wo.testScope as StageContext['testScope'],
     phasePlan: next,
+    incoterms: wo.incoterms,
   };
   const ladderAfter = applicableStages(ctxAfter).filter(
     (s) => !next.some((e) => e.phase === s.phase && e.skipped),

@@ -84,6 +84,8 @@ import {
   resolveRailAnchor,
   type PhaseId,
   type PhasePlan,
+  stageOwner,
+  type StageContext,
 } from '@/lib/domain/stages';
 import { normalisePhasePlan, planSequence } from '@/lib/domain/phase-plan';
 import {
@@ -192,6 +194,10 @@ export function OrderDetailView({
         testingRequired: order.testingRequired,
         testScope: (order.testScope as 'LOT_SAMPLE' | 'FULL_BATCH' | null) ?? null,
         phasePlan: activePlan,
+        // The term we bought on drives the whole inbound leg — which customs
+        // steps this order runs at all, and whose name sits against them.
+        incoterms: order.incoterms,
+        sellIncoterms: order.customerPo.incoterms,
       },
       isBlocked: order.status === 'BLOCKED' || Boolean(order.computed.branchStageId),
       blockReason: order.exceptions.find((e) => e.status === 'OPEN')?.reason ?? null,
@@ -284,6 +290,7 @@ export function OrderDetailView({
       paymentMethod: order.paymentMethod as 'ESCROW',
       testingRequired: order.testingRequired,
       testScope: (order.testScope as 'LOT_SAMPLE' | null) ?? null,
+      incoterms: order.incoterms,
     }).map((s) => ({
       id: s.id,
       code: s.code,
@@ -862,7 +869,7 @@ export function OrderDetailView({
             </Tabs.Content>
 
             <Tabs.Content value="history" className="min-w-0 outline-none">
-              <FlowTab order={order} />
+              <FlowTab order={order} ctx={rail.ctx} />
             </Tabs.Content>
           </Tabs.Root>
         </Tabs.Content>
@@ -1267,7 +1274,7 @@ function PartyCard({
 // Flow
 // ═══════════════════════════════════════════════════════════════════════════
 
-function FlowTab({ order }: { order: OrderDetail }) {
+function FlowTab({ order, ctx }: { order: OrderDetail; ctx: StageContext }) {
   const rows = [...order.transitions].reverse();
   return (
     <Panel padded={false}>
@@ -1308,7 +1315,7 @@ function FlowTab({ order }: { order: OrderDetail }) {
                   </td>
                   <td className="text-fg px-3 py-2 font-medium">{stage.label}</td>
                   <td className="px-3 py-2">
-                    <StakeholderBadge stakeholder={stage.owner} />
+                    <StakeholderBadge stakeholder={stageOwner(stage, ctx)} />
                   </td>
                   <td className="text-fg-secondary px-3 py-2">{t.actorLabel}</td>
                   <td className="px-3 py-2">

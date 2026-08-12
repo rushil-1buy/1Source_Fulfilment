@@ -2048,6 +2048,30 @@
    ]
   },
   {
+   "id": "EXPORT_CLEARED_AT_ORIGIN",
+   "code": "E0",
+   "phase": "E",
+   "label": "Export cleared at origin",
+   "plainLabel": "Cleared to leave their country",
+   "description": "We bought at the supplier’s door, so getting the consignment cleared for export is our obligation, not theirs. Nothing can move until it is done.",
+   "exitCriteria": "Export declaration filed at origin and the consignment released to travel.",
+   "owner": "ONE_BUY",
+   "expectedHours": 48,
+   "artifacts": [
+    "Export declaration",
+    "Origin clearance confirmation"
+   ],
+   "nextAction": "Book the carriage and get the consignment moving.",
+   "nextActionOwner": "LOGISTICS",
+   "isExceptionBranch": false,
+   "isTerminal": false,
+   "conditional": true,
+   "attestation": null,
+   "fields": [],
+   "documents": [],
+   "subTasks": []
+  },
+  {
    "id": "FULL_SHIPMENT_DISPATCHED_BY_SUPPLIER",
    "code": "E1",
    "phase": "E",
@@ -2226,7 +2250,7 @@
    "nextActionOwner": "WHA",
    "isExceptionBranch": false,
    "isTerminal": false,
-   "conditional": false,
+   "conditional": true,
    "attestation": "The shipment is moving and we know where it is.",
    "fields": [
     {
@@ -2303,7 +2327,7 @@
    "nextActionOwner": "WHA",
    "isExceptionBranch": false,
    "isTerminal": false,
-   "conditional": false,
+   "conditional": true,
    "attestation": "The goods have landed and the customs agent has what they need to file.",
    "fields": [
     {
@@ -2396,7 +2420,7 @@
    "nextActionOwner": "WHA",
    "isExceptionBranch": false,
    "isTerminal": false,
-   "conditional": false,
+   "conditional": true,
    "attestation": "The entry is filed with customs and we hold its reference.",
    "fields": [
     {
@@ -2489,7 +2513,7 @@
    "nextActionOwner": "WHA",
    "isExceptionBranch": false,
    "isTerminal": false,
-   "conditional": false,
+   "conditional": true,
    "attestation": "Duty has been assessed and paid, and the recoverable part is identified.",
    "fields": [
     {
@@ -2607,7 +2631,7 @@
    "nextActionOwner": "ONE_BUY",
    "isExceptionBranch": false,
    "isTerminal": false,
-   "conditional": false,
+   "conditional": true,
    "attestation": "Customs has released the goods.",
    "fields": [
     {

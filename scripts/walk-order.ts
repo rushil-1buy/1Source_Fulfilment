@@ -26,6 +26,7 @@ async function main() {
       paymentMethod: wo.paymentMethod as 'ESCROW',
       testingRequired: wo.testingRequired,
       testScope: (wo.testScope as 'LOT_SAMPLE' | null) ?? null,
+      incoterms: wo.incoterms,
     };
     const next = nextStageFor(wo.stage, ctx);
     if (!next) { console.log('\nno further stage from', wo.stage); break; }

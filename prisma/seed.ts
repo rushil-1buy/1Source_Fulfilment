@@ -422,6 +422,7 @@ async function buildWorkOrder(spec: WoSpec) {
     paymentMethod: spec.paymentMethod,
     testingRequired: spec.testingRequired,
     testScope: spec.testScope ?? null,
+    incoterms: supplier.incoterms,
   };
   const fxRate = supplier.currency === 'INR' ? 1 : 83.2;
 

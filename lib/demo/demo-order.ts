@@ -125,6 +125,7 @@ export async function seedDemoOrder(db: PrismaClient, now = Date.now()) {
     paymentMethod: 'ESCROW',
     testingRequired: true,
     testScope: 'LOT_SAMPLE',
+    incoterms: SUPPLIER.incoterms,
   };
   const ladder = applicableStages(ctx);
   const targetIdx = stageIndex(TARGET_STAGE);

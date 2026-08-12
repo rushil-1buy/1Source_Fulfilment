@@ -42,6 +42,7 @@ describe('every stage has something to show', () => {
       paymentMethod: 'ESCROW',
       testingRequired: true,
       testScope: 'LOT_SAMPLE',
+      incoterms: 'CIF',
     });
     for (const s of ladder) {
       expect(subTasksFor(s.id).length, `${s.code} ${s.label}`).toBeGreaterThan(0);

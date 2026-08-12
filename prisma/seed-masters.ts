@@ -250,7 +250,7 @@ export const SUPPLIERS = [
     contactPhone: '+60 4 642 1180',
     contactFax: '+60 4 642 1181',
     currency: 'USD',
-    incoterms: 'FOB',
+    incoterms: 'EXW',
     bankName: 'Malayan Banking Berhad (Maybank)',
     bankAddress: 'Menara Maybank, 100 Jalan Tun Perak, 50050 Kuala Lumpur',
     bankAccount: '5140 2210 3387',

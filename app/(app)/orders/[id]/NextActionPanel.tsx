@@ -130,6 +130,7 @@ export function NextActionPanel({
     viewStageId,
     ev?.values ?? {},
     (ev?.documents ?? []).map((d) => d.docType),
+    ctx,
   );
   const progress = subTaskProgress(tasks);
 

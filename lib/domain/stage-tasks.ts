@@ -25,7 +25,7 @@
  */
 
 import { STAGE_EVIDENCE, evidenceFor, type EvidenceDoc, type EvidenceField } from './stage-evidence';
-import { getStage, type StageDef } from './stages';
+import { getStage, stageOwner, type StageContext, type StageDef } from './stages';
 import type { Stakeholder } from './enums';
 
 export type SubTaskKind =
@@ -424,13 +424,13 @@ const ACTIONS: Record<string, ActionSpec[]> = {
 // Composition
 // ═══════════════════════════════════════════════════════════════════════════
 
-function docTask(stage: StageDef, d: EvidenceDoc): SubTask {
+function docTask(stage: StageDef, d: EvidenceDoc, owner: Stakeholder): SubTask {
   return {
     id: `doc:${d.id}`,
     kind: 'DOCUMENT',
     label: `Upload — ${d.label}`,
     detail: d.help,
-    owner: stage.owner,
+    owner,
     required: Boolean(d.required),
   };
 }
@@ -442,7 +442,7 @@ function docTask(stage: StageDef, d: EvidenceDoc): SubTask {
  * the form again. The row names how many are outstanding and the form is one click
  * away.
  */
-function captureTask(stage: StageDef, fields: EvidenceField[]): SubTask | null {
+function captureTask(stage: StageDef, fields: EvidenceField[], owner: Stakeholder): SubTask | null {
   if (!fields.length) return null;
   const required = fields.filter((f) => f.required);
   return {
@@ -452,27 +452,35 @@ function captureTask(stage: StageDef, fields: EvidenceField[]): SubTask | null {
     detail: required.length
       ? `${required.map((f) => f.label).join(', ')} must be recorded before the order can move on.`
       : 'Recorded if known. None of these block the order.',
-    owner: stage.owner,
+    owner,
     required: required.length > 0,
   };
 }
 
-/** The full checklist for a stage, documents first. */
-export function subTasksFor(stageId: string): SubTask[] {
+/**
+ * The full checklist for a stage, documents first.
+ *
+ * `ctx` is optional and only affects WHO each row is addressed to. Pass it
+ * wherever an order is in hand: on the customs and carriage steps the Incoterm
+ * decides whether the work is ours or the supplier's, and without it the rows
+ * fall back to the stage's nominal owner.
+ */
+export function subTasksFor(stageId: string, ctx?: StageContext): SubTask[] {
   const stage = getStage(stageId);
+  const owner = ctx ? stageOwner(stage, ctx) : stage.owner;
   const ev = evidenceFor(stageId);
   const actions = (ACTIONS[stageId] ?? []).map<SubTask>((a) => ({
     id: `action:${a.id}`,
     kind: 'ACTION',
     label: a.label,
     detail: a.detail,
-    owner: a.owner ?? stage.owner,
+    owner: a.owner ?? owner,
     required: Boolean(a.required),
     standard: a.standard,
   }));
 
-  const docs = (ev?.documents ?? []).map((d) => docTask(stage, d));
-  const capture = captureTask(stage, ev?.fields ?? []);
+  const docs = (ev?.documents ?? []).map((d) => docTask(stage, d, owner));
+  const capture = captureTask(stage, ev?.fields ?? [], owner);
 
   // Documents, then the work, then the figures. See the header for why.
   return [...docs, ...actions, ...(capture ? [capture] : [])];
@@ -488,6 +496,7 @@ export function subTaskStates(
   stageId: string,
   values: Record<string, unknown> = {},
   attachedDocIds: string[] = [],
+  ctx?: StageContext,
 ): SubTaskState[] {
   const ev = evidenceFor(stageId);
   const attached = new Set(attachedDocIds);
@@ -500,7 +509,7 @@ export function subTaskStates(
     (ACTIONS[stageId] ?? []).map((a) => [`action:${a.id}`, a.doneWhen]),
   );
 
-  return subTasksFor(stageId).map((task) => {
+  return subTasksFor(stageId, ctx).map((task) => {
     if (task.kind === 'DOCUMENT') {
       return { ...task, done: attached.has(task.id.slice(4)) };
     }

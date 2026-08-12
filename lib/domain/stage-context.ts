@@ -36,6 +36,27 @@ export interface StageContextSource {
    * that means passing `[]`.
    */
   phasePlan: readonly { phase: string; skipped: boolean }[];
+  /**
+   * The term we BUY on — the work order's own Incoterm.
+   *
+   * This is what governs the inbound journey: who clears export, who books the
+   * freight, who is importer of record and pays the duty. Phase E is derived
+   * from it, so an EXW order and a DDP order no longer walk the same stages.
+   *
+   * Required for the same reason as `phasePlan`: a missing term is
+   * indistinguishable from a term that happens to imply the default path, and
+   * that ambiguity is what let the phase-plan bug through.
+   */
+  incoterms: string;
+  /**
+   * The term we SELL on — the customer PO's Incoterm.
+   *
+   * Optional, unlike `incoterms`, because nothing reads it yet: the inbound leg
+   * is governed entirely by the buy-side term. Requiring it would make every
+   * caller join the customer PO to satisfy a field no predicate consults.
+   * Promote it to required the moment outbound branches on it.
+   */
+  sellIncoterms?: string | null;
 }
 
 export function stageContextFrom(wo: StageContextSource): StageContext {
@@ -43,6 +64,8 @@ export function stageContextFrom(wo: StageContextSource): StageContext {
     paymentMethod: wo.paymentMethod as PaymentMethod,
     testingRequired: wo.testingRequired,
     testScope: (wo.testScope as TestScope | null) ?? null,
+    incoterms: wo.incoterms,
+    sellIncoterms: wo.sellIncoterms ?? null,
     // No rows means the standard ladder, which the engine represents as no plan
     // rather than as the default plan — cheaper, and it keeps "unplanned" and
     // "planned back to standard" behaving identically.

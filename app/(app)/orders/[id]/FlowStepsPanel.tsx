@@ -38,6 +38,7 @@ import {
   resolveRailAnchor,
   stageApplies,
   type StageContext,
+  stageOwner,
 } from '@/lib/domain/stages';
 import { evidenceFor } from '@/lib/domain/stage-evidence';
 import { subTaskProgress, subTaskStates, type SubTaskKind } from '@/lib/domain/stage-tasks';
@@ -162,6 +163,7 @@ export function FlowStepsPanel({
             stage.id,
             ev?.values ?? {},
             (ev?.documents ?? []).map((d) => d.docType),
+            ctx,
           );
           const progress = subTaskProgress(tasks);
           const stageDocs = [
@@ -251,7 +253,7 @@ export function FlowStepsPanel({
                   {isDone && !isCurrent && (
                     <CheckCircle2 className="text-success size-4" strokeWidth={2.2} aria-label="Done" />
                   )}
-                  <StakeholderBadge stakeholder={stage.owner} />
+                  <StakeholderBadge stakeholder={stageOwner(stage, ctx)} />
                 </span>
               </button>
 

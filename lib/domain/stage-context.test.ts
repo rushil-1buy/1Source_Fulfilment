@@ -8,6 +8,7 @@ const row = (over: Partial<Parameters<typeof stageContextFrom>[0]> = {}) => ({
   testingRequired: true,
   testScope: 'LOT_SAMPLE',
   phasePlan: [] as { phase: string; skipped: boolean }[],
+  incoterms: 'CIF',
   ...over,
 });
 
@@ -75,7 +76,7 @@ describe('a re-planned order computes the same answer on both sides', () => {
   it('leaves an order with no plan behaving exactly as before', () => {
     for (const stage of ['CUSTOMER_PO_RECEIVED', 'TERMS_LOCKED', 'ESCROW_FUNDED', 'INSPECTION_PASSED']) {
       expect(nextStageFor(stage, unplanned)?.id).toBe(
-        nextStageFor(stage, { paymentMethod: 'ESCROW', testingRequired: true, testScope: 'LOT_SAMPLE' })?.id,
+        nextStageFor(stage, { paymentMethod: 'ESCROW', testingRequired: true, testScope: 'LOT_SAMPLE', incoterms: 'CIF' })?.id,
       );
     }
   });

@@ -1,0 +1,146 @@
+/**
+ * THE INBOUND LEG IS DERIVED FROM THE TERM WE BOUGHT ON.
+ *
+ * Before this, every order walked the same seven Phase E stages regardless of
+ * Incoterm — which meant the flow rail printed "1BUY" against "Duty assessed and
+ * paid" on a DDP order, where the supplier is importer of record and the duty is
+ * already inside their price. A stage's owner is a statement about who carries
+ * the obligation, so stating it wrongly is worse than not stating it.
+ *
+ * These tests pin the three shapes that actually differ:
+ *   EXW — we clear export at origin, so there is an extra step before dispatch
+ *   DDP — the supplier is importer of record, so our customs stages fall away
+ *   FOR — a domestic movement, so there is no border and no customs at all
+ */
+
+import { describe, expect, it } from 'vitest';
+import { applicableStages, getStage, stageApplies, stageOwner, type StageContext } from './stages';
+
+const ctx = (incoterms: string, over: Partial<StageContext> = {}): StageContext => ({
+  paymentMethod: 'ESCROW',
+  testingRequired: false,
+  testScope: null,
+  incoterms,
+  ...over,
+});
+
+const ids = (c: StageContext) => applicableStages(c).filter((s) => stageApplies(s, c)).map((s) => s.id);
+
+const EXPORT = 'EXPORT_CLEARED_AT_ORIGIN';
+const AGENT = 'BORDER_ARRIVAL_WHA_ENGAGED';
+const ENTRY = 'CUSTOMS_ENTRY_FILED_ICEGATE';
+const DUTY = 'DUTY_ASSESSED_AND_PAID';
+const CLEARED = 'CUSTOMS_CLEARED';
+const TRANSIT = 'IN_TRANSIT_INTERNATIONAL';
+
+describe('EXW — the goods are ours at their door', () => {
+  it('adds the origin export clearance step, which no other term needs', () => {
+    expect(ids(ctx('EXW'))).toContain(EXPORT);
+  });
+
+  it('leaves it out of every term where the supplier clears export', () => {
+    for (const term of ['FOB', 'CIF', 'CFR', 'CPT', 'CIP', 'DAP', 'DPU', 'DDP', 'FCA', 'FAS']) {
+      expect(ids(ctx(term)), term).not.toContain(EXPORT);
+    }
+  });
+
+  it('still runs the whole import leg — export being ours does not change who imports', () => {
+    const flow = ids(ctx('EXW'));
+    for (const s of [ENTRY, DUTY, CLEARED]) expect(flow).toContain(s);
+  });
+});
+
+describe('DDP — the supplier is importer of record', () => {
+  const ddp = ctx('DDP');
+
+  it('drops the customs work that is not ours to do', () => {
+    const flow = ids(ddp);
+    for (const s of [AGENT, ENTRY, DUTY]) expect(flow, s).not.toContain(s);
+  });
+
+  it('keeps the release milestone, because it is what lets the goods travel to us', () => {
+    expect(ids(ddp)).toContain(CLEARED);
+  });
+
+  it('names the supplier against release rather than our customs agent', () => {
+    expect(stageOwner(getStage(CLEARED), ddp)).toBe('SUPPLIER');
+    expect(stageOwner(getStage(CLEARED), ctx('FOB'))).toBe('WHA');
+  });
+
+  it('names the supplier against the international leg they contracted', () => {
+    expect(stageOwner(getStage(TRANSIT), ddp)).toBe('SUPPLIER');
+  });
+});
+
+describe('FOB — the common import shape', () => {
+  const fob = ctx('FOB');
+
+  it('runs every customs stage, all of them ours', () => {
+    const flow = ids(fob);
+    for (const s of [AGENT, ENTRY, DUTY, CLEARED]) expect(flow, s).toContain(s);
+  });
+
+  it('names us against the leg we booked', () => {
+    expect(stageOwner(getStage(TRANSIT), fob)).toBe('LOGISTICS');
+  });
+});
+
+describe('FOR — domestic, so there is no border', () => {
+  const dom = ctx('FOR');
+
+  it('has no international transit and no customs leg at all', () => {
+    const flow = ids(dom);
+    for (const s of [TRANSIT, AGENT, ENTRY, DUTY, CLEARED]) expect(flow, s).not.toContain(s);
+  });
+
+  it('still dispatches and still receives — the goods do move', () => {
+    const flow = ids(dom);
+    expect(flow).toContain('FULL_SHIPMENT_DISPATCHED_BY_SUPPLIER');
+    expect(flow).toContain('GOODS_RECEIVED_INBOUND_AT_1BUY');
+  });
+
+  it('explains itself rather than silently omitting the steps', () => {
+    const reason = getStage(ENTRY).notApplicableReason?.(dom) ?? '';
+    expect(reason).toMatch(/domestic/i);
+  });
+});
+
+describe('an unknown term degrades to the common import shape', () => {
+  /**
+   * A silently emptied Phase E is far worse than a slightly generous one: it
+   * would let an order skip the customs gates entirely, with evidence never
+   * asked for and duty never recorded.
+   */
+  it('keeps the full customs leg when the term is not recognised', () => {
+    const flow = ids(ctx('NONSENSE'));
+    for (const s of [AGENT, ENTRY, DUTY, CLEARED]) expect(flow, s).toContain(s);
+  });
+
+  it('does not invent the EXW-only export step', () => {
+    expect(ids(ctx('NONSENSE'))).not.toContain(EXPORT);
+  });
+});
+
+describe('the flow stays walkable on every term', () => {
+  /**
+   * The regression that matters: a term must never strand an order. Phase E has
+   * to have at least a dispatch and a receipt, and every stage in the resolved
+   * flow must be one the engine agrees applies.
+   */
+  it('leaves a dispatch and a receipt on all twelve terms', () => {
+    for (const term of ['EXW', 'FCA', 'FAS', 'FOB', 'CFR', 'CIF', 'CPT', 'CIP', 'DAP', 'DPU', 'DDP', 'FOR']) {
+      const flow = ids(ctx(term));
+      expect(flow, term).toContain('FULL_SHIPMENT_DISPATCHED_BY_SUPPLIER');
+      expect(flow, term).toContain('GOODS_RECEIVED_INBOUND_AT_1BUY');
+    }
+  });
+
+  it('resolves an owner for every applicable stage on every term', () => {
+    for (const term of ['EXW', 'FOB', 'CIF', 'DDP', 'FOR']) {
+      const c = ctx(term);
+      for (const stage of applicableStages(c)) {
+        expect(stageOwner(stage, c), `${term} ${stage.code}`).toBeTruthy();
+      }
+    }
+  });
+});

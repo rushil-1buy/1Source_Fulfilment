@@ -14,6 +14,7 @@
  */
 
 import type { PaymentMethod, Stakeholder, TestScope } from './enums';
+import { incotermFor } from './incoterms';
 
 export const PHASES = ['A', 'B', 'C', 'D', 'E', 'F', 'G'] as const;
 export type PhaseId = (typeof PHASES)[number];
@@ -108,6 +109,14 @@ export interface StageContext {
    * own order, which is what almost every order uses.
    */
   phasePlan?: PhasePlan | null;
+  /**
+   * The term we BUY on. Governs the whole inbound leg — see the Phase E
+   * predicates below. Build the context through `stageContextFrom`, which
+   * requires it.
+   */
+  incoterms: string;
+  /** The term we SELL on. Reserved for outbound branching; Phase E ignores it. */
+  sellIncoterms?: string | null;
 }
 
 /** Phase order for this context: the plan's if it has one, else the ladder's. */
@@ -154,7 +163,22 @@ export interface StageDef {
   description: string;
   /** What has to be true to leave this stage. */
   exitCriteria: string;
+  /**
+   * Who is accountable, when it does not depend on the order.
+   *
+   * Read it through `stageOwner(stage, ctx)` rather than directly — some stages
+   * override it per order via `ownerFor`, and a raw `stage.owner` will print the
+   * nominal party rather than the real one.
+   */
   owner: Stakeholder;
+  /**
+   * Overrides `owner` for orders where the Incoterm moves the obligation.
+   *
+   * Customs clearance is the case this exists for: the same stage is our
+   * customs agent's work on FOB and the supplier's on DDP. Printing one fixed
+   * name on both is a statement about liability, and on one of them it is wrong.
+   */
+  ownerFor?: (ctx: StageContext) => Stakeholder;
   /** Expected time in this stage, in hours. Drives at-risk / breached (§4). */
   expectedHours: number;
   /** Artifacts this stage is meant to produce. */
@@ -162,6 +186,8 @@ export interface StageDef {
   /** What has to happen next, and who does it. */
   nextAction: string;
   nextActionOwner: Stakeholder;
+  /** Overrides `nextActionOwner` on the same basis as `ownerFor`. */
+  nextActionOwnerFor?: (ctx: StageContext) => Stakeholder;
   /** Allowed onward stage ids. Empty = terminal. */
   next: string[];
   /** True for exception branches, which are not part of linear progress. */
@@ -185,10 +211,61 @@ const advanceOnly = (ctx: StageContext) => ctx.paymentMethod === 'ADVANCE';
 const creditOnly = (ctx: StageContext) => ctx.paymentMethod === 'CREDIT';
 const testingOnly = (ctx: StageContext) => ctx.testingRequired;
 
+/**
+ * ── The inbound leg is derived from the term we buy on ──────────────────────
+ *
+ * Incoterms are not decoration on a purchase order: they decide who clears
+ * export, who books the carriage, who is importer of record and who pays the
+ * duty. A ladder that runs the same seven Phase E stages for EXW and for DDP
+ * is stating, on every one of them, that a party is responsible when they are
+ * not — and the flow rail prints that party's name next to the step.
+ *
+ * The party names in `IncotermDef` are relative to the transaction, so on the
+ * BUY side `SELLER` is the supplier and `BUYER` is 1BUY. These predicates read
+ * only the buy-side term; the sell-side term governs outbound and is carried on
+ * the context for later.
+ *
+ * An unrecognised or missing term falls back to the common import shape — we
+ * clear import, they clear export — because that is the overwhelming majority
+ * of orders and a silently emptied Phase E would be far worse than a slightly
+ * generous one.
+ */
+const buyTerm = (ctx: StageContext) => incotermFor(ctx.incoterms);
+
+/** FOR is not an Incoterm at all — it is an Indian domestic convention. */
+const isDomestic = (ctx: StageContext) => buyTerm(ctx)?.mode === 'DOM';
+
+/** EXW alone: the goods are ours at their door, so export clearance is ours. */
+const weClearExport = (ctx: StageContext) => buyTerm(ctx)?.exportClearance === 'BUYER';
+
+/** True everywhere except DDP (supplier is importer of record) and domestic. */
+const weClearImport = (ctx: StageContext) => {
+  const def = buyTerm(ctx);
+  if (!def) return true;
+  return def.importClearance === 'BUYER';
+};
+
+/** Whether we book and pay the main carriage, or it sits inside their price. */
+const weArrangeFreight = (ctx: StageContext) => buyTerm(ctx)?.carriage.party === 'BUYER';
+
+/** The goods cross a border at all. Everything customs-shaped hangs off this. */
+const isImport = (ctx: StageContext) => !isDomestic(ctx);
+
+/** Our own customs work: only when it crosses a border AND we are the importer. */
+const weHandleCustoms = (ctx: StageContext) => isImport(ctx) && weClearImport(ctx);
+
+const termName = (ctx: StageContext) => buyTerm(ctx)?.code ?? ctx.incoterms;
+
 const noTestingReason = () =>
   'No line item on this order requires testing, so the whole testing phase is skipped.';
 const notEscrowReason = (ctx: StageContext) =>
   `This order is on ${ctx.paymentMethod.toLowerCase()} payment terms, not escrow, so no escrow account is involved.`;
+const domesticReason = (ctx: StageContext) =>
+  `Bought ${termName(ctx)}, which is a domestic movement — the goods never cross a border, so there is no customs leg.`;
+const theyClearImportReason = (ctx: StageContext) =>
+  `Bought ${termName(ctx)}, so the supplier is importer of record: they file the entry and pay the duty, and it is already inside their price.`;
+const theyClearExportReason = (ctx: StageContext) =>
+  `Bought ${termName(ctx)}, so the supplier clears the goods for export before they leave.`;
 
 export const STAGE_DEFS: StageDef[] = [
   // ── Phase A — Demand Capture ─────────────────────────────────────────────
@@ -358,7 +435,7 @@ export const STAGE_DEFS: StageDef[] = [
     artifacts: ['Funding confirmation'],
     nextAction: 'Release the test-enablement tranche so the supplier can send parts for testing.',
     nextActionOwner: 'ONE_BUY',
-    next: ['ESCROW_PARTIAL_RELEASE_FOR_TESTING', 'FULL_SHIPMENT_DISPATCHED_BY_SUPPLIER'],
+    next: ['ESCROW_PARTIAL_RELEASE_FOR_TESTING', 'EXPORT_CLEARED_AT_ORIGIN', 'FULL_SHIPMENT_DISPATCHED_BY_SUPPLIER'],
     applies: escrowOnly,
     notApplicableMode: 'HIDDEN',
     notApplicableReason: notEscrowReason,
@@ -396,7 +473,7 @@ export const STAGE_DEFS: StageDef[] = [
     artifacts: ['Payment advice', 'Bank receipt'],
     nextAction: 'Supplier begins fulfilment.',
     nextActionOwner: 'SUPPLIER',
-    next: ['TEST_DISPATCH_BOOKED', 'FULL_SHIPMENT_DISPATCHED_BY_SUPPLIER'],
+    next: ['TEST_DISPATCH_BOOKED', 'EXPORT_CLEARED_AT_ORIGIN', 'FULL_SHIPMENT_DISPATCHED_BY_SUPPLIER'],
     applies: advanceOnly,
     notApplicableMode: 'HIDDEN',
     notApplicableReason: (ctx) =>
@@ -416,7 +493,7 @@ export const STAGE_DEFS: StageDef[] = [
     artifacts: ['Credit terms confirmation'],
     nextAction: 'Supplier begins fulfilment.',
     nextActionOwner: 'SUPPLIER',
-    next: ['TEST_DISPATCH_BOOKED', 'FULL_SHIPMENT_DISPATCHED_BY_SUPPLIER'],
+    next: ['TEST_DISPATCH_BOOKED', 'EXPORT_CLEARED_AT_ORIGIN', 'FULL_SHIPMENT_DISPATCHED_BY_SUPPLIER'],
     applies: creditOnly,
     notApplicableMode: 'HIDDEN',
     notApplicableReason: (ctx) =>
@@ -549,13 +626,33 @@ export const STAGE_DEFS: StageDef[] = [
     artifacts: ['Return shipment (Leg 2)'],
     nextAction: 'Supplier ships the full consignment to us.',
     nextActionOwner: 'SUPPLIER',
-    next: ['FULL_SHIPMENT_DISPATCHED_BY_SUPPLIER'],
+    next: ['EXPORT_CLEARED_AT_ORIGIN', 'FULL_SHIPMENT_DISPATCHED_BY_SUPPLIER'],
     applies: testingOnly,
     notApplicableMode: 'SKIPPED_VISIBLE',
     notApplicableReason: noTestingReason,
   },
 
   // ── Phase E — Logistics ──────────────────────────────────────────────────
+  // Every stage below is conditional on the term we bought on. See the
+  // predicates above the ladder for what each one reads.
+  {
+    id: 'EXPORT_CLEARED_AT_ORIGIN',
+    code: 'E0',
+    phase: 'E',
+    label: 'Export cleared at origin',
+    plainLabel: 'Cleared to leave their country',
+    description:
+      'We bought at the supplier’s door, so getting the consignment cleared for export is our obligation, not theirs. Nothing can move until it is done.',
+    exitCriteria: 'Export declaration filed at origin and the consignment released to travel.',
+    owner: 'ONE_BUY',
+    expectedHours: 48,
+    artifacts: ['Export declaration', 'Origin clearance confirmation'],
+    nextAction: 'Book the carriage and get the consignment moving.',
+    nextActionOwner: 'LOGISTICS',
+    next: ['FULL_SHIPMENT_DISPATCHED_BY_SUPPLIER'],
+    applies: weClearExport,
+    notApplicableReason: theyClearExportReason,
+  },
   {
     id: 'FULL_SHIPMENT_DISPATCHED_BY_SUPPLIER',
     code: 'E1',
@@ -580,11 +677,17 @@ export const STAGE_DEFS: StageDef[] = [
     description: 'The consignment has left the origin country and is travelling to India.',
     exitCriteria: 'Arrival at the destination port or airport.',
     owner: 'LOGISTICS',
+    // Whoever booked the carriage owns the leg. On the C- and D-terms the
+    // supplier contracted the freight, so chasing the carrier is theirs.
+    ownerFor: (ctx) => (weArrangeFreight(ctx) ? 'LOGISTICS' : 'SUPPLIER'),
     expectedHours: 120,
     artifacts: ['Tracking events'],
     nextAction: 'Engage the customs agent on arrival.',
     nextActionOwner: 'WHA',
+    nextActionOwnerFor: (ctx) => (weHandleCustoms(ctx) ? 'WHA' : 'SUPPLIER'),
     next: ['BORDER_ARRIVAL_WHA_ENGAGED'],
+    applies: isImport,
+    notApplicableReason: domesticReason,
   },
   {
     id: 'BORDER_ARRIVAL_WHA_ENGAGED',
@@ -601,6 +704,9 @@ export const STAGE_DEFS: StageDef[] = [
     nextAction: 'File the customs entry.',
     nextActionOwner: 'WHA',
     next: ['CUSTOMS_ENTRY_FILED_ICEGATE'],
+    applies: weHandleCustoms,
+    notApplicableReason: (ctx) =>
+      isDomestic(ctx) ? domesticReason(ctx) : theyClearImportReason(ctx),
   },
   {
     id: 'CUSTOMS_ENTRY_FILED_ICEGATE',
@@ -617,6 +723,9 @@ export const STAGE_DEFS: StageDef[] = [
     nextAction: 'Await assessment, then pay the duty.',
     nextActionOwner: 'WHA',
     next: ['DUTY_ASSESSED_AND_PAID'],
+    applies: weHandleCustoms,
+    notApplicableReason: (ctx) =>
+      isDomestic(ctx) ? domesticReason(ctx) : theyClearImportReason(ctx),
   },
   {
     id: 'DUTY_ASSESSED_AND_PAID',
@@ -633,6 +742,9 @@ export const STAGE_DEFS: StageDef[] = [
     nextAction: 'Await customs release.',
     nextActionOwner: 'WHA',
     next: ['CUSTOMS_CLEARED'],
+    applies: weHandleCustoms,
+    notApplicableReason: (ctx) =>
+      isDomestic(ctx) ? domesticReason(ctx) : theyClearImportReason(ctx),
   },
   {
     id: 'CUSTOMS_CLEARED',
@@ -643,11 +755,17 @@ export const STAGE_DEFS: StageDef[] = [
     description: 'Customs has released the goods. They can now travel to our premises.',
     exitCriteria: 'Out-of-charge / release confirmed.',
     owner: 'WHA',
+    // The goods clear customs on every import, but not always by our agent.
+    // Kept visible under DDP because release is what lets them travel to us —
+    // only the party doing it changes.
+    ownerFor: (ctx) => (weClearImport(ctx) ? 'WHA' : 'SUPPLIER'),
     expectedHours: 24,
     artifacts: ['Out-of-charge document'],
     nextAction: 'Receive the goods at our warehouse.',
     nextActionOwner: 'ONE_BUY',
     next: ['GOODS_RECEIVED_INBOUND_AT_1BUY'],
+    applies: isImport,
+    notApplicableReason: domesticReason,
   },
   {
     id: 'GOODS_RECEIVED_INBOUND_AT_1BUY',
@@ -896,6 +1014,23 @@ export function stageApplies(stage: StageDef, ctx: StageContext): boolean {
   // before the stage's own predicate so curtailment always wins.
   if (phaseCurtailed(ctx, stage.phase)) return false;
   return stage.applies ? stage.applies(ctx) : true;
+}
+
+/**
+ * Who is accountable for this stage ON THIS ORDER.
+ *
+ * Always prefer this to `stage.owner`. On most stages the two agree; on the
+ * customs and carriage stages they do not, because the Incoterm decides whether
+ * the work is ours or the supplier's — and naming the wrong party next to a step
+ * is a statement about who carries the liability for it.
+ */
+export function stageOwner(stage: StageDef, ctx: StageContext): Stakeholder {
+  return stage.ownerFor ? stage.ownerFor(ctx) : stage.owner;
+}
+
+/** The same resolution for "who does the next thing". */
+export function stageNextActionOwner(stage: StageDef, ctx: StageContext): Stakeholder {
+  return stage.nextActionOwnerFor ? stage.nextActionOwnerFor(ctx) : stage.nextActionOwner;
 }
 
 /** Stages relevant to one order, in ladder order, with applicability resolved. */

@@ -26,6 +26,7 @@ const CTX: StageContext = {
   paymentMethod: 'ESCROW',
   testingRequired: true,
   testScope: 'LOT_SAMPLE',
+  incoterms: 'CIF',
 };
 
 /** Build a plan from a sequence string like "A B D C E F G", with * for removed. */

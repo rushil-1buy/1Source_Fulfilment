@@ -46,7 +46,7 @@ into the domain, not bolted on.
 | Data | Prisma **6.19.3** + SQLite |
 | UI primitives | Radix UI, `cmdk`, Motion, Sonner, TanStack Table, Recharts, Lucide |
 | Validation | Zod |
-| Tests | Vitest — **170 tests across 6 files**, all pure domain logic |
+| Tests | Vitest — **186 tests across 7 files**, all pure domain logic |
 
 > ⚠️ **`AGENTS.md` in the repo root is a standing instruction:** this version of
 > Next.js has breaking changes from what most models and developers have
@@ -99,12 +99,37 @@ every imported order. See `lib/tax/landed-cost.ts`.
 
 ### 3.3 The stage ladder is the single source of truth
 
-`lib/domain/stages.ts` declares 39 stages across 7 phases, once. The flow rail,
+`lib/domain/stages.ts` declares 40 stages across 7 phases, once. The flow rail,
 the transition rules, SLA ageing, the next-action prompt, the audit trail and the
 generated documentation all derive from it. **Adding or reordering a stage means
 editing that file only.**
 
 Never hardcode a stage count anywhere — derive it from the arrays.
+
+### 3.3a The inbound leg is derived from the Incoterm
+
+Phase E is **not** a fixed seven stages. The term the order was bought on decides
+who clears export, who books the carriage, who is importer of record and who pays
+the duty — so it decides which stages run at all and whose name sits against them.
+
+| Term | What changes |
+|---|---|
+| **EXW** | Export clearance is ours, so `EXPORT_CLEARED_AT_ORIGIN` (E0) appears. No other term has it |
+| **DDP** | The supplier is importer of record: agent engagement, entry filing and duty payment fall away, and customs release is owned by `SUPPLIER` |
+| **FOR** | Domestic — no border, so the whole customs leg is absent |
+| everything else | The common import shape: they clear export, we clear import |
+
+Two consequences to respect:
+
+**Read the owner through `stageOwner(stage, ctx)`, never `stage.owner`.** The raw
+field is the nominal party. On the customs and carriage stages the real party
+depends on the term, and printing the wrong one is a statement about who carries
+the liability.
+
+**An unrecognised term degrades to the full import shape, deliberately.** A
+silently emptied Phase E would let an order skip the customs gates entirely, with
+evidence never demanded and duty never recorded. A slightly generous flow is
+recoverable; a missing one is not.
 
 ### 3.4 A per-order overlay never mutates the ladder
 
@@ -235,7 +260,7 @@ prisma/
 
 | Module | What it owns |
 |---|---|
-| `stages.ts` | **The ladder.** 39 stages, 7 phases, transition rules, SLA, rail states |
+| `stages.ts` | **The ladder.** 40 stages, 7 phases, transition rules, SLA, rail states |
 | `stage-context.ts` | The only sanctioned way to build a `StageContext` (§3.4) |
 | `stage-evidence.ts` | What each stage must record — 171 fields, 41 document slots |
 | `stage-tasks.ts` | Sub-task checklists + the testing standards (§7) |

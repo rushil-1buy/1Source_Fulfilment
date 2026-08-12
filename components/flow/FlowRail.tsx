@@ -45,6 +45,8 @@ import {
   type StageContext,
   type StageDef,
   type StageVisualState,
+  stageOwner,
+  stageNextActionOwner,
 } from '@/lib/domain/stages';
 import {
   isDefaultPlan,
@@ -52,7 +54,7 @@ import {
   phaseEditability,
   type PhaseEditability,
 } from '@/lib/domain/phase-plan';
-import { STAKEHOLDER_META } from '@/lib/domain/enums';
+import { STAKEHOLDER_META, type Stakeholder } from '@/lib/domain/enums';
 import { cn, humanDuration, relativeTime } from '@/lib/utils';
 import { StakeholderBadge, StakeholderDot } from '@/components/ui/Badges';
 import { usePreferences } from '@/components/providers/Preferences';
@@ -633,6 +635,8 @@ export function FlowRail({
                       <StageNode
                         stage={cell.item.stage}
                         state={cell.item.state}
+                        owner={stageOwner(cell.item.stage, data.ctx)}
+                        nextActionOwner={stageNextActionOwner(cell.item.stage, data.ctx)}
                         skipReason={cell.item.skipReason}
                         enteredAt={
                           cell.item.state !== 'UPCOMING'
@@ -952,9 +956,18 @@ function StageNode({
   branchLabel,
   showSwimlane,
   onClick,
+  owner,
+  nextActionOwner,
 }: {
   stage: StageDef;
   state: StageVisualState;
+  /**
+   * Resolved against the order, not read off the stage. On the customs and
+   * carriage steps the Incoterm decides whether the work is ours or the
+   * supplier's, and this node prints that party's name.
+   */
+  owner: Stakeholder;
+  nextActionOwner: Stakeholder;
   skipReason?: string;
   enteredAt?: { createdAt: string; actorLabel: string };
   stageEnteredAt?: Date;
@@ -1046,9 +1059,9 @@ function StageNode({
           quick scanning, but the name is what carries the meaning. */}
       {showSwimlane && (
         <span className="mt-0.5 flex min-w-0 items-center justify-center gap-1">
-          <StakeholderDot stakeholder={stage.owner} />
+          <StakeholderDot stakeholder={owner} />
           <span className="text-fg-secondary min-w-0 text-[9.5px] leading-[1.25] text-balance">
-            {STAKEHOLDER_META[stage.owner].label}
+            {STAKEHOLDER_META[owner].label}
           </span>
         </span>
       )}
@@ -1091,7 +1104,7 @@ function StageNode({
                 Stage {stage.code} · Phase {stage.phase}
               </div>
             </div>
-            <StakeholderBadge stakeholder={stage.owner} short />
+            <StakeholderBadge stakeholder={owner} short />
           </div>
           <div className="space-y-2 px-3 py-2.5 text-[11.5px] leading-[1.5]">
             <p className="text-fg-secondary">{stage.description}</p>
@@ -1108,7 +1121,7 @@ function StageNode({
             )}
 
             <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5">
-              <Field label="Owner">{STAKEHOLDER_META[stage.owner].label}</Field>
+              <Field label="Owner">{STAKEHOLDER_META[owner].label}</Field>
               <Field label="Expected">
                 {stage.expectedHours > 0 ? humanDuration(stage.expectedHours) : '—'}
               </Field>
@@ -1145,7 +1158,7 @@ function StageNode({
               <p className="text-fg-secondary mt-0.5">
                 {stage.nextAction}{' '}
                 <span className="text-fg-tertiary">
-                  ({STAKEHOLDER_META[stage.nextActionOwner].label})
+                  ({STAKEHOLDER_META[nextActionOwner].label})
                 </span>
               </p>
             </div>
