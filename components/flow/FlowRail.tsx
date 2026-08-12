@@ -31,6 +31,7 @@ import {
   Scissors,
   Users,
   Workflow,
+  Scale,
 } from 'lucide-react';
 import {
   PHASES,
@@ -56,6 +57,7 @@ import {
 } from '@/lib/domain/phase-plan';
 import { STAKEHOLDER_META, type Stakeholder } from '@/lib/domain/enums';
 import { inboundChain } from '@/lib/domain/incoterms';
+import { stageLiability } from '@/lib/domain/stage-liability';
 import { cn, humanDuration, relativeTime } from '@/lib/utils';
 import { StakeholderBadge, StakeholderDot } from '@/components/ui/Badges';
 import { usePreferences } from '@/components/providers/Preferences';
@@ -628,7 +630,7 @@ export function FlowRail({
                 const next = cells[i + 1];
                 const isLast = i === cells.length - 1;
                 return (
-                  <li key={cell.key} className="relative flex min-w-0 justify-center">
+                  <li key={cell.key} className="relative flex min-w-0 flex-col items-center">
                     {!isLast && (
                       <Connector
                         // The segment flowing INTO the current node gets the sheen.
@@ -676,6 +678,12 @@ export function FlowRail({
                           onManualStepClick ? () => onManualStepClick(cell.step) : undefined
                         }
                       />
+                    )}
+                    {/* Rendered as a SIBLING of the node, not inside it: the node
+                        is already a button, and a button inside a button is
+                        invalid and swallows the inner click. */}
+                    {swimlanes && cell.kind === 'stage' && (
+                      <RailLiability stageId={cell.item.stage.id} ctx={data.ctx} />
                     )}
                   </li>
                 );
@@ -953,6 +961,75 @@ function FlowPlanEditor({
 }
 
 // ── One node ────────────────────────────────────────────────────────────────
+
+/**
+ * WHO IS LIABLE FOR THIS STEP, sized for a rail column.
+ *
+ * The same answer as the Steps list, in about a fifth of the width — so it is
+ * terse by necessity. Collapsed it states only which side carries the step;
+ * opening it names the obligation and why. The full prose lives in the Steps
+ * tab, which has room for it.
+ *
+ * Only rendered under "Who owns it", because that toggle is already the
+ * ownership view and this is the other half of the same question: the rail says
+ * who DOES the step, this says who CARRIES it. On the terms where those differ —
+ * a DDP order, where the supplier clears customs — that gap is the whole point.
+ */
+function RailLiability({ stageId, ctx }: { stageId: string; ctx: StageContext }) {
+  const [open, setOpen] = useState(false);
+  const liability = stageLiability(stageId, ctx);
+  // Steps the Incoterm does not govern get nothing, so the rail stays quiet
+  // outside the logistics phase rather than growing a row of empty controls.
+  if (!liability) return null;
+
+  const ours = liability.rows.filter((r) => r.party === '1BUY').length;
+  const side = ours === liability.rows.length ? 'Ours' : ours === 0 ? 'Theirs' : 'Split';
+
+  return (
+    <div className="mt-1 flex w-full min-w-0 flex-col items-center px-1">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-label={`Who is liable for ${stageId}`}
+        className={cn(
+          'flex max-w-full min-w-0 items-center gap-1 rounded-[6px] px-1.5 py-0.5 text-[9.5px] font-medium transition-colors',
+          side === 'Ours'
+            ? 'bg-accent-subtle text-accent-text hover:bg-accent-subtle/80'
+            : side === 'Theirs'
+              ? 'bg-surface-3 text-fg-secondary hover:bg-surface-3/80'
+              : 'bg-warning-subtle text-warning hover:bg-warning-subtle/80',
+        )}
+      >
+        <Scale className="size-2.5 shrink-0" strokeWidth={2.2} aria-hidden />
+        <span className="truncate">Liable · {side}</span>
+      </button>
+
+      {open && (
+        <div className="border-line-subtle bg-surface-2 mt-1 w-full min-w-0 space-y-1.5 rounded-[7px] border px-1.5 py-1.5 text-left">
+          {liability.rows.map((r) => (
+            <div key={r.key} className="min-w-0">
+              <div className="text-fg text-[9.5px] leading-tight font-medium text-balance">
+                {r.label}
+              </div>
+              <div className="text-fg-tertiary text-[9px] leading-snug">{r.party}</div>
+              {r.warning && (
+                <div className="text-warning mt-0.5 text-[9px] leading-snug text-balance">
+                  {r.warning}
+                </div>
+              )}
+            </div>
+          ))}
+          {liability.riskNote && (
+            <div className="border-line-subtle text-fg-tertiary border-t pt-1 text-[9px] leading-snug text-balance">
+              Risk transfers — {liability.riskNote}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function StageNode({
   stage,
