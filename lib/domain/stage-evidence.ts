@@ -497,6 +497,7 @@ export const STAGE_EVIDENCE: StageEvidenceDef[] = [
       t('awb', 'Consignment number', 'The outbound tracking reference.', { required: true }),
       t('carrier', 'Carrier', 'Who is delivering.', { required: true }),
       d('bookedOn', 'Date booked', 'When the collection was arranged.', { required: true }),
+      t('salesOrderRef', 'Sales Order reference', 'Our SO against the customer’s purchase order. It is what ties this despatch, the invoice and the proof of delivery back to what they actually ordered — the work order number means nothing to them.', { required: true }),
       t('invoiceNumber', 'Tax invoice number', 'The invoice raised for this dispatch. The law requires it to be issued before or at removal of the goods.', { required: true }),
       t('ewayBillNumber', 'Way bill number', 'Required above the threshold. If the portal was unreachable, leave blank and record it here as soon as you have it — but the goods should not move without one.'),
       yn('invoiceBeforeDispatch', 'Invoice raised before the goods left', 'This is a legal requirement, not a preference.', { required: true }),

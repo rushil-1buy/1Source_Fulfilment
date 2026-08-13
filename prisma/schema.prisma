@@ -113,7 +113,7 @@ model OrgSetting {
 
 model NumberingSeries {
   id         String @id @default(cuid())
-  docType    String @unique // CUSTOMER_PO | CUSTOMER_PI | SUPPLIER_PO | SUPPLIER_PI | TAX_INVOICE | CREDIT_NOTE | GRN | WORK_ORDER | TEST_REQUEST
+  docType    String @unique // CUSTOMER_PO | CUSTOMER_PI | SUPPLIER_PO | SUPPLIER_PI | SALES_ORDER | TAX_INVOICE | CREDIT_NOTE | GRN | WORK_ORDER | TEST_REQUEST
   prefix     String
   padding    Int    @default(4)
   nextNumber Int    @default(1)
@@ -570,6 +570,17 @@ model WorkOrder {
   alias          String   @unique // WO-2026-0107
   provisionalName String? // retained as a searchable alias after completion
   nameLocked     Boolean  @default(false)
+  /// SO-1B-0221 — our Sales Order against the customer's purchase order.
+  ///
+  /// The thread that ties the outbound half back to what the customer actually
+  /// ordered. The work order is our INTERNAL job number and means nothing to
+  /// them; the SO is the reference the despatch note, the tax invoice and the
+  /// proof of delivery all carry, and the one a customer quotes when they ring
+  /// up about a delivery.
+  ///
+  /// Nullable because it is raised when the order becomes active (B5), not when
+  /// the work order row is first created.
+  soNumber       String?  @unique
 
   customerPoId   String
   customerPo     CustomerPO @relation(fields: [customerPoId], references: [id])

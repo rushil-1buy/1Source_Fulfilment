@@ -77,6 +77,7 @@ export const PHASE_MUTABILITY: Record<PhaseId, PhaseMutability> = {
   D: 'FLEXIBLE',
   E: 'FLEXIBLE',
   F: 'FLEXIBLE',
+  // Outbound is where the order ends, so it holds the last position always.
   G: 'TERMINAL',
 };
 
@@ -270,9 +271,9 @@ const CURTAIL_NOTES: Record<
   F: {
     weight: 'MONEY',
     consequence:
-      'The goods are never inspected on arrival and the supplier is never marked paid. The final escrow release is not authorised, so the money stays held.',
+      'Nothing that happens in our warehouse happens. The goods are never inspected on arrival, the supplier is never marked paid and the final escrow release is not authorised, so the money stays held — and nothing is rebranded or repacked, so the customer receives whatever the supplier sent.',
     legitimateWhen:
-      'Practically never on a live order. Use it only where settlement is genuinely handled outside this platform.',
+      'Practically never on a live order. Use it only where settlement is genuinely handled outside this platform and the customer has asked for the manufacturer’s own packaging untouched.',
   },
 };
 

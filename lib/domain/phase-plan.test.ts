@@ -60,6 +60,8 @@ describe('normalisePhasePlan — always returns something coherent', () => {
   });
 
   it('forces the terminal phase last', () => {
+    // H is the terminal phase since Outbound split out of the old combined
+    // Value-Add & Delivery. G is now merely flexible and may legitimately move.
     expect(planSequence(normalisePhasePlan(plan('A B G C D E F')))).toBe(
       'A → B → C → D → E → F → G',
     );
@@ -92,7 +94,7 @@ describe('phaseEditability — the past is not up for re-planning', () => {
   });
 
   it('locks the terminal phase and points at cancellation instead', () => {
-    const g = phaseEditability(DEFAULT_PHASE_PLAN, 'C').find((x) => x.phase === 'G')!;
+    const g = phaseEditability(DEFAULT_PHASE_PLAN, 'C').find((x) => x.phase ==='G')!;
     expect(g.canSkip).toBe(false);
     expect(g.lockedBecause).toMatch(/cancel it/);
   });

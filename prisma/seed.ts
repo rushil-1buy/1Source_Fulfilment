@@ -674,6 +674,9 @@ async function buildWorkOrder(spec: WoSpec) {
       id: spec.key,
       canonicalName: canonical,
       alias: `WO-2026-${pad(spec.aliasNo)}`,
+      // The Sales Order is raised when the work order goes active (B5) — before
+      // that there is nothing committed to the customer to reference.
+      soNumber: reached('WORK_ORDER_ACTIVE') ? `SO-1B-${pad(200 + spec.aliasNo)}` : null,
       provisionalName: hasSupplierPi ? provisional : null,
       nameLocked: hasSupplierPi,
       customerPoId: `${spec.key}-cpo`,

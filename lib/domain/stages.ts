@@ -67,19 +67,33 @@ export const PHASE_DEFS: Record<PhaseId, PhaseDef> = {
     description: 'The goods travel to India and clear customs.',
     owner: 'Supplier → Logistics Partner → Customs Agent',
   },
+  /**
+   * Everything that happens while the goods are standing in our warehouse:
+   * inspected, paid for, rebranded and repacked, and signed off as fit to leave.
+   * They were two phases — the split put "inspection passed" and "repack done"
+   * on opposite sides of a boundary that nothing physical crosses.
+   */
   F: {
     id: 'F',
-    label: 'Inspection & Settlement',
-    plainLabel: 'Checking and paying',
-    description: 'We inspect what arrived, then pay the supplier.',
-    owner: '1BUY QC + Finance',
+    label: 'Warehouse',
+    plainLabel: 'Checking, paying and repacking',
+    description:
+      'We inspect what arrived, settle with the supplier, then rebrand and repack it ready to go.',
+    owner: '1BUY Inspection + 1BUY Finance + 1BUY Logistics — outbound',
   },
+  /**
+   * Everything after the goods leave us. Split out of the old "Value-Add &
+   * Delivery" because a repack running late and a delivery running late are
+   * different problems with different owners, and were indistinguishable while
+   * they shared a phase.
+   */
   G: {
     id: 'G',
-    label: 'Value-Add & Delivery',
-    plainLabel: 'Repacking and delivering',
-    description: 'We rebrand, repack, deliver to the customer and close the order.',
-    owner: '1BUY Warehouse + Logistics',
+    label: 'Outbound',
+    plainLabel: 'Sending it to the customer',
+    description:
+      'Against the Sales Order, the goods are invoiced, despatched and delivered, and the money is collected.',
+    owner: '1BUY Logistics — outbound → Logistics Partner → Customer',
   },
 };
 
@@ -854,8 +868,8 @@ export const STAGE_DEFS: StageDef[] = [
   // ── Phase G — Value-Add & Delivery ───────────────────────────────────────
   {
     id: 'REBRAND_AND_REPACK_IN_PROGRESS',
-    code: 'G1',
-    phase: 'G',
+    code: 'F5',
+    phase: 'F',
     label: 'Rebrand and repack in progress',
     plainLabel: 'Relabelling and repacking',
     description:
@@ -865,18 +879,18 @@ export const STAGE_DEFS: StageDef[] = [
     expectedHours: 24,
     artifacts: ['Repack job sheet', 'Before/after photos'],
     nextAction: 'Pass repack QC and mark ready to ship.',
-    nextActionOwner: 'ONE_BUY_OUTBOUND',
+    nextActionOwner: 'ONE_BUY_INSPECTION',
     next: ['READY_FOR_OUTBOUND'],
   },
   {
     id: 'READY_FOR_OUTBOUND',
-    code: 'G2',
-    phase: 'G',
+    code: 'F6',
+    phase: 'F',
     label: 'Ready for outbound',
     plainLabel: 'Ready to ship to customer',
     description: 'Repack QC has passed and the shipment is labelled and ready to go.',
     exitCriteria: 'Outbound packing list produced and 1BUY labels applied.',
-    owner: 'ONE_BUY_OUTBOUND',
+    owner: 'ONE_BUY_INSPECTION',
     expectedHours: 8,
     artifacts: ['Outbound packing list'],
     nextAction: 'Book the courier to the customer.',
@@ -885,7 +899,7 @@ export const STAGE_DEFS: StageDef[] = [
   },
   {
     id: 'OUTBOUND_BOOKED',
-    code: 'G3',
+    code: 'G1',
     phase: 'G',
     label: 'Outbound booked & invoiced',
     plainLabel: 'Courier booked and bill raised',
@@ -911,7 +925,7 @@ export const STAGE_DEFS: StageDef[] = [
   },
   {
     id: 'OUT_FOR_DELIVERY',
-    code: 'G4',
+    code: 'G2',
     phase: 'G',
     label: 'Out for delivery',
     plainLabel: 'Out for delivery',
@@ -926,7 +940,7 @@ export const STAGE_DEFS: StageDef[] = [
   },
   {
     id: 'DELIVERED',
-    code: 'G5',
+    code: 'G3',
     phase: 'G',
     label: 'Delivered',
     plainLabel: 'Customer received the goods',
@@ -941,7 +955,7 @@ export const STAGE_DEFS: StageDef[] = [
   },
   {
     id: 'POD_ISSUED_TO_CUSTOMER',
-    code: 'G6',
+    code: 'G4',
     phase: 'G',
     label: 'Proof of Delivery issued to customer',
     plainLabel: 'Delivery proof sent',
@@ -959,7 +973,7 @@ export const STAGE_DEFS: StageDef[] = [
     // invoice itself is now raised at G3. This stage is purely about the money
     // arriving.
     id: 'CUSTOMER_INVOICED_AND_SETTLED',
-    code: 'G7',
+    code: 'G5',
     phase: 'G',
     label: 'Customer payment settled',
     plainLabel: 'Customer has paid',
@@ -975,7 +989,7 @@ export const STAGE_DEFS: StageDef[] = [
   },
   {
     id: 'ORDER_CLOSED',
-    code: 'G8',
+    code: 'G6',
     phase: 'G',
     label: 'Order closed',
     plainLabel: 'Order complete',

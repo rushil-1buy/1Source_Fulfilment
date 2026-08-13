@@ -87,6 +87,7 @@ export const NUMBERING = [
   { docType: 'TAX_INVOICE', prefix: 'INV-1B', padding: 4, nextNumber: 221, label: 'Tax invoice' },
   { docType: 'CREDIT_NOTE', prefix: 'CN-1B', padding: 4, nextNumber: 12, label: 'Credit note' },
   { docType: 'GRN', prefix: 'GRN', padding: 4, nextNumber: 226, label: 'Goods receipt note' },
+  { docType: 'SALES_ORDER', prefix: 'SO-1B', padding: 4, nextNumber: 221, label: 'Sales order' },
   { docType: 'WORK_ORDER', prefix: 'WO', padding: 4, nextNumber: 113, label: 'Work order alias' },
   { docType: 'TEST_REQUEST', prefix: 'TR', padding: 4, nextNumber: 66, label: 'Test request' },
 ];
