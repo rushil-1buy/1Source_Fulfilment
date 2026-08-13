@@ -277,6 +277,67 @@ const SPECS: WoSpec[] = [
       { mpn: 'LTV-817S', qty: 9000, sell: 19, buy: 0.172, testing: true },
     ],
   },
+  /**
+   * Three orders parked so that every internal team has something on its desk.
+   *
+   * Without them the seed left Finance, inbound and outbound with empty
+   * workspaces — not a bug, just a stage distribution that happened to skip
+   * them, which made the team views impossible to demonstrate or review.
+   */
+  {
+    key: 'wo-escrow-funding',
+    aliasNo: 114,
+    docNo: 49,
+    customerId: 'c-acme',
+    supplierId: 's-shenzhen',
+    paymentMethod: 'ESCROW',
+    testingRequired: false,
+    // Escrow has opened the account; Finance has to fund it.
+    targetStage: 'ESCROW_ACCOUNT_OPENED',
+    startedDaysAgo: 9,
+    hoursInStage: 30,
+    headline: 'Escrow account open and waiting on Finance to fund it.',
+    lines: [
+      { mpn: 'SN74HC595N', qty: 8000, sell: 26, buy: 0.238 },
+      { mpn: 'BC547B', qty: 20000, sell: 1.9, buy: 0.016 },
+    ],
+  },
+  {
+    key: 'wo-customs-released',
+    aliasNo: 115,
+    docNo: 50,
+    customerId: 'c-nova',
+    supplierId: 's-global',
+    paymentMethod: 'ESCROW',
+    testingRequired: false,
+    // Customs has released it; inbound logistics has to collect and receive it.
+    targetStage: 'CUSTOMS_CLEARED',
+    startedDaysAgo: 26,
+    hoursInStage: 19,
+    headline: 'Released by customs — inbound has to bring it in and raise the GRN.',
+    lines: [
+      { mpn: 'LM358N', qty: 12000, sell: 14, buy: 0.126 },
+      { mpn: '1N4007', qty: 30000, sell: 1.4, buy: 0.011 },
+    ],
+  },
+  {
+    key: 'wo-ready-to-ship',
+    aliasNo: 116,
+    docNo: 51,
+    customerId: 'c-zenith',
+    supplierId: 's-nexus',
+    paymentMethod: 'ESCROW',
+    testingRequired: false,
+    // Inspection has signed the repack off; outbound has to book and invoice it.
+    targetStage: 'READY_FOR_OUTBOUND',
+    startedDaysAgo: 41,
+    hoursInStage: 11,
+    headline: 'Repacked and signed off — outbound has to book the courier and invoice it.',
+    lines: [
+      { mpn: 'FT232RL', qty: 2500, sell: 240, buy: 2.18 },
+      { mpn: 'STM32F407VGT6', qty: 900, sell: 720, buy: 6.55 },
+    ],
+  },
   {
     key: 'wo-early',
     aliasNo: 112,

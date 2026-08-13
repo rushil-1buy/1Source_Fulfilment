@@ -274,7 +274,7 @@ function QueueRow({ order, showWaitingOn }: { order: OrderRow; showWaitingOn: bo
         </span>
         <span className="flex shrink-0 items-center gap-2">
           {showWaitingOn && <StakeholderBadge stakeholder={order.nextActionOwner} short />}
-          <Money amount={order.sellValue} withCode={false} />
+          <Money amount={order.sellValue} compact withSymbol />
         </span>
       </Link>
     </li>
