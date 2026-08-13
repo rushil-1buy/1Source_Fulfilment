@@ -314,8 +314,8 @@ part still reports honestly as short.
 | C | Financial Arming | Flexible — reorderable, removable with a reason |
 | D | Quality Assurance | Flexible |
 | E | Logistics | Flexible |
-| F | Inspection & Settlement | Flexible |
-| G | Value-Add & Delivery | **Terminal** — always last, never removed (cancel instead) |
+| F | Warehouse | Flexible — inspection and settlement live here |
+| G | Outbound | **Terminal** — always last, never removed (cancel instead) |
 
 ### Cascade behaviour — the trap
 

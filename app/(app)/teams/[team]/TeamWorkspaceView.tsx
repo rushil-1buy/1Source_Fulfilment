@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 /**
  * ONE TEAM'S WORKSPACE.
  *
@@ -28,8 +30,10 @@ import * as Tabs from "@radix-ui/react-tabs";
 import {
   AlertTriangle,
   Ban,
+  CheckCircle2,
   Clock,
   Inbox,
+  Layers,
   ListChecks,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -165,6 +169,9 @@ export function TeamWorkspaceView({
 }) {
   const { label: pick } = usePreferences();
   const { queues } = workspace;
+  /* Controlled, so the two roll-up tiles can open the list behind their number
+     rather than being a figure with nowhere to go. */
+  const [tab, setTab] = useState('needs');
   const meta = STAKEHOLDER_META[workspace.team];
   // Ours to act on but owned by somebody else — clearing these unblocks them.
   const holdingUp = queues.needsMe.filter((o) => o.owner !== workspace.team);
@@ -176,7 +183,7 @@ export function TeamWorkspaceView({
         description={`${pick(meta.label, meta.plainLabel)} — only the orders this team has to act on. The Control Tower still shows every order.`}
       />
 
-      <div className="grid min-w-0 grid-cols-3 gap-2.5">
+      <div className="grid min-w-0 grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5">
         <Tile
           label="On your desk"
           value={String(queues.needsMe.length)}
@@ -199,6 +206,25 @@ export function TeamWorkspaceView({
           icon={Ban}
           tone={queues.blocked ? "danger" : "neutral"}
         />
+        <Tile
+          label="Total orders"
+          value={String(workspace.allOrders.length)}
+          sub="every order this team touches"
+          icon={Layers}
+          onClick={() => setTab("all")}
+        />
+        <Tile
+          label="Completed"
+          value={String(workspace.completedOrders.length)}
+          sub={
+            workspace.completedOrders.length
+              ? "delivered and closed"
+              : "none closed yet"
+          }
+          icon={CheckCircle2}
+          tone={workspace.completedOrders.length ? "success" : "neutral"}
+          onClick={() => setTab("completed")}
+        />
       </div>
 
       {/*
@@ -213,7 +239,7 @@ export function TeamWorkspaceView({
         than two that do not.
       */}
       <Panel padded={false}>
-        <Tabs.Root defaultValue="needs" className="min-w-0">
+        <Tabs.Root value={tab} onValueChange={setTab} className="min-w-0">
           <Tabs.List
             aria-label="This team's queues"
             className="border-line-subtle flex min-w-0 gap-1 overflow-x-auto border-b px-3"
@@ -241,6 +267,18 @@ export function TeamWorkspaceView({
               icon={Inbox}
               label="Heading your way"
               count={queues.incoming.length}
+            />
+            <QueueTab
+              value="all"
+              icon={Layers}
+              label="All orders"
+              count={workspace.allOrders.length}
+            />
+            <QueueTab
+              value="completed"
+              icon={CheckCircle2}
+              label="Completed"
+              count={workspace.completedOrders.length}
             />
           </Tabs.List>
 
@@ -292,6 +330,29 @@ export function TeamWorkspaceView({
             />
           </Tabs.Content>
 
+          <Tabs.Content value="all" className="min-w-0 outline-none">
+            <QueuePanel
+              note="Every order this team owns a step on, whatever stage it is standing at — the running list, not the worklist. Open one for its steps, its correspondence and its documents."
+              columns={QUEUE_COLUMNS}
+              rows={toRows(workspace.allOrders, slug)}
+              exportName={`${slug}-all-orders`}
+              searchPlaceholder="Search all of this team's orders…"
+              emptyTitle="No orders yet"
+              emptyDescription="No order on the platform has a step this team owns. That changes as soon as one is raised."
+            />
+          </Tabs.Content>
+
+          <Tabs.Content value="completed" className="min-w-0 outline-none">
+            <QueuePanel
+              note="Closed and delivered, with the step they finished on. Everything filed against them — documents, correspondence, the full stage history — stays readable."
+              columns={QUEUE_COLUMNS}
+              rows={toRows(workspace.completedOrders, slug)}
+              exportName={`${slug}-completed-orders`}
+              searchPlaceholder="Search completed orders…"
+              emptyTitle="Nothing closed yet"
+              emptyDescription="No order this team works on has been closed out. Completed orders stay here permanently once they are."
+            />
+          </Tabs.Content>
         </Tabs.Root>
       </Panel>
     </PageShell>
@@ -400,12 +461,15 @@ function Tile({
   sub,
   icon: Icon,
   tone = "neutral",
+  onClick,
 }: {
   label: string;
   value: React.ReactNode;
   sub?: string;
   icon: LucideIcon;
   tone?: "neutral" | "success" | "warning" | "danger";
+  /** Present when the tile opens the list behind the number. */
+  onClick?: () => void;
 }) {
   const toneClass = {
     neutral: "text-fg-tertiary",
@@ -414,8 +478,23 @@ function Tile({
     danger: "text-danger",
   }[tone];
 
+  /*
+   * A tile that opens something is a button and looks like one.
+   *
+   * The counts that only summarise the tabs below stay inert — making every
+   * tile hoverable would promise five destinations and deliver two.
+   */
+  const Root = onClick ? "button" : "div";
+
   return (
-    <div className="bg-surface-1 border-line-subtle min-w-0 rounded-[11px] border p-3">
+    <Root
+      {...(onClick ? { type: "button" as const, onClick } : {})}
+      className={cn(
+        "bg-surface-1 border-line-subtle min-w-0 rounded-[11px] border p-3",
+        onClick &&
+          "hover:border-line-strong hover:bg-surface-2 focus-visible:ring-accent/40 cursor-pointer text-left transition-colors focus-visible:ring-2 focus-visible:outline-none",
+      )}
+    >
       <div className="flex min-w-0 items-center gap-1.5">
         <Icon
           className={cn("size-3.5 shrink-0", toneClass)}
@@ -432,6 +511,6 @@ function Tile({
       {sub && (
         <div className="text-fg-tertiary mt-1 truncate text-[11px]">{sub}</div>
       )}
-    </div>
+    </Root>
   );
 }

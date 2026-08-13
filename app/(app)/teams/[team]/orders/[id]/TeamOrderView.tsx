@@ -25,7 +25,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
 import * as Tabs from '@radix-ui/react-tabs';
-import { ArrowLeft, ArrowUpRight, Ban, Clock, ListChecks, MessageSquare } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, Ban, Clock, FileText, ListChecks, MessageSquare } from 'lucide-react';
 import type { OrderDetail } from '@/lib/queries/order-detail';
 import { normalisePhasePlan } from '@/lib/domain/phase-plan';
 import {
@@ -48,7 +48,22 @@ import { NextActionPanel } from '@/app/(app)/orders/[id]/NextActionPanel';
 import { StageEvidenceDialog } from '@/app/(app)/orders/[id]/StageEvidenceDialog';
 import type { EvidenceRecord } from '@/app/(app)/orders/[id]/StageEvidencePanel';
 import { CommunicationTab } from '@/app/(app)/orders/[id]/CommunicationTab';
+import { TeamDocumentsPanel, TeamLiabilityPanel } from './TeamOrderExtras';
 import { cn, formatDate } from '@/lib/utils';
+
+/**
+ * Whose work turns on the delivery term.
+ *
+ * Inspection is absent deliberately: they check goods against a spec, and no
+ * part of that changes with who paid the freight. Putting it on their screen
+ * anyway would be one more panel to scroll past on every order.
+ */
+const SEES_LIABILITY = new Set<Stakeholder>([
+  'ONE_BUY_SOURCING',
+  'ONE_BUY_FINANCE',
+  'ONE_BUY_INBOUND',
+  'ONE_BUY_OUTBOUND',
+]);
 
 export function TeamOrderView({
   order,
@@ -263,6 +278,22 @@ export function TeamOrderView({
       )}
 
       {/*
+        Cost and risk, before the steps.
+
+        Shown to the desks that actually move goods and to the ones that pay for
+        the moving. Sourcing and Finance see it too, because the term decides
+        what the supplier's price already includes — but Inspection does not,
+        since nothing they do turns on who booked the freight.
+      */}
+      {SEES_LIABILITY.has(team) && (
+        <TeamLiabilityPanel
+          team={team}
+          buyIncoterms={order.incoterms}
+          sellIncoterms={order.customerPo.incoterms}
+        />
+      )}
+
+      {/*
         Steps and correspondence are the two things a desk does on an order, so
         they are two tabs of one panel rather than two stacked panels — the same
         treatment the queues get, for the same reason.
@@ -281,6 +312,12 @@ export function TeamOrderView({
             className="border-line-subtle flex min-w-0 gap-1 overflow-x-auto border-b px-3"
           >
             <OrderTab value="steps" icon={ListChecks} label="Your steps" count={outstanding} />
+            <OrderTab
+              value="docs"
+              icon={FileText}
+              label="Documents"
+              count={order.documents.length}
+            />
             <OrderTab
               value="comms"
               icon={MessageSquare}
@@ -323,6 +360,21 @@ export function TeamOrderView({
                 ownerFilter={team}
               />
             )}
+          </Tabs.Content>
+
+          <Tabs.Content value="docs" className="min-w-0 p-4 outline-none">
+            <TeamDocumentsPanel
+              team={team}
+              docs={order.documents.map((d) => ({
+                id: d.id,
+                docType: d.docType,
+                title: d.title,
+                fileName: d.fileName,
+                stageId: d.stageId,
+                uploadedBy: d.uploadedBy,
+                createdAt: d.createdAt,
+              }))}
+            />
           </Tabs.Content>
 
           <Tabs.Content value="comms" className="min-w-0 p-4 outline-none">

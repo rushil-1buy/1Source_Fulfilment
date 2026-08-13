@@ -12,6 +12,7 @@ import { db } from '@/lib/db';
 import { listOrders, type OrderRow } from './orders';
 import { holdingUp, queuesFor, waitingOn, type TeamQueues } from '@/lib/domain/team-queue';
 import { STAKEHOLDER_META, type Stakeholder } from '@/lib/domain/enums';
+import { applicableStages, stageNextActionOwner, stageOwner } from '@/lib/domain/stages';
 
 export interface TeamHandoff {
   party: Stakeholder;
@@ -48,6 +49,16 @@ export interface TeamWorkspace {
   queues: TeamQueues<OrderRow>;
   /** Money this team is answerable for right now — only on the work that is theirs. */
   valueOnDesk: number;
+  /**
+   * Every order this team touches, live or finished.
+   *
+   * Deliberately wider than the queues: a queue answers "what now", these two
+   * answer "what have we got" and "what have we got through". A team asked to
+   * account for its month cannot do it from a worklist that drops an order the
+   * moment it is no longer theirs to move.
+   */
+  allOrders: OrderRow[];
+  completedOrders: OrderRow[];
   /** Who we are waiting on, biggest hold-up first. */
   waitingOn: TeamHandoff[];
   /** Who we are holding up, biggest first. The one that changes priorities. */
@@ -73,6 +84,20 @@ export async function teamWorkspace(team: Stakeholder): Promise<TeamWorkspace> {
   const orders = await listOrders();
   const live = orders.filter((o) => o.status !== 'CLOSED' && o.status !== 'CANCELLED');
   const queues = queuesFor(live, team);
+
+  /*
+   * "Ours" across the whole ladder, not just where the order is standing now.
+   *
+   * An order sitting in customs is still Sourcing's order — they placed it, and
+   * they answer for it at the review. Deciding membership from the current
+   * stage alone would empty a team's history every time work moved on.
+   */
+  const touchedByTeam = (o: OrderRow) =>
+    applicableStages(o.ctx).some(
+      (st) => stageOwner(st, o.ctx) === team || stageNextActionOwner(st, o.ctx) === team,
+    );
+  const allOrders = orders.filter(touchedByTeam);
+  const completedOrders = allOrders.filter((o) => o.status === 'CLOSED');
 
   // Only the orders this team is on — see TeamWorkspace.messages.
   const mine = [...queues.needsMe, ...queues.waiting, ...queues.incoming];
@@ -109,6 +134,8 @@ export async function teamWorkspace(team: Stakeholder): Promise<TeamWorkspace> {
     // Only what is actually on the desk. Including the waiting pile would make
     // the number bigger and the team's exposure look larger than it is.
     valueOnDesk: queues.needsMe.reduce((a, o) => a + o.sellValue, 0),
+    allOrders,
+    completedOrders,
     waitingOn: toHandoffs(waitingOn(live, team)),
     holdingUp: toHandoffs(holdingUp(live, team)),
     totalActive: live.length,
