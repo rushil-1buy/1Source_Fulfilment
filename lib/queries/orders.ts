@@ -8,6 +8,9 @@ import {
   stageNextActionOwner,
   stageOwner,
   type StageContext,
+  applicableStages,
+  stageApplies,
+  PHASE_DEFS,
 } from '@/lib/domain/stages';
 import { stageContextFrom } from '@/lib/domain/stage-context';
 import { computeLandedCost, computeMargin } from '@/lib/tax/landed-cost';
@@ -38,6 +41,18 @@ export interface OrderRow {
   /** Who owns the step after this one, so a team can see work heading toward it. */
   nextStageOwner: Stakeholder | null;
   nextStageLabel: string | null;
+  /** Human phase label, e.g. "Sourcing & Commitment". */
+  phaseLabel: string;
+  /**
+   * How far along the whole flow this order is.
+   *
+   * A team seeing "B3" knows the step but not whether that is early or nearly
+   * done — and an order stuck at step 3 of 36 is a different problem from one
+   * stuck at 33 of 36. Counted against THIS order's own applicable ladder, so a
+   * curtailed or untested order is measured against what it actually runs.
+   */
+  stepsDone: number;
+  stepsTotal: number;
   status: string;
   stageEnteredAt: string;
   createdAt: string;
@@ -134,6 +149,9 @@ function toRow(
   // The step after this one, for the "heading your way" queue. Null at the end
   // of the ladder, and on an exception branch that has nowhere onward.
   const upcoming = nextStageFor(wo.stage, ctx);
+  // This order's own ladder, so progress is measured against what it runs.
+  const ladder = applicableStages(ctx).filter((s) => stageApplies(s, ctx));
+  const completed = new Set(wo.transitions.map((t) => t.toStage).filter((t) => t !== wo.stage));
 
   const landed = computeLandedCost({
     buyValue: wo.buyValue,
@@ -170,6 +188,9 @@ function toRow(
     nextActionOwner: stageNextActionOwner(stage, ctx),
     nextStageOwner: upcoming ? stageOwner(upcoming, ctx) : null,
     nextStageLabel: upcoming ? upcoming.label : null,
+    phaseLabel: PHASE_DEFS[stage.phase].label,
+    stepsDone: ladder.filter((s) => completed.has(s.id)).length,
+    stepsTotal: ladder.length,
     status: wo.status,
     stageEnteredAt: wo.stageEnteredAt.toISOString(),
     createdAt: wo.createdAt.toISOString(),

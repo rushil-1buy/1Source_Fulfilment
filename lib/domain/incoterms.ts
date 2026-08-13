@@ -722,3 +722,33 @@ export function inboundChain(code: string | null | undefined): string {
   links.push('our warehouse');
   return links.join(' → ');
 }
+
+/**
+ * One SPECIFIC Incoterm, shaped for the tooltip component.
+ *
+ * The glossary has a single "incoterms" entry explaining what Incoterms ARE.
+ * That is the right answer to "what is this field" and the wrong one to the
+ * question actually being asked, which is "what does CIF mean for this order" —
+ * and it is the same generic paragraph whether the order is EXW or DDP.
+ *
+ * So a term rendered as a value gets its own definition: what it commits each
+ * side to, where risk passes, and the trap where the term has one. Returns null
+ * for an unrecognised code, and the caller falls back to the generic entry.
+ */
+export function incotermGlossary(code: string | null | undefined) {
+  const def = incotermFor(code);
+  if (!def) return null;
+  return {
+    key: `incoterm:${def.code}`,
+    term: `${def.code} — ${def.name}`,
+    plainTerm: def.plainName,
+    whatItIs: def.implies,
+    /**
+     * The trap first where the term has one — that is the thing that costs
+     * money. Otherwise what buying on it commits us to.
+     */
+    whyItMatters: def.watchOut ?? def.whenWeBuy,
+    example: `Delivered: ${def.deliveryPoint}. Risk passes: ${def.riskTransfersAt.toLowerCase()}.`,
+    category: 'logistics' as const,
+  };
+}

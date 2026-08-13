@@ -57,11 +57,30 @@ const QUEUE_COLUMNS: ColumnSpec[] = [
     width: "150px",
   },
   {
+    // Named for what a team actually asks — "where is it?" — not for the
+    // schema's word. The code rides along with the label because B3 is what
+    // gets said out loud and the sentence is what makes it mean something.
     key: "stage",
-    label: "Stage",
+    label: "Step it is on",
     termKey: "stage",
     mobile: "secondary",
-    width: "230px",
+    width: "250px",
+  },
+  {
+    // The step alone does not say how bad a delay is. A phase and a "step N of
+    // M" do: stalled at B3 of 36 is a sourcing problem with room to recover,
+    // stalled at G4 of 36 is a customer already expecting delivery.
+    key: "phase",
+    label: "Phase",
+    termKey: "phase",
+    mobile: "meta",
+    width: "215px",
+  },
+  {
+    key: "progress",
+    label: "Progress",
+    mobile: "meta",
+    width: "130px",
   },
   { key: "customer", label: "Customer", mobile: "meta" },
   {
@@ -90,11 +109,17 @@ const QUEUE_COLUMNS: ColumnSpec[] = [
 ];
 
 /** Queues that name a counterparty get one extra column; the rest share the base. */
-const withParty = (label: string): ColumnSpec[] => [
-  ...QUEUE_COLUMNS.slice(0, 3),
-  { key: "party", label, kind: "chip", mobile: "meta", width: "160px" },
-  ...QUEUE_COLUMNS.slice(3),
-];
+const withParty = (label: string): ColumnSpec[] => {
+  // Slot the counterparty in after Progress, wherever Customer happens to be —
+  // an index would silently point at the wrong column the next time this list
+  // changes, and the failure would look like a formatting bug, not a wrong one.
+  const at = QUEUE_COLUMNS.findIndex((c) => c.key === "customer");
+  return [
+    ...QUEUE_COLUMNS.slice(0, at),
+    { key: "party", label, kind: "chip", mobile: "meta", width: "160px" },
+    ...QUEUE_COLUMNS.slice(at),
+  ];
+};
 
 const MESSAGE_COLUMNS: ColumnSpec[] = [
   {
@@ -140,6 +165,10 @@ function toRows(
     href: `/teams/${slug}/orders/${o.id}`,
     alias: o.alias,
     stage: `${o.stageCode} ${o.stageLabel}`,
+    phase: `${o.phase} · ${o.phaseLabel}`,
+    // "Step 6 of 36" rather than a bare code: B3 says where, not how far, and an
+    // order stuck near the end is a different problem from one stuck at the start.
+    progress: `Step ${o.stepsDone + 1} of ${o.stepsTotal}`,
     customer: o.customerName,
     // Blocked outranks late: one is behind, the other has stopped entirely.
     state: o.isBlocked
@@ -314,6 +343,7 @@ export function TeamWorkspaceView({
                       ? "Received"
                       : "Sent",
                 counterparty: m.counterparty,
+                stage: m.stage,
                 channel: m.channel,
                 subject: m.subject,
               }))}

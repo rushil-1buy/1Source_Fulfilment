@@ -29,6 +29,8 @@ export interface TeamMessage {
   counterparty: string;
   occurredAt: string;
   isUnread: boolean;
+  /** Where the order sits, so the comms tab is not the one view without it. */
+  stage: string;
 }
 
 export interface TeamWorkspace {
@@ -100,6 +102,10 @@ export async function teamWorkspace(team: Stakeholder): Promise<TeamWorkspace> {
         counterparty: other ? (other.name ?? other.stakeholder) : 'Internal',
         occurredAt: c.occurredAt.toISOString(),
         isUnread: c.isUnread,
+        stage: (() => {
+          const o = byId.get(c.workOrderId);
+          return o ? `${o.stageCode} ${o.stageLabel}` : '—';
+        })(),
       };
     }),
   };

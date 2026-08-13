@@ -30,7 +30,7 @@ import {
   EXTERNAL_STAKEHOLDERS,
   isOneBuy,
 } from './enums';
-import { inboundChain } from './incoterms';
+import { inboundChain, incotermGlossary } from './incoterms';
 import { stageLiability, MAPPED_STAGE_IDS } from './stage-liability';
 
 const ctx = (incoterms: string, over: Partial<StageContext> = {}): StageContext => ({
@@ -398,5 +398,41 @@ describe('every mapped step is a real step', () => {
     for (const id of MAPPED_STAGE_IDS) {
       expect(real.has(id), `${id} is not a stage`).toBe(true);
     }
+  });
+});
+
+describe('incotermGlossary — the tooltip explains THIS term', () => {
+  /**
+   * The glossary's single "incoterms" entry explains what Incoterms are, which
+   * is the right answer to "what is this field" and the wrong one to "what does
+   * CIF mean for this order" — and it read identically on an EXW order and a
+   * DDP one.
+   */
+  it('names the specific term, not the concept', () => {
+    expect(incotermGlossary('CIF')!.term).toBe('CIF — Cost, Insurance and Freight');
+    expect(incotermGlossary('EXW')!.term).toBe('EXW — Ex Works');
+  });
+
+  it('says something different for every term', () => {
+    const seen = new Set(
+      ['EXW', 'FOB', 'CIF', 'DAP', 'DDP', 'FOR'].map((c) => incotermGlossary(c)!.whatItIs),
+    );
+    expect(seen.size).toBe(6);
+  });
+
+  it('leads with the trap where the term has one', () => {
+    // FOB's is the notional-insurance rule that costs duty on cover never bought.
+    expect(incotermGlossary('FOB')!.whyItMatters).toMatch(/Rule 10\(2\)|notional/i);
+  });
+
+  it('gives the delivery point and where risk passes as the example', () => {
+    const e = incotermGlossary('FOB')!;
+    expect(e.example).toMatch(/^Delivered: /);
+    expect(e.example).toMatch(/Risk passes: /);
+  });
+
+  it('returns null for an unknown code so the caller can fall back', () => {
+    expect(incotermGlossary('NONSENSE')).toBeNull();
+    expect(incotermGlossary(null)).toBeNull();
   });
 });

@@ -10,14 +10,18 @@
  * So this shows only the stages this team owns or holds the next action on —
  * the same steps, rendered by the same panel, filtered.
  *
- * WHAT IT DELIBERATELY DOES NOT DO is offer a second place to record evidence
- * or advance the order. There is one advance gate, one evidence form and one
- * audit trail, and they live on the order. A parallel set here would be a second
- * implementation of the rules the whole platform rests on, and the two would
- * drift. Acting deep-links to the order instead, which is why anything done from
- * a team's desk still lands on the master flow.
+ * The work is done HERE, not behind a link to the order. The checklist, the
+ * evidence form, the document upload and the advance gate are all on this page.
+ *
+ * They are the SAME components the order page uses, not copies — AdvanceControl,
+ * NextActionPanel and StageEvidenceDialog, calling the same server actions. That
+ * is what makes this safe: there is still one advance gate, one evidence form
+ * and one audit trail, and a team recording something here writes to the order
+ * exactly as if they had done it there. A second implementation would drift from
+ * the rules the whole platform rests on.
  */
 
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, ArrowUpRight, Ban, Clock } from 'lucide-react';
 import type { OrderDetail } from '@/lib/queries/order-detail';
@@ -34,21 +38,57 @@ import {
 import { STAKEHOLDER_META, type Stakeholder } from '@/lib/domain/enums';
 import { PageHeader, PageShell, Panel, PanelHeader, EmptyState, Money, MonoId, KeyValue } from '@/components/ui/Layout';
 import { Chip, StakeholderBadge } from '@/components/ui/Badges';
+import { IncotermTooltip } from '@/components/ui/IncotermTooltip';
 import { usePreferences } from '@/components/providers/Preferences';
 import { FlowStepsPanel } from '@/app/(app)/orders/[id]/FlowStepsPanel';
+import { AdvanceControl, type FinanceApprover } from '@/app/(app)/orders/[id]/AdvanceControl';
+import { NextActionPanel } from '@/app/(app)/orders/[id]/NextActionPanel';
+import { StageEvidenceDialog } from '@/app/(app)/orders/[id]/StageEvidenceDialog';
+import type { EvidenceRecord } from '@/app/(app)/orders/[id]/StageEvidencePanel';
 import { formatDate } from '@/lib/utils';
 
 export function TeamOrderView({
   order,
   team,
   slug,
+  financeApprovers,
 }: {
   order: OrderDetail;
   team: Stakeholder;
   slug: string;
+  /** Only Finance may authorise a release, and the final one needs two. */
+  financeApprovers: FinanceApprover[];
 }) {
   const { label: pick } = usePreferences();
   const meta = STAKEHOLDER_META[team];
+  /** Which stage's evidence form is open, if any. */
+  const [evidenceStageId, setEvidenceStageId] = useState<string | null>(null);
+
+  const evidenceRecords: EvidenceRecord[] = useMemo(
+    () =>
+      order.stageEvidence.map((e) => ({
+        stageId: e.stageId,
+        status: e.status,
+        values: JSON.parse(e.values) as Record<string, string | number | boolean | null>,
+        completedAt: e.completedAt,
+        documents: e.documents.map((d) => ({
+          id: d.id,
+          docType: d.docType,
+          fileName: d.fileName,
+          sizeBytes: d.sizeBytes,
+          version: d.version,
+        })),
+        revisions: e.revisions.map((r) => ({
+          id: r.id,
+          revision: r.revision,
+          changeSummary: r.changeSummary,
+          reason: r.reason,
+          actorLabel: r.actorLabel,
+          createdAt: r.createdAt,
+        })),
+      })),
+    [order.stageEvidence],
+  );
 
   const ctx: StageContext = {
     paymentMethod: order.paymentMethod as 'ESCROW',
@@ -146,8 +186,11 @@ export function TeamOrderView({
           </KeyValue>
           <KeyValue label="Customer">{order.customerPo.customer.name}</KeyValue>
           <KeyValue label="Supplier">{order.supplierPo.supplier.name}</KeyValue>
-          <KeyValue label="Bought on" termKey="incoterms">
-            <span className="font-mono">{order.incoterms}</span>
+          <KeyValue label="Bought on">
+            <span className="flex min-w-0 items-center gap-1.5">
+              <span className="font-mono">{order.incoterms}</span>
+              <IncotermTooltip code={order.incoterms} />
+            </span>
           </KeyValue>
           <KeyValue label="Wanted by">
             {order.customerPo.requestedDeliveryDate
@@ -163,14 +206,19 @@ export function TeamOrderView({
         )}
 
         {onOurDesk && (
-          <p className="text-fg-secondary border-line-subtle mt-3 border-t pt-3 text-[12px] leading-relaxed">
-            The next action here is yours. Recording evidence and advancing happen on the order
-            itself, so there is one gate and one audit trail —{' '}
-            <Link href={`/orders/${order.id}`} className="text-accent-text underline">
-              open the full order
-            </Link>{' '}
-            to do it.
-          </p>
+          <div className="border-line-subtle mt-3 border-t pt-3">
+            <AdvanceControl
+              workOrderId={order.id}
+              currentStage={order.stage}
+              currentStageCode={current.code}
+              currentStageLabel={current.label}
+              evidenceRecord={evidenceRecords.find((r) => r.stageId === order.stage)}
+              ctx={ctx}
+              blocked={isBlocked}
+              financeApprovers={financeApprovers}
+              inspectionPassed={order.inspections.some((i) => i.verdict === 'PASSED')}
+            />
+          </div>
         )}
         {!onOurDesk && oursToAnswerFor && (
           <p className="text-fg-secondary border-line-subtle mt-3 border-t pt-3 text-[12px] leading-relaxed">
@@ -180,6 +228,36 @@ export function TeamOrderView({
           </p>
         )}
       </Panel>
+
+      {onOurDesk && (
+        <NextActionPanel
+          workOrderId={order.id}
+          currentStage={order.stage}
+          viewStageId={anchorStageId}
+          relation="CURRENT"
+          ctx={ctx}
+          isBlocked={isBlocked}
+          blockReason={blockReason}
+          stageEnteredAt={order.stageEnteredAt}
+          evidence={evidenceRecords}
+          onOpenEvidence={setEvidenceStageId}
+          onBackToCurrent={() => setEvidenceStageId(null)}
+        />
+      )}
+
+      {/* The same form the order page uses, opened from here. One implementation
+          of the gate, one audit trail — this is only another way in. */}
+      {evidenceStageId && (
+        <StageEvidenceDialog
+          workOrderId={order.id}
+          stageId={evidenceStageId}
+          stageCode={getStage(evidenceStageId).code}
+          stageLabel={getStage(evidenceStageId).label}
+          record={evidenceRecords.find((r) => r.stageId === evidenceStageId)}
+          open
+          onOpenChange={(o) => !o && setEvidenceStageId(null)}
+        />
+      )}
 
       <Panel padded={false}>
         <div className="p-4 pb-0">

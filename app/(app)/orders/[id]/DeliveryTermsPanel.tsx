@@ -15,6 +15,7 @@
 import { useState } from 'react';
 import { AlertTriangle, ArrowRight, Check, Info, Landmark, Ship, Shield, Truck } from 'lucide-react';
 import { Money, Panel, PanelHeader, SectionLabel } from '@/components/ui/Layout';
+import { IncotermTooltip } from '@/components/ui/IncotermTooltip';
 import { Chip } from '@/components/ui/Badges';
 import { Hint } from '@/components/ui/InfoTooltip';
 import {
@@ -468,6 +469,7 @@ function TermCard({
           {heading}
         </span>
         <span className="text-fg font-mono text-[13px] font-semibold">{def.code}</span>
+        <IncotermTooltip code={def.code} />
         <span className="text-fg-secondary min-w-0 text-[12px]">{def.name}</span>
       </div>
       <div className="text-fg-tertiary mt-0.5 text-[11.5px]">

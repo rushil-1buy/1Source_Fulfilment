@@ -242,6 +242,17 @@ export const GLOSSARY: GlossaryEntry[] = [
     category: 'order',
   },
   {
+    key: 'phase',
+    term: 'Phase',
+    plainTerm: 'Part of the journey',
+    whatItIs:
+      'The chapter of the order the current step belongs to — sourcing, payment, shipping, customs, warehouse or delivery.',
+    whyItMatters:
+      'It puts a delay in proportion. Stuck early, there is still room to recover; stuck near the end, the customer is already waiting on a date you gave them.',
+    example: 'B · Sourcing & Commitment',
+    category: 'order',
+  },
+  {
     key: 'paymentMethod',
     term: 'Payment method',
     whatItIs:
