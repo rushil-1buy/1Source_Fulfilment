@@ -60,6 +60,14 @@ interface LineSpec {
 interface WoSpec {
   key: string;
   aliasNo: number;
+  /**
+   * Overrides the WO-2026-nnn alias.
+   *
+   * Only the two walkthrough orders use it. They have to be findable by name in
+   * a room full of people, and "WO-2026-0115" is not something anyone can call
+   * out or search for mid-demo.
+   */
+  alias?: string;
   docNo: number;
   customerId: string;
   supplierId: string;
@@ -78,6 +86,58 @@ interface WoSpec {
 }
 
 const SPECS: WoSpec[] = [
+
+  /*
+   * The two walkthrough orders.
+   *
+   * Each is parked at the first step of one leg so that leg can be run start to
+   * finish in front of an audience, without first advancing an order through
+   * everything that comes before it.
+   */
+  {
+    key: 'wo-demo-inbound',
+    alias: 'DEMO-INBOUND',
+    aliasNo: 117,
+    docNo: 52,
+    customerId: 'c-acme',
+    supplierId: 's-nexus',
+    paymentMethod: 'ESCROW',
+    testingRequired: true,
+    testScope: 'LOT_SAMPLE',
+    // E0 — the first step of the inbound leg, and 1BUY Inbound's to answer for.
+    // Everything before it is done, so the inbound flow can be walked from here.
+    targetStage: 'EXPORT_CLEARED_AT_ORIGIN',
+    startedDaysAgo: 26,
+    hoursInStage: 4,
+    labId: 'lab-whl-blr',
+    headline: 'Walkthrough — parked at the start of the inbound leg for 1BUY Logistics inbound.',
+    lines: [
+      { mpn: 'STM32F407VGT6', qty: 900, sell: 985, buy: 9.15, testing: true },
+      { mpn: 'TL072CP', qty: 5000, sell: 41, buy: 0.38, testing: true },
+    ],
+  },
+  {
+    key: 'wo-demo-outbound',
+    alias: 'DEMO-OUTBOUND',
+    aliasNo: 118,
+    docNo: 53,
+    customerId: 'c-nova',
+    supplierId: 's-global',
+    paymentMethod: 'ESCROW',
+    testingRequired: true,
+    testScope: 'LOT_SAMPLE',
+    // F6 — goods are through the warehouse and the next action is Outbound's,
+    // so the outbound leg G1..G6 can be walked from here.
+    targetStage: 'READY_FOR_OUTBOUND',
+    startedDaysAgo: 48,
+    hoursInStage: 6,
+    labId: 'lab-whl-blr',
+    headline: 'Walkthrough — ready to ship, parked at the start of the outbound leg.',
+    lines: [
+      { mpn: 'W25Q128JVSIQ', qty: 2400, sell: 152, buy: 1.42, testing: true },
+      { mpn: 'SN74HC595N', qty: 4000, sell: 33, buy: 0.3, testing: true },
+    ],
+  },
   {
     key: 'wo-testing',
     aliasNo: 107,
@@ -734,7 +794,7 @@ async function buildWorkOrder(spec: WoSpec) {
     data: {
       id: spec.key,
       canonicalName: canonical,
-      alias: `WO-2026-${pad(spec.aliasNo)}`,
+      alias: spec.alias ?? `WO-2026-${pad(spec.aliasNo)}`,
       // The Sales Order is raised when the work order goes active (B5) — before
       // that there is nothing committed to the customer to reference.
       soNumber: reached('WORK_ORDER_ACTIVE') ? `SO-1B-${pad(200 + spec.aliasNo)}` : null,
