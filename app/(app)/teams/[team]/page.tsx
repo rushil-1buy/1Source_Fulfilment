@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { teamLoads, teamWorkspace } from '@/lib/queries/team';
+import { teamWorkspace } from '@/lib/queries/team';
 import { STAKEHOLDER_META, TEAM_SLUGS } from '@/lib/domain/enums';
 import { TeamWorkspaceView } from './TeamWorkspaceView';
 
@@ -21,8 +21,8 @@ export default async function TeamPage({ params }: { params: Promise<{ team: str
   // silently on somebody else's queue is worse than being told the link is wrong.
   if (!team) notFound();
 
-  const [workspace, loads] = await Promise.all([teamWorkspace(team), teamLoads()]);
-  return <TeamWorkspaceView workspace={workspace} loads={loads} slug={slug} />;
+  const workspace = await teamWorkspace(team);
+  return <TeamWorkspaceView workspace={workspace} slug={slug} />;
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ team: string }> }) {
