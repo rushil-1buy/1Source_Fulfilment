@@ -18,6 +18,7 @@ import {
 import { computeGstInvoice, makeRateLookup, type HsnRateRow } from '../lib/tax/gst-engine';
 import { computeLandedCost } from '../lib/tax/landed-cost';
 import { amountInWords, convertMinor, pctOf, toMinor } from '../lib/domain/money';
+import { isOneBuy } from '../lib/domain/enums';
 import { GLOSSARY } from '../lib/glossary';
 import { seedDemoOrder } from './seed-demo-order';
 import {
@@ -726,7 +727,7 @@ async function buildWorkOrder(spec: WoSpec) {
   const path = [...passed.map((s) => s.id), spec.targetStage];
   const actorFor = (stageId: string) => {
     const owner = getStage(stageId).owner;
-    if (owner === 'ONE_BUY') return { id: 'u-priya', label: 'Akash Dwivedi' };
+    if (isOneBuy(owner)) return { id: 'u-priya', label: 'Akash Dwivedi' };
     if (owner === 'CUSTOMER') return { id: null, label: `${customer.contactName} (customer)` };
     if (owner === 'SUPPLIER') return { id: null, label: `${supplier.contactName} (supplier)` };
     if (owner === 'ESCROW') return { id: null, label: 'Escrow provider notification' };
@@ -1526,7 +1527,7 @@ async function buildWorkOrder(spec: WoSpec) {
       data: {
         workOrderId: spec.key,
         title: target.nextAction,
-        ownerId: target.nextActionOwner === 'ONE_BUY' ? 'u-priya' : null,
+        ownerId: isOneBuy(target.nextActionOwner) ? 'u-priya' : null,
         ownerRole: target.nextActionOwner,
         linkedStage: spec.targetStage,
         priority: spec.hoursInStage > target.expectedHours ? 'HIGH' : 'NORMAL',
@@ -1712,7 +1713,7 @@ function buildHumanThreads(
   reached: (s: string) => boolean,
 ): HumanThread[] {
   const threads: HumanThread[] = [];
-  const oneBuy = { role: 'FROM', stakeholder: 'ONE_BUY', name: 'Akash Dwivedi', email: 'akash.dwivedi@1buy.ai' };
+  const oneBuy = { role: 'FROM', stakeholder: 'ONE_BUY_SOURCING', name: 'Akash Dwivedi', email: 'akash.dwivedi@1buy.ai' };
 
   threads.push({
     channel: 'EMAIL',
@@ -1727,7 +1728,7 @@ function buildHumanThreads(
     loggedById: 'u-priya',
     participants: [
       { role: 'FROM', stakeholder: 'CUSTOMER', name: customer.contactName, email: customer.contactEmail },
-      { role: 'TO', stakeholder: 'ONE_BUY', name: 'Akash Dwivedi', email: 'akash.dwivedi@1buy.ai' },
+      { role: 'TO', stakeholder: 'ONE_BUY_SOURCING', name: 'Akash Dwivedi', email: 'akash.dwivedi@1buy.ai' },
     ],
     context: [{ kind: 'STAGE', refId: 'CUSTOMER_PO_RECEIVED', label: 'A1 · Customer PO received' }],
   });
@@ -1765,7 +1766,7 @@ function buildHumanThreads(
       occurredAt: at('SUPPLIER_PO_ISSUED'),
       loggedById: 'u-priya',
       participants: [
-        { role: 'FROM', stakeholder: 'ONE_BUY', name: 'Akash Dwivedi', email: 'akash.dwivedi@1buy.ai' },
+        { role: 'FROM', stakeholder: 'ONE_BUY_SOURCING', name: 'Akash Dwivedi', email: 'akash.dwivedi@1buy.ai' },
         { role: 'TO', stakeholder: 'SUPPLIER', name: supplier.contactName, email: supplier.contactEmail },
       ],
       context: [
@@ -1789,7 +1790,7 @@ function buildHumanThreads(
       loggedById: 'u-priya',
       participants: [
         { role: 'FROM', stakeholder: 'WHL', name: 'Dr S. Raghavan', email: 'intake.blr@whl-labs.in' },
-        { role: 'TO', stakeholder: 'ONE_BUY', name: 'Akash Dwivedi', email: 'akash.dwivedi@1buy.ai' },
+        { role: 'TO', stakeholder: 'ONE_BUY_SOURCING', name: 'Akash Dwivedi', email: 'akash.dwivedi@1buy.ai' },
       ],
       context: [
         { kind: 'STAGE', refId: 'TEST_FAILED', label: 'D5b · Test failed' },
@@ -1807,8 +1808,8 @@ function buildHumanThreads(
       occurredAt: new Date(at('TEST_FAILED').getTime() + 2 * HOUR),
       loggedById: 'u-priya',
       participants: [
-        { role: 'FROM', stakeholder: 'ONE_BUY', name: 'Akash Dwivedi' },
-        { role: 'TO', stakeholder: 'ONE_BUY', name: 'Ankit Sharma' },
+        { role: 'FROM', stakeholder: 'ONE_BUY_SOURCING', name: 'Akash Dwivedi' },
+        { role: 'TO', stakeholder: 'ONE_BUY_SOURCING', name: 'Ankit Sharma' },
       ],
       context: [{ kind: 'EXCEPTION', refId: `${spec.key}-exc`, label: 'Test failed' }],
     });
@@ -1826,7 +1827,7 @@ function buildHumanThreads(
       loggedById: 'u-ankit',
       participants: [
         { role: 'FROM', stakeholder: 'WHA', name: 'WHA Bengaluru Air Cargo desk' },
-        { role: 'TO', stakeholder: 'ONE_BUY', name: 'Ankit Sharma' },
+        { role: 'TO', stakeholder: 'ONE_BUY_SOURCING', name: 'Ankit Sharma' },
       ],
       context: [{ kind: 'STAGE', refId: 'CUSTOMS_ENTRY_FILED_ICEGATE', label: 'E4 · Customs entry filed' }],
     });
@@ -1867,7 +1868,7 @@ function buildHumanThreads(
       occurredAt: new Date(NOW - 30 * HOUR),
       loggedById: 'u-priya',
       participants: [
-        { role: 'FROM', stakeholder: 'ONE_BUY', name: 'Akash Dwivedi' },
+        { role: 'FROM', stakeholder: 'ONE_BUY_SOURCING', name: 'Akash Dwivedi' },
         { role: 'TO', stakeholder: 'SUPPLIER', name: supplier.contactName, email: supplier.contactEmail },
       ],
       context: [{ kind: 'STAGE', refId: spec.targetStage, label: 'Awaiting supplier' }],

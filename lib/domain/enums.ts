@@ -4,8 +4,24 @@
  * and are validated with Zod at every write boundary.
  */
 
+/**
+ * 1BUY is five teams, not one party.
+ *
+ * "1BUY" against a step told an operator nothing about whose desk it was on —
+ * and the five teams genuinely do different work, hand off to each other, and
+ * are chased separately when a step stalls. Splitting them is what makes the
+ * flow answerable to "who do I ring".
+ *
+ * The Customs Agent is dealt with by FINANCE, not by inbound logistics: the
+ * agent's work is a duty payment against a Bill of Entry, and it is Finance who
+ * funds and reconciles it.
+ */
 export const STAKEHOLDERS = [
-  'ONE_BUY',
+  'ONE_BUY_SOURCING',
+  'ONE_BUY_FINANCE',
+  'ONE_BUY_INBOUND',
+  'ONE_BUY_OUTBOUND',
+  'ONE_BUY_INSPECTION',
   'CUSTOMER',
   'SUPPLIER',
   'ESCROW',
@@ -16,6 +32,17 @@ export const STAKEHOLDERS = [
 export type Stakeholder = (typeof STAKEHOLDERS)[number];
 
 /**
+ * True for any of our own teams.
+ *
+ * Exists because the split turned one value into five, and every place that
+ * asked "is this us?" would otherwise have to list all five and go stale the
+ * moment a sixth is added.
+ */
+export function isOneBuy(s: Stakeholder | string): boolean {
+  return typeof s === 'string' && s.startsWith('ONE_BUY');
+}
+
+/**
  * No abbreviations in the interface. `short` exists only for genuinely tight
  * spaces, and even there it holds a real word rather than a two-letter code —
  * "CUS", "SUP", "ESC" and "1B" told a new operator nothing.
@@ -24,7 +51,45 @@ export const STAKEHOLDER_META: Record<
   Stakeholder,
   { label: string; short: string; plainLabel: string; token: string }
 > = {
-  ONE_BUY: { label: '1BUY', short: '1BUY', plainLabel: 'Us (1BUY)', token: 'onebuy' },
+  /**
+   * All five share the 1BUY indigo, deliberately.
+   *
+   * The palette note above is not decoration: seven categorical hues is already
+   * the ceiling under deuteranopia, and eleven is not achievable at all. So
+   * colour answers "which organisation" and the label answers "which team" —
+   * which is also the truer reading, because to a supplier or a customer these
+   * five are one counterparty.
+   */
+  ONE_BUY_SOURCING: {
+    label: '1BUY Sourcing',
+    short: 'Sourcing',
+    plainLabel: 'Our sourcing team',
+    token: 'onebuy',
+  },
+  ONE_BUY_FINANCE: {
+    label: '1BUY Finance',
+    short: 'Finance',
+    plainLabel: 'Our finance team',
+    token: 'onebuy',
+  },
+  ONE_BUY_INBOUND: {
+    label: '1BUY Logistics — inbound',
+    short: 'Inbound',
+    plainLabel: 'Our inbound logistics team',
+    token: 'onebuy',
+  },
+  ONE_BUY_OUTBOUND: {
+    label: '1BUY Logistics — outbound',
+    short: 'Outbound',
+    plainLabel: 'Our outbound logistics team',
+    token: 'onebuy',
+  },
+  ONE_BUY_INSPECTION: {
+    label: '1BUY Inspection',
+    short: 'Inspection',
+    plainLabel: 'Our inspection team',
+    token: 'onebuy',
+  },
   CUSTOMER: { label: 'Customer', short: 'Customer', plainLabel: 'Customer', token: 'customer' },
   SUPPLIER: { label: 'Supplier', short: 'Supplier', plainLabel: 'Supplier', token: 'supplier' },
   ESCROW: {

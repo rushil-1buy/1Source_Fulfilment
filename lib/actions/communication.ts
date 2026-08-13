@@ -16,17 +16,8 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { db } from '@/lib/db';
-import { STAKEHOLDER_META, type Stakeholder } from '@/lib/domain/enums';
+import { STAKEHOLDERS, STAKEHOLDER_META, isOneBuy, type Stakeholder } from '@/lib/domain/enums';
 
-const STAKEHOLDERS = [
-  'ONE_BUY',
-  'CUSTOMER',
-  'SUPPLIER',
-  'ESCROW',
-  'WHL',
-  'WHA',
-  'LOGISTICS',
-] as const;
 
 const Input = z.object({
   workOrderId: z.string().min(1),
@@ -88,11 +79,11 @@ export async function logCommunication(
   if (!wo) return { ok: false, message: 'That order no longer exists.' };
 
   // 1BUY is always one end of the conversation; the operator picks the other.
-  const oneBuy = { stakeholder: 'ONE_BUY' as const, name: 'Akash Dwivedi', email: 'akash@1buy.ai' };
+  const oneBuy = { stakeholder: 'ONE_BUY_SOURCING' as const, name: 'Akash Dwivedi', email: 'akash@1buy.ai' };
   const other = counterpartyParty(input.counterparty, wo);
 
   const outbound = input.direction === 'OUTBOUND';
-  const internal = input.direction === 'INTERNAL' || input.counterparty === 'ONE_BUY';
+  const internal = input.direction === 'INTERNAL' || isOneBuy(input.counterparty);
 
   const participants = internal
     ? [{ role: 'FROM', ...oneBuy }, { role: 'TO', ...oneBuy }]

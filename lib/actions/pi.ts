@@ -434,7 +434,7 @@ export async function captureSupplierPi(input: unknown): Promise<PiActionResult>
           isUnread: variances.some((v) => v.severity === 'CRITICAL'),
           occurredAt: new Date(),
           participants: {
-            create: [{ role: 'FROM', stakeholder: 'ONE_BUY', name: 'Akash Dwivedi' }],
+            create: [{ role: 'FROM', stakeholder: 'ONE_BUY_SOURCING', name: 'Akash Dwivedi' }],
           },
           contextChips: {
             create: variances.slice(0, 4).map((v) => ({

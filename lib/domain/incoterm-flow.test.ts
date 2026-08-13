@@ -14,7 +14,15 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { applicableStages, getStage, stageApplies, stageOwner, type StageContext } from './stages';
+import {
+  applicableStages,
+  getStage,
+  stageApplies,
+  stageOwner,
+  stageNextActionOwner,
+  type StageContext,
+} from './stages';
+import { STAKEHOLDERS, isOneBuy } from './enums';
 import { inboundChain } from './incoterms';
 import { stageLiability } from './stage-liability';
 
@@ -213,5 +221,40 @@ describe('stageLiability — the obligation each step actually turns on', () => 
 
   it('returns nothing when the term is unrecognised, rather than an empty shell', () => {
     expect(stageLiability(DUTY, ctx('NONSENSE'))).toBeNull();
+  });
+});
+
+describe('the five 1BUY teams are real, not decorative', () => {
+  /**
+   * A team defined in the enum but never assigned to a stage is a label nobody
+   * can act on — it would show up in the owner picker and in filters while
+   * owning no work. This is the guard that catches that.
+   */
+  it('gives every 1BUY team at least one stage to own', () => {
+    const c = ctx('EXW');
+    const owners = new Set(applicableStages(c).map((s) => stageOwner(s, c)));
+    for (const team of STAKEHOLDERS.filter(isOneBuy)) {
+      expect(owners.has(team), `${team} owns nothing`).toBe(true);
+    }
+  });
+
+  it('puts the Customs Agent steps with Finance, who fund the duty', () => {
+    const c = ctx('FOB');
+    expect(stageOwner(getStage(DUTY), c)).toBe('ONE_BUY_FINANCE');
+  });
+
+  it('hands goods received to inbound and the inspection that follows to Inspection', () => {
+    const c = ctx('FOB');
+    const received = getStage('GOODS_RECEIVED_INBOUND_AT_1BUY');
+    expect(stageOwner(received, c)).toBe('ONE_BUY_INBOUND');
+    expect(stageNextActionOwner(received, c)).toBe('ONE_BUY_INSPECTION');
+  });
+
+  it('leaves no bare ONE_BUY anywhere in the ladder', () => {
+    const c = ctx('EXW');
+    for (const s of applicableStages(c)) {
+      expect(stageOwner(s, c), s.code).not.toBe('ONE_BUY');
+      expect(stageNextActionOwner(s, c), s.code).not.toBe('ONE_BUY');
+    }
   });
 });

@@ -181,7 +181,14 @@ export function StatusChip({
 // ── Stakeholder badge ───────────────────────────────────────────────────────
 
 const SH_CLASSES: Record<Stakeholder, string> = {
-  ONE_BUY: 'bg-sh-onebuy-subtle text-sh-onebuy border-sh-onebuy/25',
+  // All five 1BUY teams share the indigo. Seven categorical hues is already the
+  // ceiling under deuteranopia (see the palette note in globals.css), so colour
+  // answers "which organisation" and the label answers "which team".
+  ONE_BUY_SOURCING: 'bg-sh-onebuy-subtle text-sh-onebuy border-sh-onebuy/25',
+  ONE_BUY_FINANCE: 'bg-sh-onebuy-subtle text-sh-onebuy border-sh-onebuy/25',
+  ONE_BUY_INBOUND: 'bg-sh-onebuy-subtle text-sh-onebuy border-sh-onebuy/25',
+  ONE_BUY_OUTBOUND: 'bg-sh-onebuy-subtle text-sh-onebuy border-sh-onebuy/25',
+  ONE_BUY_INSPECTION: 'bg-sh-onebuy-subtle text-sh-onebuy border-sh-onebuy/25',
   CUSTOMER: 'bg-sh-customer-subtle text-sh-customer border-sh-customer/25',
   SUPPLIER: 'bg-sh-supplier-subtle text-sh-supplier border-sh-supplier/25',
   ESCROW: 'bg-sh-escrow-subtle text-sh-escrow border-sh-escrow/25',
@@ -217,7 +224,11 @@ export function StakeholderBadge({
 /** The colour dot used in swimlanes and legends. */
 export function StakeholderDot({ stakeholder }: { stakeholder: Stakeholder }) {
   const cls: Record<Stakeholder, string> = {
-    ONE_BUY: 'bg-sh-onebuy',
+    ONE_BUY_SOURCING: 'bg-sh-onebuy',
+    ONE_BUY_FINANCE: 'bg-sh-onebuy',
+    ONE_BUY_INBOUND: 'bg-sh-onebuy',
+    ONE_BUY_OUTBOUND: 'bg-sh-onebuy',
+    ONE_BUY_INSPECTION: 'bg-sh-onebuy',
     CUSTOMER: 'bg-sh-customer',
     SUPPLIER: 'bg-sh-supplier',
     ESCROW: 'bg-sh-escrow',

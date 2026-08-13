@@ -1350,7 +1350,7 @@ function ManualStepNode({
       <span className="text-accent-text/80 font-mono text-[9px]">Manual step</span>
       {showSwimlane && owner && (
         <span className="mt-0.5 flex min-w-0 items-center justify-center gap-1">
-          <StakeholderDot stakeholder={step.owner as 'ONE_BUY'} />
+          <StakeholderDot stakeholder={step.owner as Stakeholder} />
           <span className="text-fg-secondary min-w-0 text-[9.5px] leading-[1.25] text-balance">
             {owner.label}
           </span>
@@ -1391,7 +1391,7 @@ function ManualStepNode({
                 Added to this order only · not part of the standard flow
               </div>
             </div>
-            {owner && <StakeholderBadge stakeholder={step.owner as 'ONE_BUY'} short />}
+            {owner && <StakeholderBadge stakeholder={step.owner as Stakeholder} short />}
           </div>
           <div className="space-y-2 px-3 py-2.5 text-[11.5px] leading-[1.5]">
             {/* The reason leads, because it is the whole justification for the

@@ -990,7 +990,7 @@ function OverviewTab({ order }: { order: OrderDetail }) {
       value: order.customerPi?.totalValue ?? 0,
       currency: 'INR',
       status: order.customerPi?.status ?? 'NOT_ISSUED',
-      stakeholder: 'ONE_BUY' as const,
+      stakeholder: 'ONE_BUY_SOURCING' as const,
       print: order.customerPi ? ({ kind: 'proforma-invoice', id: order.customerPi.id } as const) : null,
     },
     {
@@ -1000,7 +1000,7 @@ function OverviewTab({ order }: { order: OrderDetail }) {
       value: order.supplierPo.totalValue,
       currency: order.supplierPo.currency,
       status: order.supplierPo.status,
-      stakeholder: 'ONE_BUY' as const,
+      stakeholder: 'ONE_BUY_SOURCING' as const,
       print: ({ kind: 'purchase-order', id: order.supplierPo.id } as const),
     },
     {

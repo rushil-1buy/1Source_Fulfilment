@@ -320,7 +320,7 @@ export async function updateWorkOrder(
       occurredAt: new Date(),
       systemIcon: 'PenLine',
       loggedById: 'u-priya',
-      participants: { create: [{ role: 'FROM', stakeholder: 'ONE_BUY', name: 'Akash Dwivedi' }] },
+      participants: { create: [{ role: 'FROM', stakeholder: 'ONE_BUY_SOURCING', name: 'Akash Dwivedi' }] },
     },
   });
 
@@ -610,7 +610,7 @@ export async function linkSupplierPoToCustomerPo(
       occurredAt: new Date(),
       systemIcon: 'Link2',
       loggedById: 'u-priya',
-      participants: { create: [{ role: 'FROM', stakeholder: 'ONE_BUY', name: 'Akash Dwivedi' }] },
+      participants: { create: [{ role: 'FROM', stakeholder: 'ONE_BUY_SOURCING', name: 'Akash Dwivedi' }] },
     },
   });
 

@@ -14,21 +14,19 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { CornerDownRight, Plus, Send, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { insertCustomStage } from '@/lib/actions/custom-stage';
+import { STAKEHOLDERS, STAKEHOLDER_META, type Stakeholder } from '@/lib/domain/enums';
 import { Button, SectionLabel } from '@/components/ui/Layout';
 import { cn } from '@/lib/utils';
 
 const field =
   'bg-surface-1 border-line-subtle focus:border-accent text-fg placeholder:text-fg-tertiary w-full rounded-[8px] border px-2.5 py-1.5 text-[13px] outline-none';
 
-const OWNERS = [
-  { code: 'ONE_BUY', label: '1BUY' },
-  { code: 'CUSTOMER', label: 'The customer' },
-  { code: 'SUPPLIER', label: 'The supplier' },
-  { code: 'ESCROW', label: 'The escrow provider' },
-  { code: 'WHL', label: 'The testing laboratory' },
-  { code: 'WHA', label: 'The customs agent' },
-  { code: 'LOGISTICS', label: 'The logistics partner' },
-] as const;
+/**
+ * Derived, never hand-listed. A copy of this list is exactly what went stale
+ * when 1BUY became five teams — the picker still offered a party the type no
+ * longer had.
+ */
+const OWNERS = STAKEHOLDERS.map((code) => ({ code, label: STAKEHOLDER_META[code].label }));
 
 /** One option in the position picker. */
 export interface InsertPoint {
@@ -76,7 +74,7 @@ export function InsertStepDialog({
 
   const [label, setLabel] = useState('');
   const [reason, setReason] = useState('');
-  const [owner, setOwner] = useState<string>('ONE_BUY');
+  const [owner, setOwner] = useState<string>('ONE_BUY_SOURCING');
   const [exitCriteria, setExitCriteria] = useState('');
   const [expectedHours, setExpectedHours] = useState('24');
   const [blocking, setBlocking] = useState(false);
@@ -96,7 +94,7 @@ export function InsertStepDialog({
         afterCustomStageId: movedFromOriginal ? null : (afterCustomStageId ?? null),
         label,
         reason,
-        owner: owner as 'ONE_BUY',
+        owner: owner as Stakeholder,
         exitCriteria: exitCriteria || null,
         expectedHours: Number(expectedHours || 24),
         blocking,

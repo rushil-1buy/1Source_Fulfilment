@@ -259,7 +259,7 @@ export async function savePhasePlan(raw: SavePhasePlanInput): Promise<PhasePlanR
         systemIcon: 'GitBranch',
         loggedById: ACTOR.id,
         participants: {
-          create: [{ role: 'FROM', stakeholder: 'ONE_BUY', name: ACTOR.label }],
+          create: [{ role: 'FROM', stakeholder: 'ONE_BUY_SOURCING', name: ACTOR.label }],
         },
       },
     });

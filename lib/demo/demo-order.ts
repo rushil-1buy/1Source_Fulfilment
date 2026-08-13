@@ -20,6 +20,7 @@
 import { PrismaClient } from '@/lib/generated/prisma';
 import { applicableStages, getStage, stageIndex, type StageContext } from '@/lib/domain/stages';
 import { convertMinor, toMinor } from '@/lib/domain/money';
+import { isOneBuy } from '@/lib/domain/enums';
 import { CUSTOMERS, MPNS, ORG, SUPPLIERS } from '@/prisma/seed-masters';
 import { DEMO_ORDER_ALIAS } from './constants';
 
@@ -384,7 +385,7 @@ export async function seedDemoOrder(db: PrismaClient, now = Date.now()) {
   const path = [...passed.map((s) => s.id), TARGET_STAGE];
   const actorFor = (stageId: string) => {
     const owner = getStage(stageId).owner;
-    if (owner === 'ONE_BUY') return { id: 'u-priya', label: 'Akash Dwivedi' };
+    if (isOneBuy(owner)) return { id: 'u-priya', label: 'Akash Dwivedi' };
     if (owner === 'CUSTOMER') return { id: null, label: `${CUSTOMER.contactName} (customer)` };
     if (owner === 'SUPPLIER') return { id: null, label: `${SUPPLIER.contactName} (supplier)` };
     if (owner === 'ESCROW') return { id: null, label: 'Escrow provider notification' };
@@ -442,7 +443,7 @@ export async function seedDemoOrder(db: PrismaClient, now = Date.now()) {
       participants: {
         create: [
           { role: 'FROM', stakeholder: 'SUPPLIER', name: SUPPLIER.contactName },
-          { role: 'TO', stakeholder: 'ONE_BUY', name: 'Akash Dwivedi' },
+          { role: 'TO', stakeholder: 'ONE_BUY_SOURCING', name: 'Akash Dwivedi' },
         ],
       },
       contextChips: { create: [{ kind: 'DOCUMENT', refId: SPI_ID, label: SPI_NO }] },

@@ -15,20 +15,28 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { Send, StickyNote, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { logCommunication } from '@/lib/actions/communication';
+import { STAKEHOLDERS, STAKEHOLDER_META, isOneBuy } from '@/lib/domain/enums';
 import { Button, SectionLabel } from '@/components/ui/Layout';
 import { cn } from '@/lib/utils';
 
 type Intent = 'LOG' | 'SEND';
 
+/**
+ * Outside parties first, then our own teams as internal notes.
+ *
+ * Naming the team matters now that there are five of them: "internal note" told
+ * the reader nobody outside 1BUY would see it, but not whose desk it was for.
+ */
 const COUNTERPARTIES = [
-  { code: 'CUSTOMER', label: 'The customer' },
-  { code: 'SUPPLIER', label: 'The supplier' },
-  { code: 'ESCROW', label: 'The escrow provider' },
-  { code: 'WHL', label: 'The testing laboratory' },
-  { code: 'WHA', label: 'The customs agent' },
-  { code: 'LOGISTICS', label: 'The logistics partner' },
-  { code: 'ONE_BUY', label: 'Internal note — nobody outside 1BUY' },
-] as const;
+  ...STAKEHOLDERS.filter((c) => !isOneBuy(c)).map((code) => ({
+    code,
+    label: `The ${STAKEHOLDER_META[code].label.toLowerCase()}`,
+  })),
+  ...STAKEHOLDERS.filter(isOneBuy).map((code) => ({
+    code,
+    label: `Internal note — ${STAKEHOLDER_META[code].short}`,
+  })),
+];
 
 const CHANNELS = [
   { code: 'EMAIL', label: 'Email' },
@@ -70,7 +78,7 @@ export function MessageComposer({
   const [shared, setShared] = useState(intent === 'SEND');
   const [needsReply, setNeedsReply] = useState(intent === 'SEND');
 
-  const internal = counterparty === 'ONE_BUY';
+  const internal = isOneBuy(counterparty);
   const sending = intent === 'SEND';
 
   const submit = () => {

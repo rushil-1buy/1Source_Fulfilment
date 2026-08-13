@@ -1433,7 +1433,7 @@ export async function resolveExceptionRoute(
       occurredAt: new Date(),
       loggedById: 'u-priya',
       participants: {
-        create: [{ role: 'FROM', stakeholder: 'ONE_BUY', name: 'Akash Dwivedi' }],
+        create: [{ role: 'FROM', stakeholder: 'ONE_BUY_SOURCING', name: 'Akash Dwivedi' }],
       },
       contextChips: {
         create: [

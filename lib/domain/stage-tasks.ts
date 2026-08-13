@@ -217,7 +217,7 @@ const ACTIONS: Record<string, ActionSpec[]> = {
       label: 'Place the escrow order and agree the release conditions',
       detail:
         'Register the amount, the currency and exactly what has to be true before money moves — inspection passed, two Finance approvers. The conditions are what make it escrow rather than a holding account.',
-      owner: 'ONE_BUY',
+      owner: 'ONE_BUY_FINANCE',
       required: true,
       doneWhen: 'openedOn',
     },

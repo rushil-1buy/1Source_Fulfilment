@@ -303,7 +303,7 @@ export async function fundEscrow(raw: FundEscrowInput): Promise<EscrowResult> {
       occurredAt: new Date(),
       systemIcon: 'Landmark',
       loggedById: 'u-priya',
-      participants: { create: [{ role: 'FROM', stakeholder: 'ONE_BUY', name: 'Akash Dwivedi' }] },
+      participants: { create: [{ role: 'FROM', stakeholder: 'ONE_BUY_SOURCING', name: 'Akash Dwivedi' }] },
       contextChips: { create: [{ kind: 'DOCUMENT', refId: esc.id, label: esc.escrowRef }] },
     },
   });
@@ -586,7 +586,7 @@ export async function releaseEscrow(raw: ReleaseEscrowInput): Promise<EscrowResu
       loggedById: 'u-priya',
       participants: {
         create: [
-          { role: 'FROM', stakeholder: 'ONE_BUY', name: 'Akash Dwivedi' },
+          { role: 'FROM', stakeholder: 'ONE_BUY_SOURCING', name: 'Akash Dwivedi' },
           { role: 'TO', stakeholder: 'SUPPLIER', name: wo.supplierPo.supplier.name },
         ],
       },

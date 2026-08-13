@@ -16,7 +16,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { db } from '@/lib/db';
 import { getStage, STAGE_DEFS } from '@/lib/domain/stages';
-import { STAKEHOLDER_META } from '@/lib/domain/enums';
+import { STAKEHOLDERS, STAKEHOLDER_META } from '@/lib/domain/enums';
 
 export interface CustomStageResult {
   ok: boolean;
@@ -26,15 +26,6 @@ export interface CustomStageResult {
   id?: string;
 }
 
-const STAKEHOLDERS = [
-  'ONE_BUY',
-  'CUSTOMER',
-  'SUPPLIER',
-  'ESCROW',
-  'WHL',
-  'WHA',
-  'LOGISTICS',
-] as const;
 
 const Input = z.object({
   workOrderId: z.string().min(1),
@@ -204,7 +195,7 @@ export async function insertCustomStage(
       occurredAt: new Date(),
       systemIcon: 'Plus',
       loggedById: 'u-priya',
-      participants: { create: [{ role: 'FROM', stakeholder: 'ONE_BUY', name: 'Akash Dwivedi' }] },
+      participants: { create: [{ role: 'FROM', stakeholder: 'ONE_BUY_SOURCING', name: 'Akash Dwivedi' }] },
       contextChips: {
         create: [{ kind: 'STAGE', refId: d.afterStageId, label: `${after.code} · ${after.label}` }],
       },
@@ -329,7 +320,7 @@ export async function decideCustomStage(
       systemIcon: decision === 'APPROVED' ? 'CheckCircle2' : 'XCircle',
       loggedById: 'u-priya',
       participants: {
-        create: [{ role: 'FROM', stakeholder: 'ONE_BUY', name: DECIDER.label }],
+        create: [{ role: 'FROM', stakeholder: 'ONE_BUY_SOURCING', name: DECIDER.label }],
       },
     },
   });
