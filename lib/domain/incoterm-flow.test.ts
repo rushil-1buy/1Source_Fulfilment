@@ -20,6 +20,7 @@ import {
   stageApplies,
   stageOwner,
   stageNextActionOwner,
+  STAGE_DEFS,
   type StageContext,
 } from './stages';
 import {
@@ -30,7 +31,7 @@ import {
   isOneBuy,
 } from './enums';
 import { inboundChain } from './incoterms';
-import { stageLiability } from './stage-liability';
+import { stageLiability, MAPPED_STAGE_IDS } from './stage-liability';
 
 const ctx = (incoterms: string, over: Partial<StageContext> = {}): StageContext => ({
   paymentMethod: 'ESCROW',
@@ -301,5 +302,101 @@ describe('internal vs external is modelled, not guessed from the name', () => {
   it('keeps the customs agent outside — it is a counterparty Finance deals with', () => {
     expect(isOneBuy('WHA')).toBe(false);
     expect(EXTERNAL_STAKEHOLDERS).toContain('WHA');
+  });
+});
+
+describe('the outbound leg reads the term we SOLD on', () => {
+  /**
+   * The inversion this guards: `responsibilities(def, 'BUY')` names the supplier
+   * as seller, `'SELL'` names US. Feeding the outbound steps the buy-side view
+   * would put the supplier's name against our own delivery obligations, which
+   * looks entirely plausible on screen and is exactly backwards.
+   */
+  const sold = (sell: string) => ctx('FOB', { sellIncoterms: sell });
+
+  it('resolves outbound against the sell term, not the buy term', () => {
+    const l = stageLiability('OUT_FOR_DELIVERY', sold('DDP'))!;
+    expect(l.side).toBe('SELL');
+    expect(l.termCode).toBe('DDP');
+  });
+
+  it('keeps inbound on the buy term even when the two differ', () => {
+    const l = stageLiability(DUTY, sold('DDP'))!;
+    expect(l.side).toBe('BUY');
+    expect(l.termCode).toBe('FOB');
+  });
+
+  it('puts the outbound carriage on us when we sell delivered', () => {
+    const l = stageLiability('OUT_FOR_DELIVERY', sold('DDP'))!;
+    expect(l.rows[0].key).toBe('carriage');
+    expect(l.rows[0].party).toBe('1BUY');
+  });
+
+  it('puts it on the customer when we sell ex-works', () => {
+    const l = stageLiability('OUT_FOR_DELIVERY', sold('EXW'))!;
+    expect(l.rows[0].party).toBe('Customer');
+  });
+
+  it('states where risk leaves us on delivery', () => {
+    expect(stageLiability('DELIVERED', sold('DDP'))!.riskNote).toBeTruthy();
+  });
+
+  it('says on the invoice step what duty the customer sees', () => {
+    const keys = stageLiability('OUTBOUND_BOOKED', sold('DDP'))!.rows.map((r) => r.key);
+    expect(keys).toContain('importClearance');
+  });
+
+  it('leaves the repack steps alone — they are our value-add, not a term', () => {
+    for (const id of ['REBRAND_AND_REPACK_IN_PROGRESS', 'READY_FOR_OUTBOUND']) {
+      expect(stageLiability(id, sold('DDP')), id).toBeNull();
+    }
+  });
+});
+
+describe('the prose agrees with the party beside it', () => {
+  /**
+   * The bug this pins: IncotermDef's notes are authored from the buy side, so
+   * on the sell side the row read "1BUY — they pay carriage all the way to the
+   * door". Two different answers in one line, and the wrong one is the sentence
+   * people actually read.
+   */
+  it('never says "they pay" while naming us as the party', () => {
+    for (const term of ['EXW', 'FOB', 'CIF', 'DAP', 'DDP', 'FOR']) {
+      const l = stageLiability('OUT_FOR_DELIVERY', ctx('FOB', { sellIncoterms: term }));
+      if (!l) continue;
+      for (const r of l.rows) {
+        if (r.party === '1BUY') expect(r.detail, `${term} ${r.key}`).not.toMatch(/\bthey\b/i);
+      }
+    }
+  });
+
+  it('speaks as us when the obligation is ours on the outbound leg', () => {
+    const l = stageLiability('OUT_FOR_DELIVERY', ctx('FOB', { sellIncoterms: 'DDP' }))!;
+    expect(l.rows[0].detail).toMatch(/^We arrange and pay/);
+  });
+
+  it('names the customer when the obligation is theirs', () => {
+    const l = stageLiability('OUT_FOR_DELIVERY', ctx('FOB', { sellIncoterms: 'EXW' }))!;
+    expect(l.rows[0].detail).toMatch(/^The customer arranges/);
+  });
+
+  it('leaves the inbound prose untouched', () => {
+    const l = stageLiability(TRANSIT, ctx('FOB'))!;
+    expect(l.rows[0].detail).toBe('We book and pay the ocean freight from the port of shipment.');
+  });
+});
+
+describe('every mapped step is a real step', () => {
+  /**
+   * A typo in the obligation map is invisible: stageLiability returns a value
+   * for the misspelled key, the tests pass, and the disclosure simply never
+   * appears on the step it was meant for. This is the guard that catches it —
+   * the same class of bug as the orphaned evidence field names.
+   */
+  it('maps no stage id the ladder does not have', () => {
+    const real = new Set(STAGE_DEFS.map((s) => s.id));
+    for (const id of MAPPED_STAGE_IDS) {
+      expect(real.has(id), `${id} is not a stage`).toBe(true);
+    }
   });
 });

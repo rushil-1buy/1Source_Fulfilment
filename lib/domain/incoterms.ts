@@ -456,18 +456,38 @@ export function responsibilities(def: IncotermDef, side: 'BUY' | 'SELL'): TermRe
   const name = side === 'BUY' ? partyLabel : sellSideLabel;
   const domestic = def.mode === 'DOM';
 
+  /**
+   * The notes on IncotermDef are written from OUR side of a purchase — "they
+   * pay the ocean freight" means the supplier does. Replayed unchanged on the
+   * sell side they contradict the party beside them: the row would read
+   * "1BUY — they pay carriage all the way to the door", which is two different
+   * answers in one line. So the outbound leg gets its own sentence, derived
+   * from who carries it rather than from prose authored for the other leg.
+   */
+  const sellNote = (party: TermParty, kind: 'carriage' | 'insurance') => {
+    const ours = party === 'SELLER';
+    if (kind === 'carriage') {
+      return ours
+        ? 'We arrange and pay the carriage to the delivery point. It is inside the price we quoted, not a separate charge.'
+        : 'The customer arranges and pays the carriage onward from the delivery point.';
+    }
+    return ours
+      ? 'Ours to carry as far as the delivery point. Where the term does not compel cover, an uninsured leg is our exposure and not the customer’s.'
+      : 'The customer’s to arrange, from the point risk passes to them.';
+  };
+
   const rows: TermResponsibility[] = [
     {
       key: 'carriage',
       label: 'Freight & carriage',
       party: name(def.carriage.party),
-      detail: def.carriage.note,
+      detail: side === 'BUY' ? def.carriage.note : sellNote(def.carriage.party, 'carriage'),
     },
     {
       key: 'insurance',
       label: 'Cargo insurance',
       party: name(def.insurance.party),
-      detail: def.insurance.note,
+      detail: side === 'BUY' ? def.insurance.note : sellNote(def.insurance.party, 'insurance'),
       obligatory: def.insurance.mandatory,
       /**
        * The warning belongs on the inbound leg only. On the outbound leg we are

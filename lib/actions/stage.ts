@@ -1319,7 +1319,7 @@ export async function advanceStage(
 export async function advanceToNext(workOrderId: string): Promise<AdvanceResult> {
   const wo = await db.workOrder.findUnique({
     where: { id: workOrderId },
-    include: STAGE_CONTEXT_INCLUDE,
+    include: { ...STAGE_CONTEXT_INCLUDE, customerPo: { select: { incoterms: true } } },
   });
   if (!wo) return { ok: false, message: 'That order no longer exists.' };
   const ctx = stageContextFrom(wo);

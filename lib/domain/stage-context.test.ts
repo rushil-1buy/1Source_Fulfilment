@@ -9,6 +9,7 @@ const row = (over: Partial<Parameters<typeof stageContextFrom>[0]> = {}) => ({
   testScope: 'LOT_SAMPLE',
   phasePlan: [] as { phase: string; skipped: boolean }[],
   incoterms: 'CIF',
+  customerPo: { incoterms: 'DDP' },
   ...over,
 });
 

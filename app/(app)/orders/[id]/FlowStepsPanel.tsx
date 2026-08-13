@@ -501,7 +501,8 @@ function StageLiabilityDisclosure({ stageId, ctx }: { stageId: string; ctx: Stag
       {open && (
         <div className="border-line-subtle space-y-2 border-t px-2.5 py-2">
           <p className="text-fg-tertiary text-[11px] leading-relaxed">
-            Bought <strong className="text-fg-secondary font-mono">{liability.termCode}</strong> —{' '}
+            {liability.side === 'BUY' ? 'Bought' : 'Sold'}{' '}
+            <strong className="text-fg-secondary font-mono">{liability.termCode}</strong> —{' '}
             {liability.termPlain.toLowerCase()}.
           </p>
 

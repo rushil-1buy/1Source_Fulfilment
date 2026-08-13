@@ -49,14 +49,15 @@ export interface StageContextSource {
    */
   incoterms: string;
   /**
-   * The term we SELL on — the customer PO's Incoterm.
+   * The customer order, for the term we SELL on — which governs the outbound leg
+   * exactly as `incoterms` governs the inbound one.
    *
-   * Optional, unlike `incoterms`, because nothing reads it yet: the inbound leg
-   * is governed entirely by the buy-side term. Requiring it would make every
-   * caller join the customer PO to satisfy a field no predicate consults.
-   * Promote it to required the moment outbound branches on it.
+   * Asked for as the RELATION rather than a flat `sellIncoterms`, because every
+   * caller already loads `customerPo`; this way they need no change at all,
+   * while a caller that selects too narrowly gets a type error instead of an
+   * outbound disclosure that silently never renders.
    */
-  sellIncoterms?: string | null;
+  customerPo: { incoterms: string };
 }
 
 export function stageContextFrom(wo: StageContextSource): StageContext {
@@ -65,7 +66,7 @@ export function stageContextFrom(wo: StageContextSource): StageContext {
     testingRequired: wo.testingRequired,
     testScope: (wo.testScope as TestScope | null) ?? null,
     incoterms: wo.incoterms,
-    sellIncoterms: wo.sellIncoterms ?? null,
+    sellIncoterms: wo.customerPo.incoterms,
     // No rows means the standard ladder, which the engine represents as no plan
     // rather than as the default plan — cheaper, and it keeps "unplanned" and
     // "planned back to standard" behaving identically.

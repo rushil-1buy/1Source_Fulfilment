@@ -75,6 +75,8 @@ const ORDER_INCLUDE = {
       id: true,
       poNumber: true,
       sourcingRef: true,
+      // Governs the outbound leg — see StageContextSource.
+      incoterms: true,
       customer: { select: { name: true, code: true } },
       lines: { select: { id: true } },
     },

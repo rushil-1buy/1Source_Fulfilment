@@ -1007,6 +1007,9 @@ function RailLiability({ stageId, ctx }: { stageId: string; ctx: StageContext })
 
       {open && (
         <div className="border-line-subtle bg-surface-2 mt-1 w-full min-w-0 space-y-1.5 rounded-[7px] border px-1.5 py-1.5 text-left">
+          <div className="text-fg-tertiary text-[9px] leading-snug">
+            {liability.side === 'BUY' ? 'Bought' : 'Sold'} {liability.termCode}
+          </div>
           {liability.rows.map((r) => (
             <div key={r.key} className="min-w-0">
               <div className="text-fg text-[9.5px] leading-tight font-medium text-balance">

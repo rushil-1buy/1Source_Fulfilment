@@ -111,6 +111,7 @@ export async function uploadStageDocument(formData: FormData): Promise<UploadRes
       testingRequired: true,
       testScope: true,
       incoterms: true,
+      customerPo: { select: { incoterms: true } },
       ...STAGE_CONTEXT_INCLUDE,
     },
   });
