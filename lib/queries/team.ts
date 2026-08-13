@@ -8,6 +8,7 @@
  * problem the view was meant to solve.
  */
 
+import { db } from '@/lib/db';
 import { listOrders, type OrderRow } from './orders';
 import { holdingUp, queuesFor, waitingOn, type TeamQueues } from '@/lib/domain/team-queue';
 import { STAKEHOLDER_META, type Stakeholder } from '@/lib/domain/enums';
@@ -16,6 +17,18 @@ export interface TeamHandoff {
   party: Stakeholder;
   label: string;
   count: number;
+}
+
+export interface TeamMessage {
+  id: string;
+  orderId: string;
+  alias: string;
+  direction: string;
+  channel: string;
+  subject: string;
+  counterparty: string;
+  occurredAt: string;
+  isUnread: boolean;
 }
 
 export interface TeamWorkspace {
@@ -30,6 +43,14 @@ export interface TeamWorkspace {
   holdingUp: TeamHandoff[];
   /** Every active order, for the "everyone else" context strip. */
   totalActive: number;
+  /**
+   * Recent correspondence on the orders this team touches.
+   *
+   * Scoped to the team's own orders rather than everything: a Finance clerk does
+   * not need the testing laboratory's chatter about a lot they never see, and a
+   * feed nobody can act on is a feed nobody reads.
+   */
+  messages: TeamMessage[];
 }
 
 const toHandoffs = (m: Map<Stakeholder, number>): TeamHandoff[] =>
@@ -42,6 +63,18 @@ export async function teamWorkspace(team: Stakeholder): Promise<TeamWorkspace> {
   const live = orders.filter((o) => o.status !== 'CLOSED' && o.status !== 'CANCELLED');
   const queues = queuesFor(live, team);
 
+  // Only the orders this team is on — see TeamWorkspace.messages.
+  const mine = [...queues.needsMe, ...queues.waiting, ...queues.incoming];
+  const byId = new Map(mine.map((o) => [o.id, o]));
+  const rows = mine.length
+    ? await db.communication.findMany({
+        where: { workOrderId: { in: mine.map((o) => o.id) } },
+        orderBy: { occurredAt: 'desc' },
+        take: 40,
+        include: { participants: { select: { role: true, stakeholder: true, name: true } } },
+      })
+    : [];
+
   return {
     team,
     label: STAKEHOLDER_META[team].label,
@@ -52,6 +85,23 @@ export async function teamWorkspace(team: Stakeholder): Promise<TeamWorkspace> {
     waitingOn: toHandoffs(waitingOn(live, team)),
     holdingUp: toHandoffs(holdingUp(live, team)),
     totalActive: live.length,
+    messages: rows.map((c) => {
+      // Whoever is on the other end of it from us. Falls back to the first named
+      // participant, so a row never shows an empty counterparty.
+      const other =
+        c.participants.find((x) => !x.stakeholder.startsWith('ONE_BUY')) ?? c.participants[0];
+      return {
+        id: c.id,
+        orderId: c.workOrderId,
+        alias: byId.get(c.workOrderId)?.alias ?? '—',
+        direction: c.direction,
+        channel: c.channel,
+        subject: c.subject,
+        counterparty: other ? (other.name ?? other.stakeholder) : 'Internal',
+        occurredAt: c.occurredAt.toISOString(),
+        isUnread: c.isUnread,
+      };
+    }),
   };
 }
 

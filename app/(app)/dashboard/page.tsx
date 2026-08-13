@@ -1,5 +1,6 @@
 import { db } from '@/lib/db';
 import { dashboardSummary } from '@/lib/queries/orders';
+import { teamLoads } from '@/lib/queries/team';
 import { ControlTower } from './ControlTower';
 
 /**
@@ -21,7 +22,7 @@ export const metadata = { title: 'Dashboard' };
  * (React cannot serialize a function prop).
  */
 export default async function DashboardPage() {
-  const { rows, kpis } = await dashboardSummary();
+  const [{ rows, kpis }, loads] = await Promise.all([dashboardSummary(), teamLoads()]);
 
   const [transitions, tasks] = await Promise.all([
     db.stageTransition.findMany({
@@ -41,6 +42,7 @@ export default async function DashboardPage() {
     <ControlTower
       rows={rows}
       kpis={kpis}
+      teamLoads={loads}
       activity={transitions.map((t) => ({
         id: t.id,
         orderId: t.workOrder.id,

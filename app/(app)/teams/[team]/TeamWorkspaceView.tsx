@@ -8,35 +8,84 @@
  * different shape: a ranked list of the things that are actually mine, and
  * enough of everyone else's to know who I am waiting on and who I am holding up.
  *
- * The ordering of the page is the ordering of the questions:
- *   1. how much is on me, and how much of it is late
- *   2. what to open first
- *   3. who is blocking me, and who I am blocking
- *   4. what is heading my way
+ * TABS, NOT STACKED PANELS. The queues were sections down a long scroll, which
+ * put "nothing inbound" and "nothing to answer for" between the reader and
+ * anything useful. As tabs the work is what loads, everything else is one click,
+ * and the counts on the triggers mean nothing has to be opened to be seen.
  *
- * Everything below the first section is reference. A team that only ever reads
- * the top of this page should still be doing the right work.
+ * Every queue is the same table primitive the registers use, so a row reads the
+ * same here as anywhere else in the app and the column tooltips come from the
+ * same glossary. Opening one goes to the order — the team views are a lens over
+ * the master flow, never a second copy of it, so anything done from here shows
+ * up on the order's own rail, evidence and audit trail.
  */
 
 import Link from 'next/link';
+import * as Tabs from '@radix-ui/react-tabs';
 import {
   AlertTriangle,
   ArrowRight,
   Ban,
-  CircleCheck,
   Clock,
   Inbox,
   ListChecks,
-  Wallet,
+  MessageSquare,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { TeamWorkspace } from '@/lib/queries/team';
 import type { OrderRow } from '@/lib/queries/orders';
-import { STAKEHOLDER_META, TEAM_SLUGS, type Stakeholder } from '@/lib/domain/enums';
-import { PageHeader, PageShell, Panel, PanelHeader, EmptyState, Money, MonoId } from '@/components/ui/Layout';
-import { Chip, StakeholderBadge } from '@/components/ui/Badges';
+import { STAKEHOLDER_META, TEAM_SLUGS } from '@/lib/domain/enums';
+import { PageHeader, PageShell, Panel } from '@/components/ui/Layout';
+import { RecordTable, type ColumnSpec, type RecordRow } from '@/components/ui/RecordTable';
 import { usePreferences } from '@/components/providers/Preferences';
-import { cn, humanDuration } from '@/lib/utils';
+import { cn } from '@/lib/utils';
+
+/** Shared across every queue, so a row means the same thing on each tab. */
+const QUEUE_COLUMNS: ColumnSpec[] = [
+  { key: 'alias', label: 'Order', termKey: 'workOrder', kind: 'mono', mobile: 'primary', width: '150px' },
+  { key: 'stage', label: 'Stage', termKey: 'stage', mobile: 'secondary', width: '230px' },
+  { key: 'customer', label: 'Customer', mobile: 'meta' },
+  { key: 'state', label: 'State', termKey: 'slaStatus', kind: 'chip', mobile: 'meta', width: '120px' },
+  { key: 'here', label: 'Hours at this step', kind: 'number', mobile: 'meta', width: '150px' },
+  { key: 'value', label: 'Order value', termKey: 'sellValue', kind: 'money', mobile: 'meta', width: '150px' },
+];
+
+/** Queues that name a counterparty get one extra column; the rest share the base. */
+const withParty = (label: string): ColumnSpec[] => [
+  ...QUEUE_COLUMNS.slice(0, 3),
+  { key: 'party', label, kind: 'chip', mobile: 'meta', width: '160px' },
+  ...QUEUE_COLUMNS.slice(3),
+];
+
+const MESSAGE_COLUMNS: ColumnSpec[] = [
+  { key: 'occurredAt', label: 'When', kind: 'datetime', mobile: 'meta', width: '170px' },
+  { key: 'alias', label: 'Order', termKey: 'workOrder', kind: 'mono', mobile: 'primary', width: '150px' },
+  { key: 'direction', label: 'Direction', kind: 'chip', mobile: 'meta', width: '120px' },
+  { key: 'counterparty', label: 'With', mobile: 'secondary', width: '190px' },
+  { key: 'channel', label: 'Channel', mobile: 'hidden', width: '120px' },
+  { key: 'subject', label: 'Subject', mobile: 'meta' },
+];
+
+function toRows(orders: OrderRow[], party?: 'nextActionOwner' | 'owner'): RecordRow[] {
+  return orders.map((o) => ({
+    id: o.id,
+    href: `/orders/${o.id}`,
+    alias: o.alias,
+    stage: `${o.stageCode} ${o.stageLabel}`,
+    customer: o.customerName,
+    // Blocked outranks late: one is behind, the other has stopped entirely.
+    state: o.isBlocked
+      ? 'Blocked'
+      : o.slaStatus === 'BREACHED'
+        ? 'Overdue'
+        : o.slaStatus === 'AT_RISK'
+          ? 'At risk'
+          : 'On track',
+    here: Math.round(o.hoursInStage),
+    value: o.sellValue,
+    ...(party ? { party: STAKEHOLDER_META[o[party]].short } : {}),
+  }));
+}
 
 export function TeamWorkspaceView({
   workspace,
@@ -50,6 +99,8 @@ export function TeamWorkspaceView({
   const { label: pick } = usePreferences();
   const { queues } = workspace;
   const meta = STAKEHOLDER_META[workspace.team];
+  // Ours to act on but owned by somebody else — clearing these unblocks them.
+  const holdingUp = queues.needsMe.filter((o) => o.owner !== workspace.team);
 
   return (
     <PageShell width="full">
@@ -60,8 +111,7 @@ export function TeamWorkspaceView({
 
       <TeamSwitcher current={slug} loads={loads} />
 
-      {/* ── 1. How much is on me ─────────────────────────────────────────── */}
-      <div className="grid min-w-0 grid-cols-2 gap-2.5 @[720px]:grid-cols-4">
+      <div className="grid min-w-0 grid-cols-3 gap-2.5">
         <Tile
           label="On your desk"
           value={String(queues.needsMe.length)}
@@ -82,96 +132,167 @@ export function TeamWorkspaceView({
           icon={Ban}
           tone={queues.blocked ? 'danger' : 'neutral'}
         />
-        <Tile
-          label="Value on your desk"
-          value={<Money amount={workspace.valueOnDesk} compact withSymbol />}
-          sub="what you are answerable for now"
-          icon={Wallet}
-        />
       </div>
 
-      {/* ── 2. What to open first ────────────────────────────────────────── */}
-      <Panel>
-        <PanelHeader
-          title="Needs you now"
-          description="The next action on each of these is yours. Most urgent first — stopped before late, late before on track."
-          icon={ListChecks}
-        />
-        {queues.needsMe.length === 0 ? (
-          <EmptyState
-            icon={CircleCheck}
-            title="Your queue is clear"
-            description="Nothing is waiting on this team. Anything you are answerable for is with somebody else — see who, below."
-          />
-        ) : (
-          <ul className="divide-line-subtle -mx-4 divide-y">
-            {queues.needsMe.map((o) => (
-              <QueueRow key={o.id} order={o} showWaitingOn={false} />
-            ))}
-          </ul>
-        )}
-      </Panel>
+      <Tabs.Root defaultValue="needs" className="grid min-w-0 grid-cols-1 gap-3">
+        <Tabs.List
+          aria-label="This team's queues"
+          className="border-line-subtle bg-surface-2 flex min-w-0 flex-wrap gap-0.5 self-start rounded-[9px] border p-0.5"
+        >
+          <QueueTab value="needs" icon={ListChecks} label="Needs you now" count={queues.needsMe.length} />
+          <QueueTab value="waiting" icon={Clock} label="Waiting on" count={queues.waiting.length} />
+          <QueueTab value="holding" icon={AlertTriangle} label="Holding up" count={holdingUp.length} />
+          <QueueTab value="incoming" icon={Inbox} label="Heading your way" count={queues.incoming.length} />
+          <QueueTab value="messages" icon={MessageSquare} label="Communication" count={workspace.messages.length} />
+        </Tabs.List>
 
-      {/* ── 3. The handoffs, both directions ─────────────────────────────── */}
-      <div className="grid min-w-0 grid-cols-1 gap-4 @[860px]:grid-cols-2">
-        <Panel>
-          <PanelHeader
-            title="You are waiting on"
-            description="Yours to answer for, but the next move is somebody else's. This is why the rest is not moving."
-            icon={Clock}
+        <Tabs.Content value="needs" className="min-w-0 outline-none">
+          <QueuePanel
+            note="The next action on each of these is yours. Ranked — stopped before late, late before on track."
+            columns={QUEUE_COLUMNS}
+            rows={toRows(queues.needsMe)}
+            exportName={`${slug}-needs-you-now`}
+            searchPlaceholder="Search your queue…"
+            emptyTitle="Your queue is clear"
+            emptyDescription="Nothing is waiting on this team. Anything you answer for is with somebody else — see the other tabs."
           />
-          <HandoffList
-            rows={workspace.waitingOn}
-            empty="Nothing of yours is sitting with anyone else."
-          />
-        </Panel>
-        <Panel>
-          <PanelHeader
-            title="You are holding up"
-            description="Orders somebody else answers for, where the next move is yours. Clearing these unblocks another team."
-            icon={AlertTriangle}
-          />
-          <HandoffList
-            rows={workspace.holdingUp}
-            empty="You are not holding anybody up."
-            tone="warning"
-          />
-        </Panel>
-      </div>
+        </Tabs.Content>
 
-      {/* ── 4. What is heading this way ──────────────────────────────────── */}
-      <Panel>
-        <PanelHeader
-          title="Heading your way"
-          description="Not yours yet — the step after the one they are on is. Worth knowing before it lands."
-          icon={Inbox}
-        />
-        {queues.incoming.length === 0 ? (
-          <EmptyState compact title="Nothing inbound" description="No order is one step away from this team." />
-        ) : (
-          <ul className="divide-line-subtle -mx-4 divide-y">
-            {queues.incoming.map((o) => (
-              <QueueRow key={o.id} order={o} showWaitingOn />
-            ))}
-          </ul>
-        )}
-      </Panel>
-
-      {/* Waiting is reference, so it sits last and stays collapsed-feeling. */}
-      {queues.waiting.length > 0 && (
-        <Panel>
-          <PanelHeader
-            title="Yours, but not actionable"
-            description="You are accountable for these; there is nothing to do until the other party moves."
+        <Tabs.Content value="waiting" className="min-w-0 outline-none">
+          <QueuePanel
+            note="Yours to answer for, but the next move is somebody else's. This is why the rest is not moving."
+            columns={withParty('Waiting on')}
+            rows={toRows(queues.waiting, 'nextActionOwner')}
+            exportName={`${slug}-waiting-on`}
+            searchPlaceholder="Search what you are waiting on…"
+            emptyTitle="Nothing sitting with anyone else"
+            emptyDescription="Nothing of yours is parked with another party right now."
           />
-          <ul className="divide-line-subtle -mx-4 divide-y">
-            {queues.waiting.map((o) => (
-              <QueueRow key={o.id} order={o} showWaitingOn />
-            ))}
-          </ul>
-        </Panel>
-      )}
+        </Tabs.Content>
+
+        <Tabs.Content value="holding" className="min-w-0 outline-none">
+          <QueuePanel
+            note="Orders somebody else answers for, where the next move is yours. Clearing these unblocks another team."
+            columns={withParty('Holding up')}
+            rows={toRows(holdingUp, 'owner')}
+            exportName={`${slug}-holding-up`}
+            searchPlaceholder="Search what you are holding up…"
+            emptyTitle="You are not holding anybody up"
+            emptyDescription="Every order waiting on you is one you also own, so nobody else is blocked by it."
+          />
+        </Tabs.Content>
+
+        <Tabs.Content value="incoming" className="min-w-0 outline-none">
+          <QueuePanel
+            note="Not yours yet — the step after the one they are on is. Worth knowing before it lands."
+            columns={withParty('With now')}
+            rows={toRows(queues.incoming, 'nextActionOwner')}
+            exportName={`${slug}-heading-your-way`}
+            searchPlaceholder="Search what is heading your way…"
+            emptyTitle="Nothing inbound"
+            emptyDescription="No order is one step away from this team."
+          />
+        </Tabs.Content>
+
+        <Tabs.Content value="messages" className="min-w-0 outline-none">
+          <QueuePanel
+            note="Correspondence on the orders this team is on, newest first. Messages are written against an order so they land on its own thread and its audit trail — open a row to read it or reply."
+            columns={MESSAGE_COLUMNS}
+            rows={workspace.messages.map((m) => ({
+              id: m.id,
+              href: `/orders/${m.orderId}?tab=communication`,
+              occurredAt: m.occurredAt,
+              alias: m.alias,
+              direction:
+                m.direction === 'INTERNAL' ? 'Internal' : m.direction === 'INBOUND' ? 'Received' : 'Sent',
+              counterparty: m.counterparty,
+              channel: m.channel,
+              subject: m.subject,
+            }))}
+            rowNoun="messages"
+            exportName={`${slug}-communication`}
+            searchPlaceholder="Search messages…"
+            emptyTitle="No correspondence yet"
+            emptyDescription="Nothing has been logged against the orders on this desk. Open an order to send or record a message."
+          />
+        </Tabs.Content>
+      </Tabs.Root>
     </PageShell>
+  );
+}
+
+/**
+ * A queue tab's body: one line saying what the tab means, then the table.
+ *
+ * The note is inside the panel rather than in a page-level header because each
+ * tab means something different, and a description that changes with the tab is
+ * the only kind worth having.
+ */
+function QueuePanel({
+  note,
+  columns,
+  rows,
+  exportName,
+  searchPlaceholder,
+  emptyTitle,
+  emptyDescription,
+  rowNoun = 'orders',
+}: {
+  note: string;
+  columns: ColumnSpec[];
+  rows: RecordRow[];
+  exportName: string;
+  searchPlaceholder: string;
+  emptyTitle: string;
+  emptyDescription: string;
+  rowNoun?: string;
+}) {
+  return (
+    <Panel padded={false}>
+      <p className="border-line-subtle text-fg-tertiary border-b px-4 py-2 text-[11.5px] leading-relaxed">
+        {note}
+      </p>
+      <RecordTable
+        columns={columns}
+        rows={rows}
+        rowNoun={rowNoun}
+        searchPlaceholder={searchPlaceholder}
+        exportName={exportName}
+        emptyTitle={emptyTitle}
+        emptyDescription={emptyDescription}
+      />
+    </Panel>
+  );
+}
+
+/** One tab, carrying its count so nothing has to be opened to be seen. */
+function QueueTab({
+  value,
+  icon: Icon,
+  label,
+  count,
+}: {
+  value: string;
+  icon: LucideIcon;
+  label: string;
+  count: number;
+}) {
+  return (
+    <Tabs.Trigger
+      value={value}
+      className={cn(
+        'text-fg-secondary hover:text-fg data-[state=active]:bg-surface-1 data-[state=active]:text-fg data-[state=active]:shadow-e1',
+        'focus-visible:ring-accent/40 flex min-w-0 items-center gap-1.5 rounded-[7px] px-3 py-1.5 text-[12.5px] font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none',
+      )}
+    >
+      <Icon className="size-3.5 shrink-0" strokeWidth={2} aria-hidden />
+      <span className="truncate">{label}</span>
+      {count > 0 && (
+        <span className="bg-surface-3 text-fg-secondary tnum rounded-full px-1.5 text-[10.5px]">
+          {count}
+        </span>
+      )}
+    </Tabs.Trigger>
   );
 }
 
@@ -231,88 +352,6 @@ function TeamSwitcher({
         <ArrowRight className="size-3 shrink-0" strokeWidth={2} aria-hidden />
       </Link>
     </nav>
-  );
-}
-
-/** One order in a queue. The stage and why it is urgent, then who has it. */
-function QueueRow({ order, showWaitingOn }: { order: OrderRow; showWaitingOn: boolean }) {
-  return (
-    <li className="min-w-0">
-      <Link
-        href={`/orders/${order.id}`}
-        className="hover:bg-surface-3 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 transition-colors"
-      >
-        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span className="flex min-w-0 flex-wrap items-center gap-1.5">
-            <MonoId value={order.alias} copyable={false} />
-            {order.isBlocked && (
-              <Chip tone="danger" size="sm" icon={Ban}>
-                Blocked
-              </Chip>
-            )}
-            {!order.isBlocked && order.slaStatus === 'BREACHED' && (
-              <Chip tone="warning" size="sm" icon={Clock}>
-                Overdue
-              </Chip>
-            )}
-            <span className="text-fg-tertiary min-w-0 truncate text-[11.5px]">
-              {order.customerName}
-            </span>
-          </span>
-          <span className="text-fg-secondary text-[12px]">
-            <span className="text-fg-tertiary font-mono text-[10.5px]">{order.stageCode}</span>{' '}
-            {order.stageLabel}
-            {order.isBlocked && order.blockReason ? (
-              <span className="text-danger"> — {order.blockReason}</span>
-            ) : (
-              <span className="text-fg-tertiary">
-                {' · '}
-                {humanDuration(order.hoursInStage)} here
-              </span>
-            )}
-          </span>
-        </span>
-        <span className="flex shrink-0 items-center gap-2">
-          {showWaitingOn && <StakeholderBadge stakeholder={order.nextActionOwner} short />}
-          <Money amount={order.sellValue} compact withSymbol />
-        </span>
-      </Link>
-    </li>
-  );
-}
-
-/** Who is on the other end of a handoff, and how many orders sit there. */
-function HandoffList({
-  rows,
-  empty,
-  tone,
-}: {
-  rows: { party: Stakeholder; label: string; count: number }[];
-  empty: string;
-  tone?: 'warning';
-}) {
-  if (rows.length === 0) {
-    return <EmptyState compact title="Nothing here" description={empty} />;
-  }
-  return (
-    <ul className="divide-line-subtle -mx-4 divide-y">
-      {rows.map((r) => (
-        <li key={r.party} className="flex min-w-0 items-center gap-3 px-4 py-2">
-          <StakeholderBadge stakeholder={r.party} />
-          <span className="text-fg-tertiary min-w-0 flex-1 truncate text-[11.5px]">
-            {STAKEHOLDER_META[r.party].plainLabel}
-          </span>
-          <span
-            className={cn(
-              'tnum shrink-0 rounded-[6px] px-2 py-0.5 text-[12px] font-medium',
-              tone === 'warning' ? 'bg-warning-subtle text-warning' : 'bg-surface-3 text-fg-secondary',
-            )}
-          >
-            {r.count} {r.count === 1 ? 'order' : 'orders'}
-          </span>
-        </li>
-      ))}
-    </ul>
   );
 }
 

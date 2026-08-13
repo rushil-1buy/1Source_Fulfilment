@@ -30,6 +30,7 @@ import { PHASES, PHASE_DEFS } from '@/lib/domain/stages';
 import {
   ROLE_META,
   STAKEHOLDER_META,
+  TEAM_SLUGS,
   type Role,
   type Stakeholder,
 } from '@/lib/domain/enums';
@@ -48,6 +49,8 @@ function ownerLabel(value: string): string {
 
 export interface ControlTowerProps {
   rows: OrderRow[];
+  /** Per-team queue depth, so the master terminal can route to the right desk. */
+  teamLoads: Record<string, { needsMe: number; overdue: number }>;
   kpis: {
     activeOrders: number;
     valueInFlight: number;
@@ -81,7 +84,7 @@ export interface ControlTowerProps {
   }[];
 }
 
-export function ControlTower({ rows, kpis, activity, tasks }: ControlTowerProps) {
+export function ControlTower({ rows, kpis, activity, tasks, teamLoads }: ControlTowerProps) {
   const active = rows.filter((r) => r.status === 'ACTIVE' || r.status === 'BLOCKED');
   const attention = rows
     .filter((r) => r.isBlocked || (r.slaStatus !== 'ON_TRACK' && r.status !== 'CLOSED'))
@@ -103,6 +106,46 @@ export function ControlTower({ rows, kpis, activity, tasks }: ControlTowerProps)
         plainTitle="Overview"
         description="Where every order stands right now, what needs your attention, and where the money is."
       />
+
+      {/* The way INTO the team desks.
+          This screen is the master terminal — it can see everything, which is
+          exactly why it needs a route to each team's own view. Without it the
+          workspaces are reachable only from the sidebar, and an admin looking at
+          a pile of overdue orders cannot tell whose desk they are stuck on. */}
+      <div className="mb-4 min-w-0">
+        <div className="text-fg-tertiary mb-1.5 text-[10.5px] font-semibold tracking-[0.04em] uppercase">
+          On each team&rsquo;s desk
+        </div>
+        <div className="grid min-w-0 grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-5">
+          {Object.entries(TEAM_SLUGS).map(([slug, team]) => {
+            const load = teamLoads[team] ?? { needsMe: 0, overdue: 0 };
+            return (
+              <Link
+                key={slug}
+                href={`/teams/${slug}`}
+                className="bg-surface-1 border-line-subtle hover:bg-surface-3 block min-w-0 rounded-[11px] border p-3 transition-colors"
+              >
+                <div className="text-fg-tertiary truncate text-[10.5px] font-semibold tracking-[0.04em] uppercase">
+                  {STAKEHOLDER_META[team].short}
+                </div>
+                <div className="mt-1.5 flex items-baseline gap-2">
+                  <span className="tnum text-fg text-[21px] leading-none font-semibold tracking-[-0.01em]">
+                    {load.needsMe}
+                  </span>
+                  {load.overdue > 0 && (
+                    <span className="text-warning tnum text-[11px] font-medium">
+                      {load.overdue} late
+                    </span>
+                  )}
+                </div>
+                <div className="text-fg-tertiary mt-1 truncate text-[11px]">
+                  {load.needsMe === 0 ? 'queue clear' : 'waiting on them'}
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
 
       <div className="mb-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-6">
         <Tile label="Active orders" termKey="workOrder" value={String(kpis.activeOrders)} icon={ListChecks} href="/orders" />
