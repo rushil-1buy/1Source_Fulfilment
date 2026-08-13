@@ -40,10 +40,11 @@ import {
   stageApplies,
   type StageContext,
   stageOwner,
+  stageNextActionOwner,
 } from '@/lib/domain/stages';
 import { evidenceFor } from '@/lib/domain/stage-evidence';
 import { subTaskProgress, subTaskStates, type SubTaskKind } from '@/lib/domain/stage-tasks';
-import { STAKEHOLDER_META } from '@/lib/domain/enums';
+import { STAKEHOLDER_META, type Stakeholder } from '@/lib/domain/enums';
 import { stageLiability } from '@/lib/domain/stage-liability';
 import { Panel, PanelHeader } from '@/components/ui/Layout';
 import { Chip, StakeholderBadge } from '@/components/ui/Badges';
@@ -78,6 +79,7 @@ export function FlowStepsPanel({
   evidence,
   documents,
   manualSteps,
+  ownerFilter,
 }: {
   currentStage: string;
   ctx: StageContext;
@@ -86,9 +88,24 @@ export function FlowStepsPanel({
   /** Every document on the order, so each stage can show its own. */
   documents: FlowDocument[];
   manualSteps: ManualStep[];
+  /**
+   * Narrows the list to the steps ONE team touches — either accountable for it
+   * or holding its next action.
+   *
+   * Used by the team workspaces. The panel is otherwise identical, deliberately:
+   * a step has to read the same on a team's own page as it does on the order,
+   * or the two become separate sources of truth and people start checking both.
+   */
+  ownerFilter?: Stakeholder;
 }) {
   const { anchorStageId } = resolveRailAnchor(currentStage);
-  const ladder = useMemo(() => applicableStages(ctx), [ctx]);
+  const ladder = useMemo(() => {
+    const all = applicableStages(ctx);
+    if (!ownerFilter) return all;
+    return all.filter(
+      (s) => stageOwner(s, ctx) === ownerFilter || stageNextActionOwner(s, ctx) === ownerFilter,
+    );
+  }, [ctx, ownerFilter]);
   const done = useMemo(() => new Set(completedStageIds), [completedStageIds]);
   const evidenceByStage = useMemo(
     () => new Map(evidence.map((e) => [e.stageId, e])),

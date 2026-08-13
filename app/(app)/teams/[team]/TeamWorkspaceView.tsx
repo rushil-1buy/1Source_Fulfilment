@@ -66,10 +66,16 @@ const MESSAGE_COLUMNS: ColumnSpec[] = [
   { key: 'subject', label: 'Subject', mobile: 'meta' },
 ];
 
-function toRows(orders: OrderRow[], party?: 'nextActionOwner' | 'owner'): RecordRow[] {
+/**
+ * `slug` routes rows into the TEAM-scoped order view rather than the full one.
+ *
+ * That view shows only this team's steps; the full order is one click further
+ * on, and is still where evidence is recorded and the order advanced.
+ */
+function toRows(orders: OrderRow[], slug: string, party?: 'nextActionOwner' | 'owner'): RecordRow[] {
   return orders.map((o) => ({
     id: o.id,
-    href: `/orders/${o.id}`,
+    href: `/teams/${slug}/orders/${o.id}`,
     alias: o.alias,
     stage: `${o.stageCode} ${o.stageLabel}`,
     customer: o.customerName,
@@ -150,7 +156,7 @@ export function TeamWorkspaceView({
           <QueuePanel
             note="The next action on each of these is yours. Ranked — stopped before late, late before on track."
             columns={QUEUE_COLUMNS}
-            rows={toRows(queues.needsMe)}
+            rows={toRows(queues.needsMe, slug)}
             exportName={`${slug}-needs-you-now`}
             searchPlaceholder="Search your queue…"
             emptyTitle="Your queue is clear"
@@ -162,7 +168,7 @@ export function TeamWorkspaceView({
           <QueuePanel
             note="Yours to answer for, but the next move is somebody else's. This is why the rest is not moving."
             columns={withParty('Waiting on')}
-            rows={toRows(queues.waiting, 'nextActionOwner')}
+            rows={toRows(queues.waiting, slug, 'nextActionOwner')}
             exportName={`${slug}-waiting-on`}
             searchPlaceholder="Search what you are waiting on…"
             emptyTitle="Nothing sitting with anyone else"
@@ -174,7 +180,7 @@ export function TeamWorkspaceView({
           <QueuePanel
             note="Orders somebody else answers for, where the next move is yours. Clearing these unblocks another team."
             columns={withParty('Holding up')}
-            rows={toRows(holdingUp, 'owner')}
+            rows={toRows(holdingUp, slug, 'owner')}
             exportName={`${slug}-holding-up`}
             searchPlaceholder="Search what you are holding up…"
             emptyTitle="You are not holding anybody up"
@@ -186,7 +192,7 @@ export function TeamWorkspaceView({
           <QueuePanel
             note="Not yours yet — the step after the one they are on is. Worth knowing before it lands."
             columns={withParty('With now')}
-            rows={toRows(queues.incoming, 'nextActionOwner')}
+            rows={toRows(queues.incoming, slug, 'nextActionOwner')}
             exportName={`${slug}-heading-your-way`}
             searchPlaceholder="Search what is heading your way…"
             emptyTitle="Nothing inbound"
