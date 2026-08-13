@@ -34,12 +34,13 @@ export type Stakeholder = (typeof STAKEHOLDERS)[number];
 /**
  * True for any of our own teams.
  *
- * Exists because the split turned one value into five, and every place that
- * asked "is this us?" would otherwise have to list all five and go stale the
- * moment a sixth is added.
+ * Reads the modelled `internal` flag rather than the name. A prefix check
+ * happened to work while every internal team was called ONE_BUY_*, but it ties
+ * a business fact to a naming convention — rename a team and the flow silently
+ * reclassifies it as an outside party.
  */
 export function isOneBuy(s: Stakeholder | string): boolean {
-  return typeof s === 'string' && s.startsWith('ONE_BUY');
+  return STAKEHOLDER_META[s as Stakeholder]?.internal === true;
 }
 
 /**
@@ -49,7 +50,21 @@ export function isOneBuy(s: Stakeholder | string): boolean {
  */
 export const STAKEHOLDER_META: Record<
   Stakeholder,
-  { label: string; short: string; plainLabel: string; token: string }
+  {
+    label: string;
+    short: string;
+    plainLabel: string;
+    token: string;
+    /**
+     * Us, or somebody we deal with.
+     *
+     * Modelled rather than inferred from the name, so a rename cannot quietly
+     * move a party across the boundary. It is a real distinction: an internal
+     * step is chased down the corridor, an external one is chased by email and
+     * has a counterparty who can say no.
+     */
+    internal: boolean;
+  }
 > = {
   /**
    * All five share the 1BUY indigo, deliberately.
@@ -62,61 +77,84 @@ export const STAKEHOLDER_META: Record<
    */
   ONE_BUY_SOURCING: {
     label: '1BUY Sourcing',
-    short: 'Sourcing',
+    short: '1BUY Sourcing',
     plainLabel: 'Our sourcing team',
     token: 'onebuy',
+    internal: true,
   },
   ONE_BUY_FINANCE: {
     label: '1BUY Finance',
-    short: 'Finance',
+    short: '1BUY Finance',
     plainLabel: 'Our finance team',
     token: 'onebuy',
+    internal: true,
   },
   ONE_BUY_INBOUND: {
     label: '1BUY Logistics — inbound',
-    short: 'Inbound',
+    short: '1BUY Inbound',
     plainLabel: 'Our inbound logistics team',
     token: 'onebuy',
+    internal: true,
   },
   ONE_BUY_OUTBOUND: {
     label: '1BUY Logistics — outbound',
-    short: 'Outbound',
+    short: '1BUY Outbound',
     plainLabel: 'Our outbound logistics team',
     token: 'onebuy',
+    internal: true,
   },
   ONE_BUY_INSPECTION: {
     label: '1BUY Inspection',
-    short: 'Inspection',
+    short: '1BUY Inspection',
     plainLabel: 'Our inspection team',
     token: 'onebuy',
+    internal: true,
   },
-  CUSTOMER: { label: 'Customer', short: 'Customer', plainLabel: 'Customer', token: 'customer' },
-  SUPPLIER: { label: 'Supplier', short: 'Supplier', plainLabel: 'Supplier', token: 'supplier' },
+  CUSTOMER: { label: 'Customer', short: 'Customer', plainLabel: 'Customer', token: 'customer', internal: false },
+  SUPPLIER: { label: 'Supplier', short: 'Supplier', plainLabel: 'Supplier', token: 'supplier', internal: false },
   ESCROW: {
     label: 'Escrow Provider',
     short: 'Escrow',
     plainLabel: 'Escrow provider (holds the money)',
     token: 'escrow',
+    internal: false,
   },
   WHL: {
     label: 'Testing Laboratory',
     short: 'Testing Lab',
     plainLabel: 'Independent testing laboratory',
     token: 'whl',
+    internal: false,
   },
   WHA: {
     label: 'Customs Agent',
     short: 'Customs Agent',
     plainLabel: 'Customs and compliance agent',
     token: 'wha',
+    internal: false,
   },
   LOGISTICS: {
     label: 'Logistics Partner',
     short: 'Logistics',
     plainLabel: 'Courier or freight partner',
     token: 'logistics',
+    internal: false,
   },
 };
+
+/**
+ * Declared AFTER the table they read, deliberately: as module-level consts they
+ * evaluate at import time, and above the table that is a temporal dead zone —
+ * which took out two unrelated test files before this moved.
+ */
+/** Our own teams, in ladder order. */
+export const INTERNAL_STAKEHOLDERS = STAKEHOLDERS.filter((s) => STAKEHOLDER_META[s].internal);
+
+/**
+ * Everyone we deal with who is not us: the supplier, the customer, the customs
+ * agent, the logistics partner, the testing laboratory and the escrow provider.
+ */
+export const EXTERNAL_STAKEHOLDERS = STAKEHOLDERS.filter((s) => !STAKEHOLDER_META[s].internal);
 
 export const ROLES = [
   'Admin',

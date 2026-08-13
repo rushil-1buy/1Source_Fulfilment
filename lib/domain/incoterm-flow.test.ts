@@ -22,7 +22,13 @@ import {
   stageNextActionOwner,
   type StageContext,
 } from './stages';
-import { STAKEHOLDERS, isOneBuy } from './enums';
+import {
+  STAKEHOLDERS,
+  STAKEHOLDER_META,
+  INTERNAL_STAKEHOLDERS,
+  EXTERNAL_STAKEHOLDERS,
+  isOneBuy,
+} from './enums';
 import { inboundChain } from './incoterms';
 import { stageLiability } from './stage-liability';
 
@@ -256,5 +262,44 @@ describe('the five 1BUY teams are real, not decorative', () => {
       expect(stageOwner(s, c), s.code).not.toBe('ONE_BUY');
       expect(stageNextActionOwner(s, c), s.code).not.toBe('ONE_BUY');
     }
+  });
+});
+
+describe('internal vs external is modelled, not guessed from the name', () => {
+  it('has exactly the five 1BUY teams inside and the six counterparties outside', () => {
+    expect(INTERNAL_STAKEHOLDERS).toEqual([
+      'ONE_BUY_SOURCING',
+      'ONE_BUY_FINANCE',
+      'ONE_BUY_INBOUND',
+      'ONE_BUY_OUTBOUND',
+      'ONE_BUY_INSPECTION',
+    ]);
+    expect(EXTERNAL_STAKEHOLDERS).toEqual([
+      'CUSTOMER',
+      'SUPPLIER',
+      'ESCROW',
+      'WHL',
+      'WHA',
+      'LOGISTICS',
+    ]);
+  });
+
+  it('names 1BUY on every internal team, even in the short form', () => {
+    for (const s of INTERNAL_STAKEHOLDERS) {
+      expect(STAKEHOLDER_META[s].short, s).toMatch(/^1BUY /);
+      expect(STAKEHOLDER_META[s].label, s).toMatch(/^1BUY /);
+    }
+  });
+
+  it('never claims 1BUY on an outside party', () => {
+    for (const s of EXTERNAL_STAKEHOLDERS) {
+      expect(STAKEHOLDER_META[s].short, s).not.toMatch(/1BUY/);
+      expect(isOneBuy(s), s).toBe(false);
+    }
+  });
+
+  it('keeps the customs agent outside — it is a counterparty Finance deals with', () => {
+    expect(isOneBuy('WHA')).toBe(false);
+    expect(EXTERNAL_STAKEHOLDERS).toContain('WHA');
   });
 });
