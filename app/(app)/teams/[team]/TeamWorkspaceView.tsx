@@ -31,7 +31,6 @@ import {
   Clock,
   Inbox,
   ListChecks,
-  MessageSquare,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { TeamWorkspace } from "@/lib/queries/team";
@@ -120,34 +119,6 @@ const withParty = (label: string): ColumnSpec[] => {
     ...QUEUE_COLUMNS.slice(at),
   ];
 };
-
-const MESSAGE_COLUMNS: ColumnSpec[] = [
-  {
-    key: "occurredAt",
-    label: "When",
-    kind: "datetime",
-    mobile: "meta",
-    width: "170px",
-  },
-  {
-    key: "alias",
-    label: "Order",
-    termKey: "workOrder",
-    kind: "mono",
-    mobile: "primary",
-    width: "150px",
-  },
-  {
-    key: "direction",
-    label: "Direction",
-    kind: "chip",
-    mobile: "meta",
-    width: "120px",
-  },
-  { key: "counterparty", label: "With", mobile: "secondary", width: "190px" },
-  { key: "channel", label: "Channel", mobile: "hidden", width: "120px" },
-  { key: "subject", label: "Subject", mobile: "meta" },
-];
 
 /**
  * `slug` routes rows into the TEAM-scoped order view rather than the full one.
@@ -271,12 +242,6 @@ export function TeamWorkspaceView({
               label="Heading your way"
               count={queues.incoming.length}
             />
-            <QueueTab
-              value="messages"
-              icon={MessageSquare}
-              label="Communication"
-              count={workspace.messages.length}
-            />
           </Tabs.List>
 
           <Tabs.Content value="needs" className="min-w-0 outline-none">
@@ -327,33 +292,6 @@ export function TeamWorkspaceView({
             />
           </Tabs.Content>
 
-          <Tabs.Content value="messages" className="min-w-0 outline-none">
-            <QueuePanel
-              note="Correspondence on the orders this team is on, newest first. Messages are written against an order so they land on its own thread and its audit trail — open a row to read it or reply."
-              columns={MESSAGE_COLUMNS}
-              rows={workspace.messages.map((m) => ({
-                id: m.id,
-                href: `/orders/${m.orderId}?tab=communication`,
-                occurredAt: m.occurredAt,
-                alias: m.alias,
-                direction:
-                  m.direction === "INTERNAL"
-                    ? "Internal"
-                    : m.direction === "INBOUND"
-                      ? "Received"
-                      : "Sent",
-                counterparty: m.counterparty,
-                stage: m.stage,
-                channel: m.channel,
-                subject: m.subject,
-              }))}
-              rowNoun="messages"
-              exportName={`${slug}-communication`}
-              searchPlaceholder="Search messages…"
-              emptyTitle="No correspondence yet"
-              emptyDescription="Nothing has been logged against the orders on this desk. Open an order to send or record a message."
-            />
-          </Tabs.Content>
         </Tabs.Root>
       </Panel>
     </PageShell>
@@ -393,15 +331,25 @@ function QueuePanel({
       <p className="border-line-subtle text-fg-tertiary border-b px-4 py-2.5 text-[11.5px] leading-relaxed">
         {note}
       </p>
-      <RecordTable
-        columns={columns}
-        rows={rows}
-        rowNoun={rowNoun}
-        searchPlaceholder={searchPlaceholder}
-        exportName={exportName}
-        emptyTitle={emptyTitle}
-        emptyDescription={emptyDescription}
-      />
+      {/*
+        The table carries the panel's gutter, same as the note above it.
+
+        Without this the search box, the rows and — most visibly — the
+        pagination bar ran flush to the card's edge and out past its rounded
+        corners, so the footer read as loose page furniture that had escaped the
+        card rather than as the table's own base.
+      */}
+      <div className="min-w-0 px-4 pt-3 pb-3.5">
+        <RecordTable
+          columns={columns}
+          rows={rows}
+          rowNoun={rowNoun}
+          searchPlaceholder={searchPlaceholder}
+          exportName={exportName}
+          emptyTitle={emptyTitle}
+          emptyDescription={emptyDescription}
+        />
+      </div>
     </>
   );
 }

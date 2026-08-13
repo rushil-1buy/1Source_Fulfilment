@@ -23,7 +23,9 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, ArrowUpRight, Ban, Clock } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import * as Tabs from '@radix-ui/react-tabs';
+import { ArrowLeft, ArrowUpRight, Ban, Clock, ListChecks, MessageSquare } from 'lucide-react';
 import type { OrderDetail } from '@/lib/queries/order-detail';
 import { normalisePhasePlan } from '@/lib/domain/phase-plan';
 import {
@@ -45,7 +47,8 @@ import { AdvanceControl, type FinanceApprover } from '@/app/(app)/orders/[id]/Ad
 import { NextActionPanel } from '@/app/(app)/orders/[id]/NextActionPanel';
 import { StageEvidenceDialog } from '@/app/(app)/orders/[id]/StageEvidenceDialog';
 import type { EvidenceRecord } from '@/app/(app)/orders/[id]/StageEvidencePanel';
-import { formatDate } from '@/lib/utils';
+import { CommunicationTab } from '@/app/(app)/orders/[id]/CommunicationTab';
+import { cn, formatDate } from '@/lib/utils';
 
 export function TeamOrderView({
   order,
@@ -259,41 +262,122 @@ export function TeamOrderView({
         />
       )}
 
+      {/*
+        Steps and correspondence are the two things a desk does on an order, so
+        they are two tabs of one panel rather than two stacked panels — the same
+        treatment the queues get, for the same reason.
+
+        Communication lives HERE, inside the order, and not as a cross-order
+        inbox on the workspace. A message about an order without the order in
+        front of you is a message you cannot act on, and one filed from a
+        cross-order list is one filed with the order as an afterthought. Every
+        message on this tab is this order's, and lands on this order's thread
+        and audit trail.
+      */}
       <Panel padded={false}>
-        <div className="p-4 pb-0">
-          <PanelHeader
-            title="Your steps on this order"
-            description={`${mine.length} of the order's steps are yours — ${outstanding} still outstanding. Everything else on this order is somebody else's and is not shown.`}
-          />
-        </div>
-        {mine.length === 0 ? (
-          <EmptyState
-            title="Nothing on this order is yours"
-            description="No step on this order is owned by this team or waiting on its action. It appeared in your queue because the step after the current one is yours."
-          />
-        ) : (
-          <FlowStepsPanel
-            currentStage={order.stage}
-            ctx={ctx}
-            completedStageIds={order.computed.completedStageIds}
-            evidence={order.stageEvidence.map((r) => ({
-              stageId: r.stageId,
-              values: JSON.parse(r.values) as Record<string, unknown>,
-              documents: r.documents.map((d) => ({ docType: d.docType })),
-            }))}
-            documents={order.documents.map((d) => ({
-              id: d.id,
-              docType: d.docType,
-              title: d.title,
-              fileName: d.fileName,
-              stageId: d.stageId,
-              createdAt: d.createdAt,
-            }))}
-            manualSteps={order.customStages}
-            ownerFilter={team}
-          />
-        )}
+        <Tabs.Root defaultValue="steps" className="min-w-0">
+          <Tabs.List
+            aria-label="This order, from this team's desk"
+            className="border-line-subtle flex min-w-0 gap-1 overflow-x-auto border-b px-3"
+          >
+            <OrderTab value="steps" icon={ListChecks} label="Your steps" count={outstanding} />
+            <OrderTab
+              value="comms"
+              icon={MessageSquare}
+              label="Communication"
+              count={order.communications.filter((c) => c.entryClass === 'HUMAN').length}
+            />
+          </Tabs.List>
+
+          <Tabs.Content value="steps" className="min-w-0 outline-none">
+            <div className="p-4 pb-0">
+              <PanelHeader
+                title="Your steps on this order"
+                description={`${mine.length} of the order's steps are yours — ${outstanding} still outstanding. Everything else on this order is somebody else's and is not shown.`}
+              />
+            </div>
+            {mine.length === 0 ? (
+              <EmptyState
+                title="Nothing on this order is yours"
+                description="No step on this order is owned by this team or waiting on its action. It appeared in your queue because the step after the current one is yours."
+              />
+            ) : (
+              <FlowStepsPanel
+                currentStage={order.stage}
+                ctx={ctx}
+                completedStageIds={order.computed.completedStageIds}
+                evidence={order.stageEvidence.map((r) => ({
+                  stageId: r.stageId,
+                  values: JSON.parse(r.values) as Record<string, unknown>,
+                  documents: r.documents.map((d) => ({ docType: d.docType })),
+                }))}
+                documents={order.documents.map((d) => ({
+                  id: d.id,
+                  docType: d.docType,
+                  title: d.title,
+                  fileName: d.fileName,
+                  stageId: d.stageId,
+                  createdAt: d.createdAt,
+                }))}
+                manualSteps={order.customStages}
+                ownerFilter={team}
+              />
+            )}
+          </Tabs.Content>
+
+          <Tabs.Content value="comms" className="min-w-0 p-4 outline-none">
+            {/* The order page's own thread, sent as this team. Same component,
+                same records — not a second inbox that would drift from it. */}
+            <CommunicationTab order={order} fromTeam={team} />
+          </Tabs.Content>
+        </Tabs.Root>
       </Panel>
     </PageShell>
+  );
+}
+
+/**
+ * One tab of the order panel, carrying its count.
+ *
+ * Same treatment as the workspace queues — attached to the panel's top edge and
+ * underlined into its border — so moving between the two screens does not mean
+ * relearning what a tab looks like.
+ */
+function OrderTab({
+  value,
+  icon: Icon,
+  label,
+  count,
+}: {
+  value: string;
+  icon: LucideIcon;
+  label: string;
+  count: number;
+}) {
+  return (
+    <Tabs.Trigger
+      value={value}
+      className={cn(
+        'group flex shrink-0 items-center gap-1.5 rounded-t-[8px] border-b-2 border-transparent px-3 py-2.5',
+        'text-[12.5px] whitespace-nowrap transition-colors',
+        'text-fg-secondary hover:text-fg hover:bg-surface-3',
+        'data-[state=active]:border-accent data-[state=active]:text-accent-text data-[state=active]:font-medium',
+        'focus-visible:ring-accent/40 focus-visible:ring-2 focus-visible:outline-none',
+      )}
+    >
+      <Icon className="size-3.5 shrink-0" strokeWidth={2} aria-hidden />
+      <span>{label}</span>
+      {count > 0 && (
+        <span
+          className={cn(
+            'tnum rounded-full px-1.5 text-[10.5px] transition-colors',
+            'bg-surface-3 text-fg-secondary',
+            'group-data-[state=active]:bg-accent-subtle group-data-[state=active]:text-accent-text',
+          )}
+        >
+          {count}
+        </span>
+      )}
+    </Tabs.Trigger>
   );
 }

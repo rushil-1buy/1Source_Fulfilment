@@ -31,6 +31,15 @@ export interface TeamMessage {
   isUnread: boolean;
   /** Where the order sits, so the comms tab is not the one view without it. */
   stage: string;
+  /** Enough to read and answer it here — the tab is an inbox, not an index. */
+  body: string;
+  quotedHistory: string | null;
+  counterpartyCode: string | null;
+  fromLabel: string;
+  toLabel: string;
+  status: string;
+  entryClass: string;
+  needsReply: boolean;
 }
 
 export interface TeamWorkspace {
@@ -68,14 +77,30 @@ export async function teamWorkspace(team: Stakeholder): Promise<TeamWorkspace> {
   // Only the orders this team is on — see TeamWorkspace.messages.
   const mine = [...queues.needsMe, ...queues.waiting, ...queues.incoming];
   const byId = new Map(mine.map((o) => [o.id, o]));
-  const rows = mine.length
-    ? await db.communication.findMany({
-        where: { workOrderId: { in: mine.map((o) => o.id) } },
-        orderBy: { occurredAt: 'desc' },
-        take: 40,
-        include: { participants: { select: { role: true, stakeholder: true, name: true } } },
-      })
-    : [];
+  const allById = new Map(orders.map((o) => [o.id, o]));
+  /*
+   * An inbox is two things, and filtering on only the first loses mail.
+   *
+   * Correspondence ON this team's orders is the obvious half. The other half
+   * is anything ADDRESSED TO them — another team can write to Finance about an
+   * order Finance is not currently the owner of, which is in fact the normal
+   * case for "this is about to become yours". Filtering on order alone dropped
+   * exactly those, and the sender saw a message they had definitely sent
+   * disappear.
+   */
+  const rows = await db.communication.findMany({
+    where: {
+      OR: [
+        ...(mine.length ? [{ workOrderId: { in: mine.map((o) => o.id) } }] : []),
+        { participants: { some: { stakeholder: team } } },
+      ],
+    },
+    orderBy: { occurredAt: 'desc' },
+    take: 60,
+    include: {
+      participants: { select: { role: true, stakeholder: true, name: true, email: true } },
+    },
+  });
 
   return {
     team,
@@ -88,24 +113,40 @@ export async function teamWorkspace(team: Stakeholder): Promise<TeamWorkspace> {
     holdingUp: toHandoffs(holdingUp(live, team)),
     totalActive: live.length,
     messages: rows.map((c) => {
-      // Whoever is on the other end of it from us. Falls back to the first named
-      // participant, so a row never shows an empty counterparty.
-      const other =
-        c.participants.find((x) => !x.stakeholder.startsWith('ONE_BUY')) ?? c.participants[0];
+      const from = c.participants.find((x) => x.role === 'FROM');
+      const to = c.participants.find((x) => x.role === 'TO');
+      // Addressed to us, so it is ours to answer. A message we sent is not,
+      // however much it is sitting in the same list.
+      const toUs = to?.stakeholder === team;
+      /*
+       * The counterparty is whoever is at the OTHER end from this team, which
+       * is not the same as "whoever is not 1BUY" now that 1BUY is five teams.
+       * Reading it that way made a Finance→Inspection note show its
+       * counterparty as "Internal" on both desks, and neither team could tell
+       * who had written to them.
+       */
+      const other = toUs ? from : to;
+      const o = byId.get(c.workOrderId) ?? allById.get(c.workOrderId);
       return {
         id: c.id,
         orderId: c.workOrderId,
-        alias: byId.get(c.workOrderId)?.alias ?? '—',
+        alias: o?.alias ?? '—',
         direction: c.direction,
         channel: c.channel,
         subject: c.subject,
+        body: c.body,
+        quotedHistory: c.quotedHistory,
         counterparty: other ? (other.name ?? other.stakeholder) : 'Internal',
+        counterpartyCode: other?.stakeholder ?? null,
+        fromLabel: from?.name ?? '—',
+        toLabel: to?.name ?? '—',
+        status: c.status,
+        entryClass: c.entryClass,
+        // Ours to answer only if it came to us and nobody has answered it yet.
+        needsReply: toUs && c.status === 'AWAITING_REPLY',
         occurredAt: c.occurredAt.toISOString(),
-        isUnread: c.isUnread,
-        stage: (() => {
-          const o = byId.get(c.workOrderId);
-          return o ? `${o.stageCode} ${o.stageLabel}` : '—';
-        })(),
+        isUnread: c.isUnread && toUs,
+        stage: o ? `${o.stageCode} ${o.stageLabel}` : '—',
       };
     }),
   };

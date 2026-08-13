@@ -14,40 +14,16 @@
  *    something the customer or supplier has seen.
  */
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { MessageComposer } from './MessageComposer';
-import {
-  Activity,
-  ArrowDownLeft,
-  ArrowUpRight,
-  Boxes,
-  Clock,
-  Download,
-  FileText,
-  Filter,
-  Mail,
-  MessageCircle,
-  MessageSquare,
-  MonitorSmartphone,
-  Package,
-  Paperclip,
-  Phone,
-  Pin,
-  Route,
-  Search,
-  Send,
-  ShieldAlert,
-  StickyNote,
-  Truck,
-  Users,
-  X,
-  type LucideIcon,
-} from 'lucide-react';
+import { Activity, ArrowDownLeft, ArrowUpRight, Boxes, Clock, Download, FileText, Filter, Mail, MailOpen, MessageCircle, MessageSquare, MonitorSmartphone, Package, Paperclip, Phone, Pin, Reply, Route, Search, Send, ShieldAlert, StickyNote, Truck, Users, X, type LucideIcon } from 'lucide-react';
 import type { OrderDetail } from '@/lib/queries/order-detail';
 import { Button, EmptyState, Panel, SectionLabel } from '@/components/ui/Layout';
 import { Chip, StakeholderBadge, StatusChip } from '@/components/ui/Badges';
 import { Hint } from '@/components/ui/InfoTooltip';
+import { markCommunicationRead } from '@/lib/actions/communication';
 import { STAKEHOLDERS, STAKEHOLDER_META, type Stakeholder } from '@/lib/domain/enums';
 import { exceptionDef } from '@/lib/domain/exceptions';
 import { getStage } from '@/lib/domain/stages';
@@ -83,7 +59,24 @@ const CONTEXT_ICONS: Record<string, LucideIcon> = {
   EXCEPTION: ShieldAlert,
 };
 
-export function CommunicationTab({ order }: { order: OrderDetail }) {
+export function CommunicationTab({
+  order,
+  fromTeam,
+}: {
+  order: OrderDetail;
+  /**
+   * Whose desk this thread is being read from.
+   *
+   * The Control Tower passes nothing and speaks for 1BUY generally. A team
+   * workspace passes its own code, so a message Finance sends is attributed to
+   * Finance and the reply comes back to Finance rather than to Sourcing.
+   */
+  fromTeam?: Stakeholder;
+}) {
+  const router = useRouter();
+  const [, startMarking] = useTransition();
+  /** Which message the composer is answering, if it opened as a reply. */
+  const [replyTo, setReplyTo] = useState<Comm | null>(null);
   const [search, setSearch] = useState('');
   const [oldestFirst, setOldestFirst] = useState(false);
   const [showSystem, setShowSystem] = useState(true);
@@ -95,6 +88,22 @@ export function CommunicationTab({ order }: { order: OrderDetail }) {
   const [expandedQuotes, setExpandedQuotes] = useState<Set<string>>(new Set());
   /** null when closed; otherwise which intent the composer was opened with. */
   const [composer, setComposer] = useState<'LOG' | 'SEND' | null>(null);
+
+  /* A reply is a send, not a log: it is going out now and wants an answer. */
+  const openReply = useCallback((comm: Comm) => {
+    setReplyTo(comm);
+    setComposer('SEND');
+  }, []);
+
+  const markRead = useCallback(
+    (comm: Comm) => {
+      startMarking(async () => {
+        await markCommunicationRead(comm.id, fromTeam);
+        router.refresh();
+      });
+    },
+    [fromTeam, router],
+  );
 
   const filtersActive =
     search.trim().length > 0 ||
@@ -366,11 +375,27 @@ export function CommunicationTab({ order }: { order: OrderDetail }) {
 
         {composer && (
           <MessageComposer
+            fromTeam={fromTeam}
+            replyTo={
+              replyTo
+                ? {
+                    id: replyTo.id,
+                    subject: replyTo.subject,
+                    counterpartyCode:
+                      replyTo.participants.find((x) => x.role === 'FROM')?.stakeholder ?? null,
+                  }
+                : undefined
+            }
             workOrderId={order.id}
             orderAlias={order.alias}
             intent={composer}
             open={composer !== null}
-            onOpenChange={(o) => !o && setComposer(null)}
+            onOpenChange={(o) => {
+              if (!o) {
+                setComposer(null);
+                setReplyTo(null);
+              }
+            }}
           />
         )}
 
@@ -492,6 +517,8 @@ export function CommunicationTab({ order }: { order: OrderDetail }) {
                     <HumanEntry
                       key={c.id}
                       comm={c}
+                      onReply={openReply}
+                      onMarkRead={markRead}
                       quoteOpen={expandedQuotes.has(c.id)}
                       onToggleQuote={() =>
                         setExpandedQuotes((prev) => {
@@ -533,6 +560,8 @@ export function CommunicationTab({ order }: { order: OrderDetail }) {
                     <HumanEntry
                       key={c.id}
                       comm={c}
+                      onReply={openReply}
+                      onMarkRead={markRead}
                       quoteOpen={expandedQuotes.has(c.id)}
                       onToggleQuote={() =>
                         setExpandedQuotes((prev) => {
@@ -591,10 +620,15 @@ function HumanEntry({
   comm,
   quoteOpen,
   onToggleQuote,
+  onReply,
+  onMarkRead,
 }: {
   comm: Comm;
   quoteOpen: boolean;
   onToggleQuote: () => void;
+  /** Absent on read-only surfaces; present wherever a desk can answer. */
+  onReply?: (comm: Comm) => void;
+  onMarkRead?: (comm: Comm) => void;
 }) {
   const ChannelIcon = CHANNEL_ICONS[comm.channel] ?? Mail;
   const from = comm.participants.find((p) => p.role === 'FROM');
@@ -733,11 +767,48 @@ function HumanEntry({
           </div>
         )}
 
-        <div className="text-fg-tertiary mt-2 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10.5px]">
-          <span>{formatDateTime(comm.occurredAt)}</span>
-          {comm.loggedBy && <span>Logged by {comm.loggedBy.name}</span>}
-          {comm.externalRef && <span className="font-mono">Ref {comm.externalRef}</span>}
-          <span>{relativeTime(comm.occurredAt)}</span>
+        <div className="mt-2 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+          <div className="text-fg-tertiary flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5 text-[10.5px]">
+            <span>{formatDateTime(comm.occurredAt)}</span>
+            {comm.loggedBy && <span>Logged by {comm.loggedBy.name}</span>}
+            {comm.externalRef && <span className="font-mono">Ref {comm.externalRef}</span>}
+            <span>{relativeTime(comm.occurredAt)}</span>
+          </div>
+          {/* Only correspondence can be answered. A system event has nobody at
+              the other end, and offering Reply on one would be a dead end. */}
+          {/* Unread is the one piece of state a reader can clear without
+              writing anything, so it gets its own control rather than being
+              cleared silently on render — which would mark a message read that
+              nobody had actually looked at. */}
+          {onMarkRead && comm.isUnread && (
+            <button
+              type="button"
+              onClick={() => onMarkRead(comm)}
+              className={cn(
+                'border-warning-border text-warning hover:bg-warning-subtle ml-auto flex shrink-0 items-center gap-1.5',
+                'rounded-[7px] border px-2 py-1 text-[11.5px] font-medium transition-colors',
+                'focus-visible:ring-accent/40 focus-visible:ring-2 focus-visible:outline-none',
+              )}
+            >
+              <MailOpen className="size-3.5 shrink-0" strokeWidth={2} aria-hidden />
+              Mark read
+            </button>
+          )}
+          {onReply && comm.entryClass !== 'SYSTEM' && (
+            <button
+              type="button"
+              onClick={() => onReply(comm)}
+              className={cn(
+                'border-line-subtle text-fg-secondary hover:bg-surface-3 hover:text-fg flex shrink-0 items-center gap-1.5',
+                comm.isUnread ? '' : 'ml-auto',
+                'rounded-[7px] border px-2 py-1 text-[11.5px] font-medium transition-colors',
+                'focus-visible:ring-accent/40 focus-visible:ring-2 focus-visible:outline-none',
+              )}
+            >
+              <Reply className="size-3.5 shrink-0" strokeWidth={2} aria-hidden />
+              Reply
+            </button>
+          )}
         </div>
       </div>
     </li>

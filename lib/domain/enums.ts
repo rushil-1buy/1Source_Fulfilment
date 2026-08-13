@@ -64,6 +64,17 @@ export const STAKEHOLDER_META: Record<
      * has a counterparty who can say no.
      */
     internal: boolean;
+    /**
+     * Where a message to this party goes.
+     *
+     * Internal teams get a real shared address, because a message to "Finance"
+     * has to reach whoever is on the desk today rather than one named person
+     * who might be on leave. The customer and the supplier are deliberately
+     * null: their contact is per-order and lives on the record, and a fixed
+     * address here would quietly send the wrong customer's invoice query to
+     * the right-looking inbox.
+     */
+    mailbox: string | null;
   }
 > = {
   /**
@@ -81,6 +92,7 @@ export const STAKEHOLDER_META: Record<
     plainLabel: 'Our sourcing team',
     token: 'onebuy',
     internal: true,
+    mailbox: 'sourcing@1buy.ai',
   },
   ONE_BUY_FINANCE: {
     label: '1BUY Finance',
@@ -88,6 +100,7 @@ export const STAKEHOLDER_META: Record<
     plainLabel: 'Our finance team',
     token: 'onebuy',
     internal: true,
+    mailbox: 'finance@1buy.ai',
   },
   ONE_BUY_INBOUND: {
     label: '1BUY Logistics — inbound',
@@ -95,6 +108,7 @@ export const STAKEHOLDER_META: Record<
     plainLabel: 'Our inbound logistics team',
     token: 'onebuy',
     internal: true,
+    mailbox: 'inbound.logistics@1buy.ai',
   },
   ONE_BUY_OUTBOUND: {
     label: '1BUY Logistics — outbound',
@@ -102,6 +116,7 @@ export const STAKEHOLDER_META: Record<
     plainLabel: 'Our outbound logistics team',
     token: 'onebuy',
     internal: true,
+    mailbox: 'outbound.logistics@1buy.ai',
   },
   ONE_BUY_INSPECTION: {
     label: '1BUY Inspection',
@@ -109,15 +124,18 @@ export const STAKEHOLDER_META: Record<
     plainLabel: 'Our inspection team',
     token: 'onebuy',
     internal: true,
+    mailbox: 'inspection@1buy.ai',
   },
-  CUSTOMER: { label: 'Customer', short: 'Customer', plainLabel: 'Customer', token: 'customer', internal: false },
-  SUPPLIER: { label: 'Supplier', short: 'Supplier', plainLabel: 'Supplier', token: 'supplier', internal: false },
+  // mailbox null: their contact is on the order, not on this table.
+  CUSTOMER: { label: 'Customer', short: 'Customer', plainLabel: 'Customer', token: 'customer', internal: false, mailbox: null },
+  SUPPLIER: { label: 'Supplier', short: 'Supplier', plainLabel: 'Supplier', token: 'supplier', internal: false, mailbox: null },
   ESCROW: {
     label: 'Escrow Provider',
     short: 'Escrow',
     plainLabel: 'Escrow provider (holds the money)',
     token: 'escrow',
     internal: false,
+    mailbox: 'ops@escrow-partner.example',
   },
   WHL: {
     label: 'Testing Laboratory',
@@ -125,6 +143,7 @@ export const STAKEHOLDER_META: Record<
     plainLabel: 'Independent testing laboratory',
     token: 'whl',
     internal: false,
+    mailbox: 'lab@testing-partner.example',
   },
   WHA: {
     label: 'Customs Agent',
@@ -132,6 +151,7 @@ export const STAKEHOLDER_META: Record<
     plainLabel: 'Customs and compliance agent',
     token: 'wha',
     internal: false,
+    mailbox: 'desk@customs-agent.example',
   },
   LOGISTICS: {
     label: 'Logistics Partner',
@@ -139,6 +159,7 @@ export const STAKEHOLDER_META: Record<
     plainLabel: 'Courier or freight partner',
     token: 'logistics',
     internal: false,
+    mailbox: 'bookings@logistics-partner.example',
   },
 };
 

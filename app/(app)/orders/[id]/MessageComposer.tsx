@@ -1,12 +1,18 @@
 'use client';
 
 /**
- * The composer behind "Log a communication" and "Send message".
+ * The composer behind "Log a communication", "Send message" and "Reply".
  *
  * One form, two intents. Logging records something that already happened;
  * sending records something going out now and marks the thread awaiting a reply.
  * Every field says in plain words what it is for, because the people using this
  * are not going to guess what "direction" means.
+ *
+ * It serves two places, and the order is fixed in both: the Control Tower's
+ * order page and a team's view of that same order. What differs is who is
+ * writing and whether it answers something. Rather than a second composer that
+ * would drift from this one field by field, both are props — `fromTeam` names
+ * the desk it is sent from, and `replyTo` threads it onto an existing message.
  */
 
 import { useState, useTransition } from 'react';
@@ -15,7 +21,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { Send, StickyNote, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { logCommunication } from '@/lib/actions/communication';
-import { STAKEHOLDERS, STAKEHOLDER_META, isOneBuy } from '@/lib/domain/enums';
+import { STAKEHOLDERS, STAKEHOLDER_META, isOneBuy, type Stakeholder } from '@/lib/domain/enums';
 import { Button, SectionLabel } from '@/components/ui/Layout';
 import { cn } from '@/lib/utils';
 
@@ -56,24 +62,36 @@ export function MessageComposer({
   intent,
   open,
   onOpenChange,
+  fromTeam = 'ONE_BUY_SOURCING',
+  replyTo,
 }: {
   workOrderId: string;
   orderAlias: string;
   intent: Intent;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Which 1BUY desk this is from — decides attribution and where replies go. */
+  fromTeam?: Stakeholder;
+  /** The message being answered, when this composer opened as a reply. */
+  replyTo?: { id: string; subject: string; counterpartyCode: string | null };
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const [counterparty, setCounterparty] = useState<string>('CUSTOMER');
+  // A reply goes back to whoever wrote, not to whatever the default was.
+  const [counterparty, setCounterparty] = useState<string>(
+    replyTo?.counterpartyCode ?? 'CUSTOMER',
+  );
   // Sending is by definition outbound; logging could be either way.
   const [direction, setDirection] = useState<'INBOUND' | 'OUTBOUND'>(
     intent === 'SEND' ? 'OUTBOUND' : 'INBOUND',
   );
   const [channel, setChannel] = useState<string>('EMAIL');
-  const [subject, setSubject] = useState('');
+  const [subject, setSubject] = useState(
+    // "Re:" once, however many times a thread goes back and forth.
+    replyTo ? (/^re:/i.test(replyTo.subject) ? replyTo.subject : `Re: ${replyTo.subject}`) : '',
+  );
   const [body, setBody] = useState('');
   const [shared, setShared] = useState(intent === 'SEND');
   const [needsReply, setNeedsReply] = useState(intent === 'SEND');
@@ -87,6 +105,8 @@ export function MessageComposer({
       const res = await logCommunication({
         workOrderId,
         intent,
+        fromTeam,
+        replyToId: replyTo?.id,
         counterparty: counterparty as 'CUSTOMER',
         channel: channel as 'EMAIL',
         direction: internal ? 'INTERNAL' : direction,
