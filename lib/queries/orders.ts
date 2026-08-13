@@ -1,9 +1,17 @@
 import { Prisma } from '@/lib/generated/prisma';
 import { db } from '@/lib/db';
-import { assessSla, getStage, resolveRailAnchor, type StageContext } from '@/lib/domain/stages';
+import {
+  assessSla,
+  getStage,
+  nextStageFor,
+  resolveRailAnchor,
+  stageNextActionOwner,
+  stageOwner,
+  type StageContext,
+} from '@/lib/domain/stages';
 import { stageContextFrom } from '@/lib/domain/stage-context';
 import { computeLandedCost, computeMargin } from '@/lib/tax/landed-cost';
-import type { PaymentMethod, TestScope } from '@/lib/domain/enums';
+import type { PaymentMethod, Stakeholder, TestScope } from '@/lib/domain/enums';
 
 /**
  * Flattened, fully serializable order row for the list and dashboard. Dates are
@@ -19,6 +27,17 @@ export interface OrderRow {
   stageLabel: string;
   stageCode: string;
   phase: string;
+  /**
+   * Who the order is ON, resolved against this order rather than read off the
+   * stage — the Incoterm moves several of them. Carried on the row so a team's
+   * queue is a filter rather than a per-row recomputation.
+   */
+  owner: Stakeholder;
+  /** Who has to do the next thing. This is what puts an order on a desk. */
+  nextActionOwner: Stakeholder;
+  /** Who owns the step after this one, so a team can see work heading toward it. */
+  nextStageOwner: Stakeholder | null;
+  nextStageLabel: string | null;
   status: string;
   stageEnteredAt: string;
   createdAt: string;
@@ -112,6 +131,9 @@ function toRow(
   now: Date,
 ): OrderRow {
   const ctx = stageContextFrom(wo);
+  // The step after this one, for the "heading your way" queue. Null at the end
+  // of the ladder, and on an exception branch that has nowhere onward.
+  const upcoming = nextStageFor(wo.stage, ctx);
 
   const landed = computeLandedCost({
     buyValue: wo.buyValue,
@@ -144,6 +166,10 @@ function toRow(
     stageLabel: stage.label,
     stageCode: stage.code,
     phase: wo.phase,
+    owner: stageOwner(stage, ctx),
+    nextActionOwner: stageNextActionOwner(stage, ctx),
+    nextStageOwner: upcoming ? stageOwner(upcoming, ctx) : null,
+    nextStageLabel: upcoming ? upcoming.label : null,
     status: wo.status,
     stageEnteredAt: wo.stageEnteredAt.toISOString(),
     createdAt: wo.createdAt.toISOString(),

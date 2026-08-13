@@ -34,6 +34,55 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    /**
+     * The five internal teams, each a filtered view of the same orders.
+     *
+     * Placed directly under the Dashboard because that is the relationship: the
+     * Control Tower is every order, and these are the same orders narrowed to
+     * one desk. Anywhere further down and they read as separate modules with
+     * their own data, which is exactly what they are not.
+     */
+    id: 'teams',
+    label: 'My team',
+    items: [
+      {
+        href: '/teams/sourcing',
+        label: '1BUY Sourcing',
+        plainLabel: 'Sourcing desk',
+        icon: 'ShoppingCart',
+        hint: 'The order, the quote, the supplier and the terms.',
+      },
+      {
+        href: '/teams/finance',
+        label: '1BUY Finance',
+        plainLabel: 'Finance desk',
+        icon: 'Banknote',
+        hint: 'Escrow, duty, the tax invoice and getting paid.',
+      },
+      {
+        href: '/teams/inbound',
+        label: '1BUY Logistics — inbound',
+        plainLabel: 'Inbound desk',
+        icon: 'PackageOpen',
+        hint: 'Export clearance, customs release and goods arriving with us.',
+      },
+      {
+        href: '/teams/inspection',
+        label: '1BUY Inspection',
+        plainLabel: 'Inspection desk',
+        icon: 'ClipboardCheck',
+        hint: 'Test scope, inbound inspection and signing the repack off.',
+      },
+      {
+        href: '/teams/outbound',
+        label: '1BUY Logistics — outbound',
+        plainLabel: 'Outbound desk',
+        icon: 'Truck',
+        hint: 'Repack, despatch, delivery and proof of delivery.',
+      },
+    ],
+  },
+  {
     id: 'create',
     label: 'Create',
     items: [

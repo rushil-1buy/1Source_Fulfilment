@@ -6,6 +6,7 @@ import { useState } from 'react';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import {
   BadgeCheck,
+  Banknote,
   Calculator,
   ChartNoAxesCombined,
   ChevronsLeft,
@@ -18,10 +19,12 @@ import {
   Landmark,
   Layers,
   LayoutDashboard,
+  PackageOpen,
   PanelLeftOpen,
   ReceiptText,
   Settings,
   ShieldCheck,
+  ShoppingCart,
   Truck,
   Warehouse,
   type LucideIcon,
@@ -32,6 +35,9 @@ import { usePreferences } from '@/components/providers/Preferences';
 
 const ICONS: Record<string, LucideIcon> = {
   LayoutDashboard,
+  ShoppingCart,
+  Banknote,
+  PackageOpen,
   Layers,
   FilePlus2,
   ReceiptText,

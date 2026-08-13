@@ -147,6 +147,25 @@ export const STAKEHOLDER_META: Record<
  * evaluate at import time, and above the table that is a temporal dead zone —
  * which took out two unrelated test files before this moved.
  */
+/**
+ * URL slug for each internal team's workspace.
+ *
+ * Kept separate from the enum value so a route never carries ONE_BUY_INBOUND in
+ * the address bar, and so renaming a team does not break every bookmark and
+ * shared link the teams have sent each other.
+ */
+export const TEAM_SLUGS: Record<string, Stakeholder> = {
+  sourcing: 'ONE_BUY_SOURCING',
+  finance: 'ONE_BUY_FINANCE',
+  inbound: 'ONE_BUY_INBOUND',
+  outbound: 'ONE_BUY_OUTBOUND',
+  inspection: 'ONE_BUY_INSPECTION',
+};
+
+export function slugForTeam(team: Stakeholder): string | null {
+  return Object.entries(TEAM_SLUGS).find(([, v]) => v === team)?.[0] ?? null;
+}
+
 /** Our own teams, in ladder order. */
 export const INTERNAL_STAKEHOLDERS = STAKEHOLDERS.filter((s) => STAKEHOLDER_META[s].internal);
 
