@@ -10,13 +10,14 @@
  */
 
 import { FileText, ShieldCheck } from 'lucide-react';
-import { EmptyState, KeyValue, Panel, PanelHeader } from '@/components/ui/Layout';
+import { EmptyState, KeyValue, Money, Panel, PanelHeader } from '@/components/ui/Layout';
 import { Chip } from '@/components/ui/Badges';
 import { IncotermTooltip } from '@/components/ui/IncotermTooltip';
 import { RecordTable, type ColumnSpec, type RecordRow } from '@/components/ui/RecordTable';
 import { STAKEHOLDER_META, type Stakeholder } from '@/lib/domain/enums';
 import { incotermFor, responsibilities } from '@/lib/domain/incoterms';
 import { getStage } from '@/lib/domain/stages';
+import { formatDate } from '@/lib/utils';
 
 /**
  * Readable names for the document types.
@@ -222,5 +223,207 @@ export function TeamLiabilityPanel({
         hold the whole term in your head while working a single step.
       </p>
     </Panel>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// What the order actually is: the reference facts, and the parts on it
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Teams that may see what we PAID.
+ *
+ * Everyone sees the parts, the quantities and what the customer is paying —
+ * those are on the customer's own order and any desk may need them. The
+ * supplier's unit cost is different: it is commercially sensitive, it is not
+ * needed to pick a carton or check a marking, and the two teams whose work
+ * actually turns on it are the two who negotiate and account for it.
+ */
+const SEES_COST = new Set<Stakeholder>(['ONE_BUY_SOURCING', 'ONE_BUY_FINANCE']);
+
+export interface OrderItem {
+  id: string;
+  lineNo: number;
+  mpn: string;
+  manufacturer: string;
+  description: string;
+  hsnCode: string;
+  quantity: number;
+  uom: string;
+  unitPrice: number;
+  lineTotal: number;
+  unitCost: number | null;
+  buyCurrency: string;
+}
+
+export interface OrderFacts {
+  alias: string;
+  soNumber: string | null;
+  customerPo: string;
+  customerPi: string | null;
+  supplierPo: string;
+  supplierPi: string | null;
+  customer: string;
+  customerGstin: string | null;
+  supplier: string;
+  supplierCountry: string | null;
+  paymentMethod: string;
+  creditDays: number | null;
+  testingRequired: boolean;
+  testScope: string | null;
+  buyIncoterms: string;
+  sellIncoterms: string | null;
+  buyCurrency: string;
+  fxRate: number;
+  sellValue: number;
+  buyValue: number;
+  requestedDelivery: string | null;
+  createdAt: string;
+}
+
+/**
+ * The reference facts and the parts, on one tab.
+ *
+ * A team narrowed to its own steps still has to know WHAT it is handling —
+ * inspection cannot check a marking without the part number, and outbound
+ * cannot pack without the quantities. Withholding that in the name of focus
+ * would mean opening the full order for the most basic fact about it.
+ */
+export function TeamOrderFactsPanel({
+  facts,
+  items,
+  team,
+}: {
+  facts: OrderFacts;
+  items: OrderItem[];
+  team: Stakeholder;
+}) {
+  const showCost = SEES_COST.has(team);
+
+  const columns: ColumnSpec[] = [
+    { key: 'lineNo', label: 'Line', kind: 'number', mobile: 'meta', width: '70px' },
+    { key: 'mpn', label: 'Part number', termKey: 'mpn', kind: 'mono', mobile: 'primary', width: '190px' },
+    { key: 'manufacturer', label: 'Manufacturer', mobile: 'secondary', width: '160px' },
+    { key: 'description', label: 'Description', mobile: 'meta' },
+    { key: 'hsnCode', label: 'HSN', kind: 'mono', mobile: 'hidden', width: '110px' },
+    { key: 'quantity', label: 'Quantity', kind: 'number', mobile: 'secondary', width: '120px' },
+    { key: 'uom', label: 'Unit', mobile: 'hidden', width: '80px' },
+    { key: 'unitPrice', label: 'Unit price to customer', kind: 'number', mobile: 'meta', width: '170px' },
+    { key: 'lineTotal', label: 'Line total', kind: 'money', mobile: 'meta', width: '150px' },
+    ...(showCost
+      ? [{ key: 'unitCost', label: 'Our unit cost', kind: 'number' as const, mobile: 'meta' as const, width: '150px' }]
+      : []),
+  ];
+
+  const rows: RecordRow[] = items.map((i) => ({
+    id: i.id,
+    lineNo: i.lineNo,
+    mpn: i.mpn,
+    manufacturer: i.manufacturer,
+    description: i.description,
+    hsnCode: i.hsnCode,
+    quantity: i.quantity,
+    uom: i.uom,
+    unitPrice: i.unitPrice,
+    lineTotal: i.lineTotal,
+    ...(showCost ? { unitCost: i.unitCost ?? 0 } : {}),
+  }));
+
+  const totalQty = items.reduce((a, i) => a + i.quantity, 0);
+
+  return (
+    <div className="flex min-w-0 flex-col gap-4">
+      {/* ── The reference facts ──────────────────────────────────────────── */}
+      <div className="min-w-0">
+        <PanelHeader
+          title="Order details"
+          description="The commercial facts of this order, so the basics never require opening the full record."
+        />
+        <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          <KeyValue label="Work order">{facts.alias}</KeyValue>
+          <KeyValue label="Sales order">
+            {facts.soNumber ?? <span className="text-fg-tertiary">Not raised yet</span>}
+          </KeyValue>
+          <KeyValue label="Customer">{facts.customer}</KeyValue>
+          <KeyValue label="Supplier">{facts.supplier}</KeyValue>
+
+          <KeyValue label="Customer PO">{facts.customerPo}</KeyValue>
+          <KeyValue label="Our PO to supplier">{facts.supplierPo}</KeyValue>
+          <KeyValue label="Proforma to customer">
+            {facts.customerPi ?? <span className="text-fg-tertiary">Not issued</span>}
+          </KeyValue>
+          <KeyValue label="Supplier's proforma">
+            {facts.supplierPi ?? <span className="text-fg-tertiary">Not received</span>}
+          </KeyValue>
+
+          <KeyValue label="Bought on">
+            <span className="flex min-w-0 items-center gap-1.5">
+              <span className="font-mono">{facts.buyIncoterms}</span>
+              <IncotermTooltip code={facts.buyIncoterms} />
+            </span>
+          </KeyValue>
+          <KeyValue label="Sold on">
+            <span className="flex min-w-0 items-center gap-1.5">
+              <span className="font-mono">{facts.sellIncoterms ?? '—'}</span>
+              {facts.sellIncoterms && <IncotermTooltip code={facts.sellIncoterms} />}
+            </span>
+          </KeyValue>
+          <KeyValue label="Payment method">
+            {facts.paymentMethod.toLowerCase()}
+            {facts.creditDays ? ` · ${facts.creditDays} days` : ''}
+          </KeyValue>
+          <KeyValue label="Testing">
+            {facts.testingRequired
+              ? `Required${facts.testScope ? ` · ${facts.testScope.replace(/_/g, ' ').toLowerCase()}` : ''}`
+              : 'Not required'}
+          </KeyValue>
+
+          <KeyValue label="Order value" termKey="sellValue">
+            <Money amount={facts.sellValue} withCode={false} />
+          </KeyValue>
+          {showCost && (
+            <KeyValue label="Supplier value">
+              <Money amount={facts.buyValue} withCode={false} />
+            </KeyValue>
+          )}
+          <KeyValue label="Rate locked at">
+            {facts.buyCurrency} 1 = {facts.fxRate}
+          </KeyValue>
+          <KeyValue label="Wanted by">
+            {facts.requestedDelivery ? formatDate(facts.requestedDelivery) : '—'}
+          </KeyValue>
+        </div>
+      </div>
+
+      {/* ── The parts ────────────────────────────────────────────────────── */}
+      <div className="border-line-subtle min-w-0 border-t pt-4">
+        <PanelHeader
+          title="Parts on this order"
+          description={`${items.length} line${items.length === 1 ? '' : 's'}, ${totalQty.toLocaleString('en-IN')} pieces in total. Search by part number — this is the list to check goods and paperwork against.`}
+        />
+        {items.length === 0 ? (
+          <EmptyState
+            title="No lines on this order"
+            description="Nothing has been added to the customer's purchase order yet."
+          />
+        ) : (
+          <RecordTable
+            columns={columns}
+            rows={rows}
+            rowNoun="lines"
+            searchPlaceholder="Search by part number, manufacturer or description…"
+            exportName={`${facts.alias}-lines`}
+            emptyTitle="No parts match"
+            emptyDescription="Nothing on this order matches that search."
+          />
+        )}
+        {!showCost && (
+          <p className="text-fg-tertiary mt-2.5 text-[11.5px] leading-relaxed">
+            Supplier pricing is not shown here. It is not needed to check or handle the goods, and
+            it stays with the two teams that negotiate and account for it.
+          </p>
+        )}
+      </div>
+    </div>
   );
 }

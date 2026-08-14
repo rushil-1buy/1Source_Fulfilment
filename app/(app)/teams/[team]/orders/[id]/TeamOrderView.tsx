@@ -25,7 +25,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
 import * as Tabs from '@radix-ui/react-tabs';
-import { ArrowLeft, ArrowUpRight, Ban, Clock, ClipboardCheck, FileText, ListChecks, MessageSquare } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, Ban, Clock, ClipboardCheck, FileText, ListChecks, MessageSquare, Package } from 'lucide-react';
 import type { OrderDetail } from '@/lib/queries/order-detail';
 import { normalisePhasePlan } from '@/lib/domain/phase-plan';
 import {
@@ -48,7 +48,7 @@ import { NextActionPanel } from '@/app/(app)/orders/[id]/NextActionPanel';
 import { StageEvidenceDialog } from '@/app/(app)/orders/[id]/StageEvidenceDialog';
 import type { EvidenceRecord } from '@/app/(app)/orders/[id]/StageEvidencePanel';
 import { CommunicationTab } from '@/app/(app)/orders/[id]/CommunicationTab';
-import { TeamDocumentsPanel, TeamLiabilityPanel } from './TeamOrderExtras';
+import { TeamDocumentsPanel, TeamLiabilityPanel, TeamOrderFactsPanel } from './TeamOrderExtras';
 import { DeliverablesPanel } from './DeliverablesPanel';
 import type { TeamDeliverables } from '@/lib/queries/team-deliverables';
 import { cn, formatDate } from '@/lib/utils';
@@ -318,6 +318,12 @@ export function TeamOrderView({
           >
             <OrderTab value="steps" icon={ListChecks} label="Your steps" count={outstanding} />
             <OrderTab
+              value="order"
+              icon={Package}
+              label="Order & items"
+              count={order.customerPo.lines.length}
+            />
+            <OrderTab
               value="paperwork"
               icon={ClipboardCheck}
               label="Your paperwork"
@@ -371,6 +377,55 @@ export function TeamOrderView({
                 ownerFilter={team}
               />
             )}
+          </Tabs.Content>
+
+          {/* A team narrowed to its own steps still has to know WHAT it is
+              handling. Inspection cannot check a marking without the part
+              number; outbound cannot pack without the quantities. */}
+          <Tabs.Content value="order" className="min-w-0 p-4 outline-none">
+            <TeamOrderFactsPanel
+              team={team}
+              facts={{
+                alias: order.alias,
+                soNumber: order.soNumber,
+                customerPo: order.customerPo.poNumber,
+                customerPi: order.customerPi?.piNumber ?? null,
+                supplierPo: order.supplierPo.poNumber,
+                supplierPi: order.supplierPi?.piNumber ?? null,
+                customer: order.customerPo.customer.name,
+                customerGstin: order.customerPo.customer.gstin,
+                supplier: order.supplierPo.supplier.name,
+                supplierCountry: order.supplierPo.supplier.country,
+                paymentMethod: order.paymentMethod,
+                creditDays: order.creditDays,
+                testingRequired: order.testingRequired,
+                testScope: order.testScope,
+                buyIncoterms: order.incoterms,
+                sellIncoterms: order.customerPo.incoterms,
+                buyCurrency: order.buyCurrency,
+                fxRate: order.fxRate,
+                sellValue: order.sellValue,
+                buyValue: order.buyValue,
+                requestedDelivery: order.customerPo.requestedDeliveryDate,
+                createdAt: order.createdAt,
+              }}
+              items={order.customerPo.lines.map((l) => ({
+                id: l.id,
+                lineNo: l.lineNo,
+                mpn: l.mpn,
+                manufacturer: l.manufacturer,
+                description: l.description,
+                hsnCode: l.hsnCode,
+                quantity: l.quantity,
+                uom: l.uom,
+                unitPrice: l.unitPrice,
+                lineTotal: l.lineTotal,
+                // Matched by part number: the two orders are written by
+                // different parties and their line numbering need not agree.
+                unitCost: order.supplierPo.lines.find((sl) => sl.mpn === l.mpn)?.unitPrice ?? null,
+                buyCurrency: order.buyCurrency,
+              }))}
+            />
           </Tabs.Content>
 
           {/* What this team must PRODUCE, as opposed to what already exists.
