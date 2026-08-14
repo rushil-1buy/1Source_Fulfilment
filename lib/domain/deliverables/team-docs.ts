@@ -15,7 +15,7 @@
  * honest, where a plausible default would not be.
  */
 
-import type { CheckResult, DeliverableDef, DeliverableInput, DeliverableValues } from './types';
+import type { CheckResult, DeliverableDef, DeliverableValues } from './types';
 
 const f = (
   key: string,

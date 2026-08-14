@@ -25,7 +25,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
 import * as Tabs from '@radix-ui/react-tabs';
-import { ArrowLeft, ArrowUpRight, Ban, Clock, FileText, ListChecks, MessageSquare } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, Ban, Clock, ClipboardCheck, FileText, ListChecks, MessageSquare } from 'lucide-react';
 import type { OrderDetail } from '@/lib/queries/order-detail';
 import { normalisePhasePlan } from '@/lib/domain/phase-plan';
 import {
@@ -49,6 +49,8 @@ import { StageEvidenceDialog } from '@/app/(app)/orders/[id]/StageEvidenceDialog
 import type { EvidenceRecord } from '@/app/(app)/orders/[id]/StageEvidencePanel';
 import { CommunicationTab } from '@/app/(app)/orders/[id]/CommunicationTab';
 import { TeamDocumentsPanel, TeamLiabilityPanel } from './TeamOrderExtras';
+import { DeliverablesPanel } from './DeliverablesPanel';
+import type { TeamDeliverables } from '@/lib/queries/team-deliverables';
 import { cn, formatDate } from '@/lib/utils';
 
 /**
@@ -70,12 +72,15 @@ export function TeamOrderView({
   team,
   slug,
   financeApprovers,
+  deliverables,
 }: {
   order: OrderDetail;
   team: Stakeholder;
   slug: string;
   /** Only Finance may authorise a release, and the final one needs two. */
   financeApprovers: FinanceApprover[];
+  /** The documents this team owes on this order, drafted or not. */
+  deliverables: TeamDeliverables;
 }) {
   const { label: pick } = usePreferences();
   const meta = STAKEHOLDER_META[team];
@@ -313,6 +318,12 @@ export function TeamOrderView({
           >
             <OrderTab value="steps" icon={ListChecks} label="Your steps" count={outstanding} />
             <OrderTab
+              value="paperwork"
+              icon={ClipboardCheck}
+              label="Your paperwork"
+              count={deliverables.slots.filter((d) => d.latest?.status !== 'APPROVED').length}
+            />
+            <OrderTab
               value="docs"
               icon={FileText}
               label="Documents"
@@ -360,6 +371,17 @@ export function TeamOrderView({
                 ownerFilter={team}
               />
             )}
+          </Tabs.Content>
+
+          {/* What this team must PRODUCE, as opposed to what already exists.
+              Kept separate from Documents for that reason: one is a to-do list
+              with a gate on it, the other is a register of what is filed. */}
+          <Tabs.Content value="paperwork" className="min-w-0 p-4 outline-none">
+            <DeliverablesPanel
+              orderId={order.id}
+              slots={deliverables.slots}
+              input={deliverables.input}
+            />
           </Tabs.Content>
 
           <Tabs.Content value="docs" className="min-w-0 p-4 outline-none">
