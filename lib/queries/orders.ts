@@ -83,6 +83,8 @@ export interface OrderRow {
   openTasks: number;
   unreadComms: number;
   lineCount: number;
+  /** Part numbers on the order, in line order — for the queue's Parts column. */
+  parts: { mpn: string; qty: number }[];
   escrowHeld: number;
   ctx: StageContext;
   /** The four linked documents, so a row can be edited without another fetch. */
@@ -112,7 +114,10 @@ const ORDER_INCLUDE = {
       // Governs the outbound leg — see StageContextSource.
       incoterms: true,
       customer: { select: { name: true, code: true } },
-      lines: { select: { id: true } },
+      // mpn and quantity, not just the id: a team scanning its queue asks
+      // "what parts is this?" before it asks anything else, and answering that
+      // by opening every order in turn is the thing the queue exists to avoid.
+      lines: { select: { id: true, mpn: true, quantity: true } },
     },
   },
   customerPi: { select: { id: true, piNumber: true } },
@@ -221,6 +226,7 @@ function toRow(
     openTasks: wo.tasks.length,
     unreadComms: wo.communications.length,
     lineCount: wo.customerPo.lines.length,
+    parts: wo.customerPo.lines.map((l) => ({ mpn: l.mpn, qty: l.quantity })),
     escrowHeld: wo.escrowAccount
       ? Math.max(0, wo.escrowAccount.fundedAmount - wo.escrowAccount.releasedAmount)
       : 0,

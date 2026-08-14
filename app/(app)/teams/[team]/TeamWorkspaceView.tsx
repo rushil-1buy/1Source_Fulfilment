@@ -85,6 +85,22 @@ const QUEUE_COLUMNS: ColumnSpec[] = [
     mobile: "meta",
     width: "130px",
   },
+  {
+    /*
+     * What the order actually IS, on the row.
+     *
+     * Every desk asks "which parts?" before anything else — inspection to know
+     * what it is checking, outbound to know what it is packing, sourcing to
+     * recognise a part it has chased before. Answering that by opening each
+     * order in turn is exactly what a queue exists to avoid. Searching the
+     * table by part number works off this column too.
+     */
+    key: "parts",
+    label: "Parts",
+    termKey: "mpn",
+    mobile: "secondary",
+    width: "230px",
+  },
   { key: "customer", label: "Customer", mobile: "meta" },
   {
     key: "state",
@@ -144,6 +160,16 @@ function toRows(
     // "Step 6 of 36" rather than a bare code: B3 says where, not how far, and an
     // order stuck near the end is a different problem from one stuck at the start.
     progress: `Step ${o.stepsDone + 1} of ${o.stepsTotal}`,
+    // Two part numbers then a count. Listing all of them would push the rest of
+    // the row off the screen on an order with twelve lines, and the first two
+    // are enough to recognise it — the full list is a click away.
+    parts:
+      o.parts.length === 0
+        ? "—"
+        : o.parts
+            .slice(0, 2)
+            .map((p) => p.mpn)
+            .join(", ") + (o.parts.length > 2 ? ` +${o.parts.length - 2} more` : ""),
     customer: o.customerName,
     // Blocked outranks late: one is behind, the other has stopped entirely.
     state: o.isBlocked
