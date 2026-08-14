@@ -1015,8 +1015,52 @@ function OverviewTab({ order }: { order: OrderDetail }) {
     },
   ];
 
+  const totalQty = order.customerPo.lines.reduce((a, l) => a + l.quantity, 0);
+
   return (
     <div className="grid min-w-0 grid-cols-1 gap-4">
+      {/*
+        What the order IS, before what it is worth or where it stands.
+        
+        The full breakdown lives on Line Items, with prices, margin and lot
+        codes. But "which parts?" is the first question anyone asks about an
+        order, and answering it should not require knowing which of fourteen
+        tabs to open. This is the answer, not a summary of it — every line is
+        here, with its quantity.
+      */}
+      <Panel padded={false}>
+        <div className="p-4 pb-0">
+          <PanelHeader
+            title="Parts on this order"
+            description={`${order.customerPo.lines.length} line${order.customerPo.lines.length === 1 ? '' : 's'}, ${totalQty.toLocaleString('en-IN')} pieces. Prices, margin and lot codes are on Line Items.`}
+          />
+        </div>
+        {order.customerPo.lines.length === 0 ? (
+          <EmptyState
+            title="No lines yet"
+            description="Nothing has been added to the customer's purchase order."
+          />
+        ) : (
+          <ul className="min-w-0 px-4 pb-4">
+            {order.customerPo.lines.map((l) => (
+              <li
+                key={l.id}
+                className="border-line-subtle flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5 border-b py-2 last:border-b-0"
+              >
+                <span className="text-fg shrink-0 font-mono text-[12.5px] font-medium">{l.mpn}</span>
+                <span className="text-fg-secondary shrink-0 text-[12px]">{l.manufacturer}</span>
+                <span className="text-fg-tertiary min-w-0 flex-1 truncate text-[12px]">
+                  {l.description}
+                </span>
+                <span className="tnum text-fg shrink-0 text-[12.5px] font-medium">
+                  {l.quantity.toLocaleString('en-IN')} {l.uom}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Panel>
+
       <Panel>
         <PanelHeader
           title="The four linked documents"
