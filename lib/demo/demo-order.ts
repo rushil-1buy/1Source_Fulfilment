@@ -49,7 +49,14 @@ const CPI_NO = 'PI-1B-DEMO';
 const SPO_NO = 'PO-1B-DEMO';
 const SPI_NO = 'SPI-GCSF-DEMO';
 
-/** Where the order is parked. Phase B, the fourth of B's five steps still to do. */
+/**
+ * Where the order is parked: B4, with terms already locked at B3.
+ *
+ * Terms lock BEFORE the supplier's invoice arrives, so an order sitting here
+ * has agreed terms behind it and the invoice in front of it — which is the
+ * point in Phase B where the reconciliation actually has something to check
+ * against.
+ */
 const TARGET_STAGE = 'SUPPLIER_PI_RECEIVED';
 
 const CUSTOMER = CUSTOMERS.find((c) => c.id === 'c-acme')!;

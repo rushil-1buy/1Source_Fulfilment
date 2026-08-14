@@ -69,6 +69,7 @@ model User {
   communications  Communication[]     @relation("LoggedBy")
   inspections     InspectionReport[]
   escrowApprovals EscrowApproval[]
+  deliverablesReviewed TeamDeliverable[] @relation("DeliverableReviewer")
 }
 
 // ─── Organisation / configuration ───────────────────────────────────────────
@@ -652,6 +653,7 @@ model WorkOrder {
   stageEvidence   StageEvidence[]
   customStages    CustomStage[]
   phasePlan       OrderPhasePlan[]
+  deliverables    TeamDeliverable[]
 }
 
 /// Immutable ledger of every stage change — powers the rail's hover detail,
@@ -1514,3 +1516,47 @@ model OrderPhasePlan {
   @@index([workOrderId, position])
 }
 
+/// A document an internal team is answerable for producing on an order.
+///
+/// Drafted by the system from the order's own data the moment the order
+/// reaches the stage that makes the numbers real, then reviewed and approved
+/// by a person before it counts. Nothing here is filed automatically: a draft
+/// is a proposal, and the approval is the human saying it is right.
+///
+/// `computed` and `values` are stored SEPARATELY and both kept. `computed` is
+/// what the system worked out; `values` is what the human left after editing.
+/// Keeping only the second would lose the fact that a figure was overridden at
+/// all, and an overridden P&L that looks identical to a computed one is how a
+/// margin correction stops being reviewable.
+model TeamDeliverable {
+  id          String    @id @default(cuid())
+  workOrderId String
+  workOrder   WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  /// Whose liability this document is — a stakeholder code.
+  team        String
+  /// PNL | ESCROW_RELEASE | SOURCING_TERMS | IMPORT_FILE | INSPECTION_REPORT |
+  /// GRN_NOTE | PACKING_LIST | DELIVERY_NOTE
+  kind        String
+  /// DRAFT | IN_REVIEW | APPROVED | SUPERSEDED
+  status      String    @default("DRAFT")
+  /// JSON. The system's own figures, never rewritten by an edit.
+  computed    String
+  /// JSON. What the reviewer left. Starts identical to `computed`.
+  values      String
+  /// Bumped when a later stage makes the old figures stale and a new draft is cut.
+  version     Int       @default(1)
+  /// Which stage the order stood at when this draft was generated, so a reader
+  /// can tell whether the numbers predate the costs they are meant to include.
+  generatedAtStage String
+  generatedAt DateTime  @default(now())
+  reviewedById String?
+  reviewedBy   User?    @relation("DeliverableReviewer", fields: [reviewedById], references: [id])
+  approvedAt  DateTime?
+  /// Required when approving over a warning — the reason it was accepted anyway.
+  reviewNote  String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([workOrderId, kind, version])
+  @@index([workOrderId, team])
+}

@@ -183,6 +183,10 @@ const ACTIONS: Record<string, ActionSpec[]> = {
     { id: 'issue-po', label: 'Issue our purchase order to the supplier', detail: 'With part numbers, quantities, price, Incoterm and the required delivery date on it.', required: true, doneWhen: 'issuedOn' },
     { id: 'state-testing', label: 'State the testing requirement on the order', detail: 'If the lot is to be independently tested, the supplier must know before they ship — it changes where the parts go first.' },
   ],
+  TERMS_LOCKED: [
+    { id: 'agree-terms', label: 'Agree the final commercial terms', detail: 'Price, Incoterm, payment method and delivery date, all fixed. After this they are quoted, not negotiated.', required: true },
+    { id: 'confirm-incoterm', label: 'Confirm who pays freight, insurance and duty', detail: 'The Incoterm decides it. Getting this wrong shows up as an unbudgeted cost at customs.' },
+  ],
   SUPPLIER_PI_RECEIVED: [
     {
       id: 'reconcile-pi',
@@ -192,10 +196,6 @@ const ACTIONS: Record<string, ActionSpec[]> = {
       doneWhen: 'threeWayChecked',
     },
     { id: 'bank-details', label: 'Verify the bank details independently', detail: 'Call a known number, not one on the invoice. Payment-diversion fraud enters here.' },
-  ],
-  TERMS_LOCKED: [
-    { id: 'agree-terms', label: 'Agree the final commercial terms', detail: 'Price, Incoterm, payment method and delivery date, all fixed. After this they are quoted, not negotiated.', required: true },
-    { id: 'confirm-incoterm', label: 'Confirm who pays freight, insurance and duty', detail: 'The Incoterm decides it. Getting this wrong shows up as an unbudgeted cost at customs.' },
   ],
   WORK_ORDER_ACTIVE: [
     { id: 'notify', label: 'Tell the supplier the order is live', detail: 'They should not start work on an order we have not activated.' },

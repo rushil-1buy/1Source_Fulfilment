@@ -369,8 +369,21 @@ export async function captureSupplierPi(input: unknown): Promise<PiActionResult>
       },
     });
 
-    // Advance the ladder if the order is still sitting at SUPPLIER_PO_ISSUED.
-    if (wo.stage === 'SUPPLIER_PO_ISSUED') {
+    /*
+     * Advance ONLY from TERMS_LOCKED, and record without moving otherwise.
+     *
+     * Two things changed here. Terms are now locked before the supplier raises
+     * their invoice, so advancing from SUPPLIER_PO_ISSUED — as this used to —
+     * would jump the terms gate the sequence exists to enforce.
+     *
+     * And the invoice frequently arrives AFTER the work order has gone active,
+     * because activation only needs locked terms. In that case the order is
+     * already downstream and must not be dragged back to Phase B: the PI is
+     * captured, the canonical name completes, the reconciliation runs, and the
+     * stage stays exactly where it is. Recording a document is not a reason to
+     * move an order backwards.
+     */
+    if (wo.stage === 'TERMS_LOCKED') {
       const next = getStage('SUPPLIER_PI_RECEIVED');
       await db.workOrder.update({
         where: { id: wo.id },
@@ -379,7 +392,7 @@ export async function captureSupplierPi(input: unknown): Promise<PiActionResult>
       await db.stageTransition.create({
         data: {
           workOrderId: wo.id,
-          fromStage: 'SUPPLIER_PO_ISSUED',
+          fromStage: 'TERMS_LOCKED',
           toStage: next.id,
           actorLabel: 'Akash Dwivedi',
           provenance: 'MANUAL',
@@ -402,8 +415,11 @@ export async function captureSupplierPi(input: unknown): Promise<PiActionResult>
           },
         },
       });
+      // Closes the task we are actually leaving. It named SUPPLIER_PO_ISSUED
+      // from when the PO handed straight to the invoice; terms sit between
+      // them now, so that task belongs to a stage we passed two steps ago.
       await db.task.updateMany({
-        where: { workOrderId: wo.id, linkedStage: 'SUPPLIER_PO_ISSUED', status: 'OPEN' },
+        where: { workOrderId: wo.id, linkedStage: 'TERMS_LOCKED', status: 'OPEN' },
         data: { status: 'DONE', completedAt: new Date() },
       });
       await db.task.create({

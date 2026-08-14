@@ -359,38 +359,56 @@ export const STAGE_DEFS: StageDef[] = [
     owner: 'ONE_BUY_SOURCING',
     expectedHours: 8,
     artifacts: ['1BUY Purchase Order'],
-    nextAction: "Wait for the supplier's Proforma Invoice, then record it.",
-    nextActionOwner: 'SUPPLIER',
-    next: ['SUPPLIER_PI_RECEIVED'],
-  },
-  {
-    id: 'SUPPLIER_PI_RECEIVED',
-    code: 'B3',
-    phase: 'B',
-    label: 'Supplier Proforma Invoice received',
-    plainLabel: "Supplier's invoice received",
-    description:
-      "The supplier's Proforma Invoice is recorded and checked against our Purchase Order for price, quantity and lead time.",
-    exitCriteria: 'Supplier Proforma Invoice captured; prices and lead times reconciled against the Purchase Order.',
-    owner: 'SUPPLIER',
-    expectedHours: 24,
-    artifacts: ['Supplier Proforma Invoice', 'Variance report'],
-    nextAction: 'Agree and lock the commercial terms.',
+    nextAction: 'Agree and lock the commercial terms before the supplier raises their invoice.',
     nextActionOwner: 'ONE_BUY_SOURCING',
     next: ['TERMS_LOCKED'],
   },
   {
     id: 'TERMS_LOCKED',
-    code: 'B4',
+    code: 'B3',
     phase: 'B',
     label: 'Terms locked',
     plainLabel: 'Terms agreed and frozen',
     description:
-      'Payment method, testing requirement, delivery terms, currency and exchange rate are all agreed and frozen.',
+      'Payment method, testing requirement, delivery terms, currency and exchange rate are all agreed and frozen — BEFORE the supplier raises their Proforma Invoice, so the invoice is issued against terms we have already agreed rather than terms we then have to argue about.',
     exitCriteria: 'Payment method, testing requirement, test scope, delivery terms, currency and exchange rate all locked.',
     owner: 'ONE_BUY_SOURCING',
     expectedHours: 12,
     artifacts: ['Terms sheet'],
+    nextAction:
+      "Activate the work order. Record the supplier's Proforma Invoice first if it has already arrived — but do not wait for it.",
+    nextActionOwner: 'ONE_BUY_SOURCING',
+    /*
+     * Two ways forward, and that is deliberate.
+     *
+     * Once terms are locked the commitment is real, so the work order can go
+     * active immediately — it does not need the supplier's invoice to exist.
+     * The invoice often arrives days later, and making it a gate would park a
+     * live order behind a document the supplier controls the timing of.
+     *
+     * So: capture the PI and then activate, or activate now and capture the PI
+     * whenever it lands. Both reach WORK_ORDER_ACTIVE.
+     */
+    next: ['SUPPLIER_PI_RECEIVED', 'WORK_ORDER_ACTIVE'],
+  },
+  {
+    id: 'SUPPLIER_PI_RECEIVED',
+    code: 'B4',
+    phase: 'B',
+    label: 'Supplier Proforma Invoice received',
+    plainLabel: "Supplier's invoice received",
+    description:
+      "The supplier's Proforma Invoice is recorded and checked against our Purchase Order AND against the terms locked at B3 — price, quantity, lead time, currency and delivery term. Anything that disagrees with locked terms is a variance to resolve, not a new term to accept.",
+    exitCriteria:
+      'Supplier Proforma Invoice captured; prices, lead times and delivery terms reconciled against the Purchase Order and the locked terms.',
+    /*
+     * Reachable but not compulsory. An order can pass straight from locked
+     * terms to active and come back through here when the invoice arrives,
+     * which is why nothing downstream may assume this stage was visited.
+     */
+    owner: 'SUPPLIER',
+    expectedHours: 24,
+    artifacts: ['Supplier Proforma Invoice', 'Variance report'],
     nextAction: 'Activate the internal work order.',
     nextActionOwner: 'ONE_BUY_SOURCING',
     next: ['WORK_ORDER_ACTIVE'],

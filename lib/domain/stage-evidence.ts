@@ -153,18 +153,6 @@ export const STAGE_EVIDENCE: StageEvidenceDef[] = [
     documents: [doc('supplierPo', 'The purchase order sent', 'The voucher as issued.', true), doc('ack', 'Their acknowledgement', 'Confirms they accepted our terms, not just our order.')],
   },
   {
-    stageId: 'SUPPLIER_PI_RECEIVED',
-    attestation: 'The supplier’s proforma invoice is in hand and has been checked against our order.',
-    fields: [
-      t('supplierPiRef', 'Their proforma invoice number', 'The number they will reference on the shipment and their bank instruction.', { required: true }),
-      d('receivedOn', 'Date received', 'When it arrived.', { required: true }),
-      yn('threeWayChecked', 'Checked against our order and their quote', 'Part number, quantity, unit price, delivery term. This is where a wrong price gets caught, before money moves.', { required: true }),
-      note('variances', 'Any differences found', 'Anything that does not match our order — and what was agreed about it.'),
-      yn('bankDetailsVerified', 'Bank details verified independently', 'Confirmed by a channel other than the email carrying them. This is the control against payment redirection fraud.', { required: true }),
-    ],
-    documents: [doc('supplierPi', 'Their proforma invoice', 'Including the bank details we will pay against.', true)],
-  },
-  {
     stageId: 'TERMS_LOCKED',
     attestation: 'The commercial terms are fixed and will not be reopened without a change note.',
     fields: [
@@ -175,6 +163,19 @@ export const STAGE_EVIDENCE: StageEvidenceDef[] = [
       sel('escrowBasis', 'Escrow amount is based on', ['Buy value', 'Sell value', 'A custom figure'], 'What the held amount is calculated from.'),
     ],
     documents: [doc('signedTerms', 'The agreed terms', 'Whatever both sides signed or confirmed in writing.', true)],
+  },
+  {
+    stageId: 'SUPPLIER_PI_RECEIVED',
+    attestation:
+      'The supplier’s proforma invoice is in hand and matches the terms we locked before they raised it.',
+    fields: [
+      t('supplierPiRef', 'Their proforma invoice number', 'The number they will reference on the shipment and their bank instruction.', { required: true }),
+      d('receivedOn', 'Date received', 'When it arrived.', { required: true }),
+      yn('threeWayChecked', 'Checked against our order and the locked terms', 'Part number, quantity, unit price, currency, delivery term. Terms were locked at B3, so anything here that disagrees with them is a variance to resolve — not a new term to accept by paying it.', { required: true }),
+      note('variances', 'Any differences found', 'Anything that does not match our order or the locked terms — and what was agreed about it.'),
+      yn('bankDetailsVerified', 'Bank details verified independently', 'Confirmed by a channel other than the email carrying them. This is the control against payment redirection fraud.', { required: true }),
+    ],
+    documents: [doc('supplierPi', 'Their proforma invoice', 'Including the bank details we will pay against.', true)],
   },
   {
     stageId: 'WORK_ORDER_ACTIVE',
