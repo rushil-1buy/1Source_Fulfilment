@@ -12,7 +12,7 @@
  * are chased separately when a step stalls. Splitting them is what makes the
  * flow answerable to "who do I ring".
  *
- * The Customs Agent is dealt with by FINANCE, not by inbound logistics: the
+ * The CHA (Customs House Agent) is dealt with by FINANCE, not by inbound logistics: the
  * agent's work is a duty payment against a Bill of Entry, and it is Finance who
  * funds and reconciles it.
  */
@@ -26,7 +26,7 @@ export const STAKEHOLDERS = [
   'SUPPLIER',
   'ESCROW',
   'WHL',
-  'WHA',
+  'CHA',
   'LOGISTICS',
 ] as const;
 export type Stakeholder = (typeof STAKEHOLDERS)[number];
@@ -145,13 +145,13 @@ export const STAKEHOLDER_META: Record<
     internal: false,
     mailbox: 'lab@testing-partner.example',
   },
-  WHA: {
-    label: 'Customs Agent',
-    short: 'Customs Agent',
-    plainLabel: 'Customs and compliance agent',
-    token: 'wha',
+  CHA: {
+    label: 'Customs House Agent (CHA)',
+    short: 'CHA',
+    plainLabel: 'Customs house agent — clears imports',
+    token: 'cha',
     internal: false,
-    mailbox: 'desk@customs-agent.example',
+    mailbox: 'desk@cha-partner.example',
   },
   LOGISTICS: {
     label: 'Logistics Partner',

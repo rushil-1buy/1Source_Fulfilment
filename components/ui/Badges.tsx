@@ -193,7 +193,7 @@ const SH_CLASSES: Record<Stakeholder, string> = {
   SUPPLIER: 'bg-sh-supplier-subtle text-sh-supplier border-sh-supplier/25',
   ESCROW: 'bg-sh-escrow-subtle text-sh-escrow border-sh-escrow/25',
   WHL: 'bg-sh-whl-subtle text-sh-whl border-sh-whl/25',
-  WHA: 'bg-sh-wha-subtle text-sh-wha border-sh-wha/25',
+  CHA: 'bg-sh-cha-subtle text-sh-cha border-sh-cha/25',
   LOGISTICS: 'bg-sh-logistics-subtle text-sh-logistics border-sh-logistics/25',
 };
 
@@ -233,7 +233,7 @@ export function StakeholderDot({ stakeholder }: { stakeholder: Stakeholder }) {
     SUPPLIER: 'bg-sh-supplier',
     ESCROW: 'bg-sh-escrow',
     WHL: 'bg-sh-whl',
-    WHA: 'bg-sh-wha',
+    CHA: 'bg-sh-cha',
     LOGISTICS: 'bg-sh-logistics',
   };
   return <span className={cn('size-2 shrink-0 rounded-full', cls[stakeholder])} aria-hidden />;

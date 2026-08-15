@@ -20,16 +20,23 @@ import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   AlertTriangle,
+  Bot,
   Check,
   CircleAlert,
+  FileSpreadsheet,
   FileText,
   Lock,
+  Mail,
   Pencil,
   RefreshCw,
   ShieldCheck,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { approveDeliverable, generateDraft, saveDraft } from '@/lib/actions/deliverables';
+import { emailEscrowInstruction, fileEscrowViaAgent } from '@/lib/actions/portal-filing';
+import { activeEscrowPartner, ESCROW_PARTNERS, type AgentRun } from '@/lib/domain/portal-agents';
+import { AgentRunDialog } from '@/components/portal/AgentRunDialog';
+import { downloadXlsx, type CellValue } from '@/lib/domain/xlsx-write';
 import { deliverableFor } from '@/lib/domain/deliverables/registry';
 import type { CheckResult, DeliverableInput, DeliverableValues } from '@/lib/domain/deliverables/types';
 import { fromMinor, toMinor } from '@/lib/domain/money';
@@ -48,6 +55,9 @@ export interface DeliverableRow {
   generatedAt: string;
   approvedAt: string | null;
   reviewNote: string | null;
+  filedWith: string | null;
+  filedRef: string | null;
+  filedAt: string | null;
   computed: string;
   values: string;
 }
@@ -145,6 +155,8 @@ function DeliverableCard({
     latest ? (JSON.parse(latest.values) as DeliverableValues) : {},
   );
   const [reviewNote, setReviewNote] = useState(latest?.reviewNote ?? '');
+  /** The just-finished portal run, shown once so the operator sees what was done. */
+  const [agentRun, setAgentRun] = useState<AgentRun | null>(null);
 
   /*
    * Checks are recomputed in the browser as the reviewer types, so the effect
@@ -224,6 +236,68 @@ function DeliverableCard({
       }
     });
 
+  /*
+   * The P&L as a workbook: Section | Line | Value | System draft.
+   *
+   * The fourth column appears only where a figure was overridden, so the
+   * spreadsheet carries the same was/now honesty as the screen — a P&L
+   * exported without its overrides would launder every edit into a computed
+   * figure the moment it left the platform.
+   */
+  const downloadExcel = () => {
+    if (!def || !latest) return;
+    const rows: CellValue[][] = [
+      [def.label, String(values.statementFor ?? ''), `v${latest.version}`, latest.status],
+      [],
+      ['Section', 'Line', 'Value', 'System draft (where overridden)'],
+    ];
+    for (const section of def.sections) {
+      for (const field of def.fields.filter((f) => f.section === section.key)) {
+        const v = values[field.key];
+        if (v === '' || v === null || v === undefined) continue;
+        const cell: CellValue =
+          field.kind === 'money' ? fromMinor(Number(v)) : typeof v === 'boolean' ? (v ? 'Yes' : 'No') : (v as CellValue);
+        const was = computed[field.key];
+        const overridden = String(was ?? '') !== String(v ?? '');
+        rows.push([
+          section.label,
+          field.label,
+          cell,
+          overridden ? (field.kind === 'money' ? fromMinor(Number(was ?? 0)) : String(was ?? '')) : null,
+        ]);
+      }
+    }
+    downloadXlsx(rows, `${slot.kind.toLowerCase()}-v${latest.version}`, def.label.slice(0, 31));
+  };
+
+  const emailInstruction = () =>
+    start(async () => {
+      if (!latest) return;
+      const res = await emailEscrowInstruction(latest.id);
+      if (res.ok) {
+        toast.success(res.message, { description: res.detail, duration: 10000 });
+        if (res.mailto) window.location.href = res.mailto;
+        router.refresh();
+      } else {
+        toast.error(res.message, { description: res.detail });
+      }
+    });
+
+  const fileWithAgent = () =>
+    start(async () => {
+      if (!latest) return;
+      const res = await fileEscrowViaAgent(latest.id);
+      if (res.ok) {
+        toast.success(res.message, { description: res.detail, duration: 10000 });
+        if (res.run) setAgentRun(res.run);
+        router.refresh();
+      } else {
+        toast.error(res.message, { description: res.detail, duration: 9000 });
+      }
+    });
+
+  const partner = activeEscrowPartner();
+
   return (
     <Panel padded={false}>
       <div className="min-w-0 p-4">
@@ -290,13 +364,52 @@ function DeliverableCard({
               {open ? 'Hide the document' : approved ? 'Read the document' : 'Open and review'}
             </Button>
           )}
+          {latest && slot.kind === 'PNL' && (
+            <Button variant="secondary" icon={FileSpreadsheet} onClick={downloadExcel}>
+              Download as Excel
+            </Button>
+          )}
+          {approved && slot.kind === 'ESCROW_RELEASE' && (
+            <>
+              <Button variant="secondary" icon={Mail} onClick={emailInstruction} disabled={pending}>
+                Email to {partner.code}
+              </Button>
+              {latest.filedRef ? (
+                <Chip tone="success" size="sm" icon={Bot}>
+                  Filed with {latest.filedWith} · {latest.filedRef}
+                </Chip>
+              ) : (
+                <Button variant="primary" icon={Bot} onClick={fileWithAgent} disabled={pending}>
+                  File on the {partner.code} portal (agent)
+                </Button>
+              )}
+            </>
+          )}
           {slot.overdue && !approved && (
             <Chip tone="danger" size="sm" icon={AlertTriangle}>
               Overdue — the order is past where this should have been signed
             </Chip>
           )}
         </div>
+
+        {/* The partner network, from the registry — the next APAC partner is a
+            data entry, not a UI change. */}
+        {slot.kind === 'ESCROW_RELEASE' && (
+          <p className="text-fg-tertiary mt-2 text-[11.5px] leading-relaxed">
+            Escrow partner: <span className="text-fg font-medium">{partner.name}</span> ({partner.region}).
+            {ESCROW_PARTNERS.length === 1
+              ? ' Further APAC partners onboard as registry entries as the network grows.'
+              : ` ${ESCROW_PARTNERS.length} partners in the network.`}
+          </p>
+        )}
       </div>
+
+      <AgentRunDialog
+        run={agentRun}
+        title={`Filed with ${partner.name}`}
+        open={agentRun !== null}
+        onOpenChange={(o) => !o && setAgentRun(null)}
+      />
 
       {open && latest && (
         <div className="border-line-subtle border-t">

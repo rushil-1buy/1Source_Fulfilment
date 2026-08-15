@@ -81,7 +81,7 @@ describe('DDP — the supplier is importer of record', () => {
 
   it('names the supplier against release rather than our customs agent', () => {
     expect(stageOwner(getStage(CLEARED), ddp)).toBe('SUPPLIER');
-    expect(stageOwner(getStage(CLEARED), ctx('FOB'))).toBe('WHA');
+    expect(stageOwner(getStage(CLEARED), ctx('FOB'))).toBe('CHA');
   });
 
   it('names the supplier against the international leg they contracted', () => {
@@ -187,8 +187,8 @@ describe('inboundChain — who actually handles the leg', () => {
   });
 
   it('falls back to the common import chain on an unknown term', () => {
-    expect(inboundChain('NONSENSE')).toBe('Supplier → Logistics Partner → Customs Agent');
-    expect(inboundChain(null)).toBe('Supplier → Logistics Partner → Customs Agent');
+    expect(inboundChain('NONSENSE')).toBe('Supplier → Logistics Partner → CHA');
+    expect(inboundChain(null)).toBe('Supplier → Logistics Partner → CHA');
   });
 });
 
@@ -280,7 +280,7 @@ describe('internal vs external is modelled, not guessed from the name', () => {
       'SUPPLIER',
       'ESCROW',
       'WHL',
-      'WHA',
+      'CHA',
       'LOGISTICS',
     ]);
   });
@@ -300,8 +300,8 @@ describe('internal vs external is modelled, not guessed from the name', () => {
   });
 
   it('keeps the customs agent outside — it is a counterparty Finance deals with', () => {
-    expect(isOneBuy('WHA')).toBe(false);
-    expect(EXTERNAL_STAKEHOLDERS).toContain('WHA');
+    expect(isOneBuy('CHA')).toBe(false);
+    expect(EXTERNAL_STAKEHOLDERS).toContain('CHA');
   });
 });
 

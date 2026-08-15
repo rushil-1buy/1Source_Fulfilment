@@ -15,6 +15,9 @@ export interface DeliverableRowData {
   generatedAt: string;
   approvedAt: string | null;
   reviewNote: string | null;
+  filedWith: string | null;
+  filedRef: string | null;
+  filedAt: string | null;
   computed: string;
   values: string;
 }
@@ -94,6 +97,9 @@ export async function teamDeliverables(
               generatedAt: row.generatedAt.toISOString(),
               approvedAt: row.approvedAt?.toISOString() ?? null,
               reviewNote: row.reviewNote,
+              filedWith: row.filedWith,
+              filedRef: row.filedRef,
+              filedAt: row.filedAt?.toISOString() ?? null,
               computed: row.computed,
               values: row.values,
             }

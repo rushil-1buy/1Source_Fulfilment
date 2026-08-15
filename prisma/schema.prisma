@@ -1554,6 +1554,11 @@ model TeamDeliverable {
   approvedAt  DateTime?
   /// Required when approving over a warning — the reason it was accepted anyway.
   reviewNote  String?
+  /// Set when an approved instruction is filed with an external portal by the
+  /// filing agent: which partner, their acknowledgement reference, and when.
+  filedWith   String?
+  filedRef    String?
+  filedAt     DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 

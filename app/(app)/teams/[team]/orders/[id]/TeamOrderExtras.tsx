@@ -9,15 +9,24 @@
  * liability is read from the same Incoterm definitions the master flow uses.
  */
 
-import { FileText, ShieldCheck } from 'lucide-react';
-import { EmptyState, KeyValue, Money, Panel, PanelHeader } from '@/components/ui/Layout';
+import { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+import { Bot, FileCheck2, FileText, ShieldCheck, Wallet } from 'lucide-react';
+import { Button, EmptyState, KeyValue, Money, Panel, PanelHeader } from '@/components/ui/Layout';
 import { Chip } from '@/components/ui/Badges';
 import { IncotermTooltip } from '@/components/ui/IncotermTooltip';
+import { DocumentSheetDialog } from '@/components/documents/DocumentSheet';
+import { AgentRunDialog } from '@/components/portal/AgentRunDialog';
+import { fileDocsOnESanchit } from '@/lib/actions/portal-filing';
+import type { AgentRun } from '@/lib/domain/portal-agents';
 import { RecordTable, type ColumnSpec, type RecordRow } from '@/components/ui/RecordTable';
 import { STAKEHOLDER_META, type Stakeholder } from '@/lib/domain/enums';
 import { incotermFor, responsibilities } from '@/lib/domain/incoterms';
+import { cashPosition } from '@/lib/domain/cash-flows';
+import type { DeliverableInput } from '@/lib/domain/deliverables/types';
 import { getStage } from '@/lib/domain/stages';
-import { formatDate } from '@/lib/utils';
+import { cn, formatDate } from '@/lib/utils';
 
 /**
  * Readable names for the document types.
@@ -69,6 +78,9 @@ export interface OrderDoc {
   stageId: string | null;
   uploadedBy: string;
   createdAt: string;
+  version: number;
+  sizeBytes: number;
+  bodyText: string | null;
 }
 
 /**
@@ -79,7 +91,18 @@ export interface OrderDoc {
  * else filed, and finance needs the bill of entry to settle duty. Hiding the
  * rest would make each team re-request paperwork the order already holds.
  */
-export function TeamDocumentsPanel({ docs, team }: { docs: OrderDoc[]; team: Stakeholder }) {
+export function TeamDocumentsPanel({
+  docs,
+  team,
+  orderAlias,
+}: {
+  docs: OrderDoc[];
+  team: Stakeholder;
+  orderAlias: string;
+}) {
+  /** Which document the viewer has open, if any. */
+  const [openDoc, setOpenDoc] = useState<OrderDoc | null>(null);
+
   if (docs.length === 0) {
     return (
       <EmptyState
@@ -106,6 +129,7 @@ export function TeamDocumentsPanel({ docs, team }: { docs: OrderDoc[]; team: Sta
         {STAKEHOLDER_META[team].short} sees the whole register, because the paperwork one desk needs
         is usually the paperwork another one filed.
       </p>
+      {/* A row IS the document — clicking it opens the sheet, not a route. */}
       <RecordTable
         columns={DOC_COLUMNS}
         rows={rows}
@@ -114,6 +138,31 @@ export function TeamDocumentsPanel({ docs, team }: { docs: OrderDoc[]; team: Sta
         exportName="order-documents"
         emptyTitle="No documents match"
         emptyDescription="Nothing on this order matches that search."
+        onRowClick={(r) => setOpenDoc(docs.find((d) => d.id === r.id) ?? null)}
+      />
+      <DocumentSheetDialog
+        open={openDoc !== null}
+        onOpenChange={(o) => !o && setOpenDoc(null)}
+        doc={
+          openDoc
+            ? {
+                id: openDoc.id,
+                docType: openDoc.docType,
+                kindLabel: docLabel(openDoc.docType),
+                title: openDoc.title,
+                fileName: openDoc.fileName,
+                uploadedBy: openDoc.uploadedBy,
+                createdAt: openDoc.createdAt,
+                version: openDoc.version,
+                sizeBytes: openDoc.sizeBytes,
+                stepLabel: openDoc.stageId
+                  ? `${getStage(openDoc.stageId).code} ${getStage(openDoc.stageId).label}`
+                  : null,
+                orderAlias,
+                bodyText: openDoc.bodyText,
+              }
+            : null
+        }
       />
     </div>
   );
@@ -425,5 +474,185 @@ export function TeamOrderFactsPanel({
         )}
       </div>
     </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Finance: the live cash position — money, not goods
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * What has actually moved, what is committed, what is expected.
+ *
+ * The signed P&L is cut at the END of the flow, once the customer has settled.
+ * Until then Finance watches this: a ledger of cash events keyed to the stages
+ * that cause them, updating itself as the order advances. Nothing here is
+ * typed in and nothing is guessed — it is the same order data the P&L will
+ * eventually be drafted from, read live.
+ */
+export function LiveCashPanel({ input }: { input: DeliverableInput }) {
+  const pos = cashPosition(input);
+
+  const tone = (s: string) =>
+    s === 'PAID' ? 'success' : s === 'COMMITTED' ? 'warning' : ('neutral' as const);
+  const word = (s: string) => (s === 'PAID' ? 'Moved' : s === 'COMMITTED' ? 'Committed' : 'Expected');
+
+  return (
+    <Panel>
+      <PanelHeader
+        title="Cash in and out on this order"
+        description="Rupees actually moving, keyed to the step that moves them. The signed P&L is cut at the end of the flow — this is the running position until then."
+        actions={
+          <Chip tone={pos.netCash < 0 ? 'warning' : 'success'} size="sm" icon={Wallet}>
+            Net {pos.netCash < 0 ? '−' : '+'}
+            <Money amount={Math.abs(pos.netCash)} withCode={false} />
+          </Chip>
+        }
+      />
+
+      <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-4">
+        <KeyValue label="Paid out so far">
+          <Money amount={pos.paidOut} withCode={false} />
+        </KeyValue>
+        <KeyValue label="Received so far">
+          <Money amount={pos.paidIn} withCode={false} />
+        </KeyValue>
+        <KeyValue label="Still to go out">
+          <Money amount={pos.committedOut} withCode={false} />
+        </KeyValue>
+        <KeyValue label="Projected margin at close" termKey="trueMargin">
+          <Money amount={pos.projectedMargin} withCode={false} />
+        </KeyValue>
+      </div>
+
+      <ul className="border-line-subtle mt-3 flex min-w-0 flex-col border-t">
+        {pos.rows.map((r) => (
+          <li
+            key={r.key}
+            className="border-line-subtle flex min-w-0 flex-wrap items-baseline gap-x-2.5 gap-y-1 border-b py-2 last:border-b-0"
+          >
+            <span
+              className={cn(
+                'w-[16px] shrink-0 text-center font-mono text-[12px] font-semibold',
+                r.direction === 'OUT' ? 'text-danger' : 'text-success',
+              )}
+              aria-label={r.direction === 'OUT' ? 'Cash out' : 'Cash in'}
+            >
+              {r.direction === 'OUT' ? '↓' : '↑'}
+            </span>
+            <span className="text-fg min-w-0 text-[13px] font-medium">{r.label}</span>
+            <Chip tone={tone(r.status)} size="sm">
+              {word(r.status)}
+            </Chip>
+            <span className="text-fg-tertiary text-[11.5px]">{r.movesAt}</span>
+            <span className="tnum text-fg ml-auto shrink-0 text-[13px] font-medium">
+              <Money amount={r.amount} withCode={false} />
+            </span>
+            {r.note && (
+              <span className="text-fg-tertiary w-full pl-[26px] text-[11.5px] leading-relaxed">
+                {r.note}
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </Panel>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Inbound: eSanchit — the CHA's document portal
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface ESanchitState {
+  filed: boolean;
+  reference: string | null;
+  drns: { title: string; drn: string }[];
+  lodgeable: number;
+}
+
+/**
+ * Supporting documents on eSanchit, ahead of the Bill of Entry.
+ *
+ * The CHA files the BOE on ICEGATE, but the supporting paper — supplier
+ * invoice, packing list, certificate of origin, airway bill — is lodged on
+ * eSanchit FIRST, and each upload returns a DRN the BOE then quotes. An order
+ * whose BOE is filed without its DRNs gets a customs query, which is a week of
+ * dwell. This panel makes that state visible and gives Inbound the filing
+ * agent to close it.
+ */
+export function ESanchitPanel({ orderId, status }: { orderId: string; status: ESanchitState }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [run, setRun] = useState<AgentRun | null>(null);
+
+  const lodge = () =>
+    start(async () => {
+      const res = await fileDocsOnESanchit(orderId);
+      if (res.ok) {
+        toast.success(res.message, { description: res.detail, duration: 10000 });
+        if (res.run) setRun(res.run);
+        router.refresh();
+      } else {
+        toast.error(res.message, { description: res.detail, duration: 9000 });
+      }
+    });
+
+  return (
+    <Panel>
+      <PanelHeader
+        title="Customs documents on eSanchit"
+        description="Supporting documents are lodged on eSanchit before the Bill of Entry is filed on ICEGATE — each upload returns a DRN the BOE quotes. The CHA files with their credential; the agent does the portal work."
+        actions={
+          status.filed ? (
+            <Chip tone="success" size="sm" icon={FileCheck2}>
+              Lodged · {status.reference}
+            </Chip>
+          ) : (
+            <Chip tone="warning" size="sm">
+              Not lodged yet
+            </Chip>
+          )
+        }
+      />
+
+      {status.filed ? (
+        <ul className="border-line-subtle flex min-w-0 flex-col border-t">
+          {status.drns.map((d) => (
+            <li
+              key={d.drn}
+              className="border-line-subtle flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5 border-b py-2 last:border-b-0"
+            >
+              <span className="text-fg min-w-0 flex-1 truncate text-[12.5px]">{d.title}</span>
+              <span className="text-fg shrink-0 font-mono text-[12px] font-medium">{d.drn}</span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <Button
+            variant="primary"
+            icon={Bot}
+            onClick={lodge}
+            disabled={pending || status.lodgeable === 0}
+          >
+            Lodge {status.lodgeable > 0 ? `${status.lodgeable} document${status.lodgeable === 1 ? '' : 's'}` : 'documents'} via the agent
+          </Button>
+          {status.lodgeable === 0 && (
+            <span className="text-fg-tertiary text-[12px]">
+              Nothing to lodge yet — the supplier invoice, packing list, certificate of origin and
+              airway bill appear here as they are filed on the order.
+            </span>
+          )}
+        </div>
+      )}
+
+      <AgentRunDialog
+        run={run}
+        title="Lodged on eSanchit"
+        open={run !== null}
+        onOpenChange={(o) => !o && setRun(null)}
+      />
+    </Panel>
   );
 }

@@ -48,7 +48,7 @@ import { NextActionPanel } from '@/app/(app)/orders/[id]/NextActionPanel';
 import { StageEvidenceDialog } from '@/app/(app)/orders/[id]/StageEvidenceDialog';
 import type { EvidenceRecord } from '@/app/(app)/orders/[id]/StageEvidencePanel';
 import { CommunicationTab } from '@/app/(app)/orders/[id]/CommunicationTab';
-import { TeamDocumentsPanel, TeamLiabilityPanel, TeamOrderFactsPanel } from './TeamOrderExtras';
+import { ESanchitPanel, LiveCashPanel, TeamDocumentsPanel, TeamLiabilityPanel, TeamOrderFactsPanel, type ESanchitState } from './TeamOrderExtras';
 import { DeliverablesPanel } from './DeliverablesPanel';
 import type { TeamDeliverables } from '@/lib/queries/team-deliverables';
 import { cn, formatDate } from '@/lib/utils';
@@ -73,6 +73,7 @@ export function TeamOrderView({
   slug,
   financeApprovers,
   deliverables,
+  eSanchit,
 }: {
   order: OrderDetail;
   team: Stakeholder;
@@ -81,6 +82,8 @@ export function TeamOrderView({
   financeApprovers: FinanceApprover[];
   /** The documents this team owes on this order, drafted or not. */
   deliverables: TeamDeliverables;
+  /** eSanchit filing state — fetched only for the Inbound desk. */
+  eSanchit?: ESanchitState | null;
 }) {
   const { label: pick } = usePreferences();
   const meta = STAKEHOLDER_META[team];
@@ -290,12 +293,23 @@ export function TeamOrderView({
         what the supplier's price already includes — but Inspection does not,
         since nothing they do turns on who booked the freight.
       */}
+      {/* Finance watches the money while the order runs; the signable P&L
+          waits for the end of the flow. Cash, not goods — see cash-flows.ts. */}
+      {team === 'ONE_BUY_FINANCE' && deliverables.input && (
+        <LiveCashPanel input={deliverables.input} />
+      )}
+
       {SEES_LIABILITY.has(team) && (
         <TeamLiabilityPanel
           team={team}
           buyIncoterms={order.incoterms}
           sellIncoterms={order.customerPo.incoterms}
         />
+      )}
+
+      {/* The CHA's document portal, on the desk that coordinates the CHA. */}
+      {team === 'ONE_BUY_INBOUND' && eSanchit && (
+        <ESanchitPanel orderId={order.id} status={eSanchit} />
       )}
 
       {/*
@@ -442,6 +456,7 @@ export function TeamOrderView({
           <Tabs.Content value="docs" className="min-w-0 p-4 outline-none">
             <TeamDocumentsPanel
               team={team}
+              orderAlias={order.alias}
               docs={order.documents.map((d) => ({
                 id: d.id,
                 docType: d.docType,
@@ -450,6 +465,9 @@ export function TeamOrderView({
                 stageId: d.stageId,
                 uploadedBy: d.uploadedBy,
                 createdAt: d.createdAt,
+                version: d.version,
+                sizeBytes: d.sizeBytes,
+                bodyText: d.bodyText,
               }))}
             />
           </Tabs.Content>

@@ -856,7 +856,7 @@ async function buildWorkOrder(spec: WoSpec) {
     if (owner === 'SUPPLIER') return { id: null, label: `${supplier.contactName} (supplier)` };
     if (owner === 'ESCROW') return { id: null, label: 'Escrow provider notification' };
     if (owner === 'WHL') return { id: null, label: 'Testing Laboratory status sync' };
-    if (owner === 'WHA') return { id: null, label: 'Indian Customs status sync' };
+    if (owner === 'CHA') return { id: null, label: 'Indian Customs status sync' };
     return { id: null, label: 'Logistics tracking sync' };
   };
 
@@ -1721,13 +1721,54 @@ async function buildWorkOrder(spec: WoSpec) {
   if (hasSupplierPo) docs.push({ docType: 'SUPPLIER_PO', title: `Purchase order ${supPoNo}`, fileName: `${supPoNo}.pdf`, stage: 'SUPPLIER_PO_ISSUED', by: 'Akash Dwivedi' });
   if (hasSupplierPi) docs.push({ docType: 'SUPPLIER_PI', title: `Supplier proforma ${supPiNo}`, fileName: `${supPiNo}.pdf`, stage: 'SUPPLIER_PI_RECEIVED', by: 'Akash Dwivedi' });
   if (reached('TEST_PASSED') || spec.targetStage === 'TEST_FAILED') docs.push({ docType: 'TEST_REPORT', title: `WHL test report (${spec.targetStage === 'TEST_FAILED' ? 'FAIL' : 'PASS'})`, fileName: `WHL-RPT-2026-${pad(spec.aliasNo)}.pdf`, stage: spec.targetStage === 'TEST_FAILED' ? 'TEST_FAILED' : 'TEST_PASSED', by: 'WHL upload' });
-  if (reached('CUSTOMS_ENTRY_FILED_ICEGATE')) docs.push({ docType: 'BOE', title: `Bill of Entry ${7600000 + spec.aliasNo}`, fileName: `BOE-${7600000 + spec.aliasNo}.pdf`, stage: 'CUSTOMS_ENTRY_FILED_ICEGATE', by: 'WHA agent' });
-  if (reached('DUTY_ASSESSED_AND_PAID')) docs.push({ docType: 'DUTY_CHALLAN', title: `Duty challan`, fileName: `CHLN-2026-${pad(spec.aliasNo, 7)}.pdf`, stage: 'DUTY_ASSESSED_AND_PAID', by: 'WHA agent' });
-  if (reached('CUSTOMS_CLEARED')) docs.push({ docType: 'OUT_OF_CHARGE', title: 'Out-of-charge document', fileName: `OOC-${7600000 + spec.aliasNo}.pdf`, stage: 'CUSTOMS_CLEARED', by: 'WHA agent' });
+  if (reached('CUSTOMS_ENTRY_FILED_ICEGATE')) docs.push({ docType: 'BOE', title: `Bill of Entry ${7600000 + spec.aliasNo}`, fileName: `BOE-${7600000 + spec.aliasNo}.pdf`, stage: 'CUSTOMS_ENTRY_FILED_ICEGATE', by: 'CHA agent' });
+  if (reached('DUTY_ASSESSED_AND_PAID')) docs.push({ docType: 'DUTY_CHALLAN', title: `Duty challan`, fileName: `CHLN-2026-${pad(spec.aliasNo, 7)}.pdf`, stage: 'DUTY_ASSESSED_AND_PAID', by: 'CHA agent' });
+  if (reached('CUSTOMS_CLEARED')) docs.push({ docType: 'OUT_OF_CHARGE', title: 'Out-of-charge document', fileName: `OOC-${7600000 + spec.aliasNo}.pdf`, stage: 'CUSTOMS_CLEARED', by: 'CHA agent' });
   if (reached('GOODS_RECEIVED_INBOUND_AT_1BUY')) docs.push({ docType: 'GRN', title: `Goods receipt note`, fileName: `GRN-2026-${pad(200 + spec.aliasNo)}.pdf`, stage: 'GOODS_RECEIVED_INBOUND_AT_1BUY', by: 'Akash Dwivedi' });
   if (reached('INSPECTION_PASSED')) docs.push({ docType: 'INSPECTION_REPORT', title: 'Signed inbound inspection report', fileName: `INS-2026-${pad(180 + spec.aliasNo)}.pdf`, stage: 'INSPECTION_PASSED', by: 'Akash Dwivedi' });
   if (reached('POD_ISSUED_TO_CUSTOMER')) docs.push({ docType: 'POD', title: 'Proof of delivery', fileName: `POD-2026-${pad(180 + spec.aliasNo)}.pdf`, stage: 'POD_ISSUED_TO_CUSTOMER', by: 'DHL retrieval' });
   if (reached('CUSTOMER_INVOICED_AND_SETTLED')) docs.push({ docType: 'TAX_INVOICE', title: `Tax invoice INV-1B-${pad(200 + spec.aliasNo)}`, fileName: `INV-1B-${pad(200 + spec.aliasNo)}.pdf`, stage: 'CUSTOMER_INVOICED_AND_SETTLED', by: 'Ankit Sharma' });
+
+  /*
+   * Every seeded document opens to a full sample sheet, not a two-line stub.
+   *
+   * The register's rows are clickable and the viewer renders bodyText — a
+   * document that opens to nothing teaches people the register is decorative.
+   */
+  const lineBlock = spec.lines
+    .map((l, ix) => `  ${ix + 1}. ${l.mpn} — ${l.qty.toLocaleString('en-IN')} PCS`)
+    .join('\n');
+  const sampleBody = (d: { docType: string; title: string }): string => {
+    const head = `${d.title}\nWork order ${canonical}\nCustomer: ${customer.name} · Supplier: ${supplier.name}\n`;
+    switch (d.docType) {
+      case 'CUSTOMER_PO':
+        return `${head}\nPurchase order ${custPoNo}\nParts ordered:\n${lineBlock}\n\nDelivery: as per agreed schedule.\nAuthorised by the customer's procurement desk.`;
+      case 'CUSTOMER_PI':
+        return `${head}\nProforma invoice ${custPiNo} issued against ${custPoNo}.\nParts quoted:\n${lineBlock}\n\nValidity: 14 days. Prices in INR, exclusive of GST.`;
+      case 'SUPPLIER_PO':
+        return `${head}\nPurchase order ${supPoNo} to ${supplier.name}.\nParts:\n${lineBlock}\n\nDelivery term: ${supplier.incoterms}. Currency: ${supplier.currency}.`;
+      case 'SUPPLIER_PI':
+        return `${head}\nSupplier proforma ${supPiNo} against our ${supPoNo}.\nParts confirmed:\n${lineBlock}\n\nBank details verified independently before payment.`;
+      case 'TEST_REPORT':
+        return `${head}\nLaboratory: WHL Bengaluru.\nScope: lot sample. Sample drawn per plan.\nElectrical parameters, marking permanency and decapsulation checks completed.\nVerdict: as recorded on the order.`;
+      case 'BOE':
+        return `${head}\nBill of Entry filed on ICEGATE by the CHA.\nSupporting documents lodged on eSanchit ahead of filing.\nAssessable value and duty as assessed by customs.`;
+      case 'DUTY_CHALLAN':
+        return `${head}\nDuty payment challan.\nBCD, SWS and cess paid; IGST paid and claimable as Input Tax Credit.`;
+      case 'OUT_OF_CHARGE':
+        return `${head}\nOut-of-charge granted. Consignment released from customs control.`;
+      case 'GRN':
+        return `${head}\nGoods receipt note.\nParts received:\n${lineBlock}\n\nCondition on arrival: sound. Put away per storage plan.`;
+      case 'INSPECTION_REPORT':
+        return `${head}\nInbound inspection.\nMarkings verified against ordered parts. Packaging intact.\nVerdict: as recorded on the order.`;
+      case 'POD':
+        return `${head}\nProof of delivery retrieved from the carrier.\nSigned at the customer's receiving dock.`;
+      case 'TAX_INVOICE':
+        return `${head}\nTax invoice raised on the customer with GST as applicable.\nIRN and e-way bill generated where required.`;
+      default:
+        return `${head}\nFiled against the order.`;
+    }
+  };
 
   await db.document.createMany({
     data: docs.map((d) => ({
@@ -1738,8 +1779,11 @@ async function buildWorkOrder(spec: WoSpec) {
       uploadedBy: d.by,
       provenance: d.by.includes('retrieval') || d.by.includes('upload') ? 'MOCK' : 'MANUAL',
       workOrderId: spec.key,
+      // The stage is already carried for the timestamp — filing it on the row
+      // too is what lets the register say WHICH step a document belongs to.
+      stageId: d.stage,
       createdAt: at(d.stage),
-      bodyText: `${d.title}\n\nWork order: ${canonical}\nGenerated for the ${spec.key} demonstration dataset.`,
+      bodyText: sampleBody(d),
     })),
   });
 
@@ -1950,7 +1994,7 @@ function buildHumanThreads(
       occurredAt: new Date(at('CUSTOMS_ENTRY_FILED_ICEGATE').getTime() + 3 * HOUR),
       loggedById: 'u-ankit',
       participants: [
-        { role: 'FROM', stakeholder: 'WHA', name: 'WHA Bengaluru Air Cargo desk' },
+        { role: 'FROM', stakeholder: 'CHA', name: 'WHA Bengaluru Air Cargo desk' },
         { role: 'TO', stakeholder: 'ONE_BUY_SOURCING', name: 'Ankit Sharma' },
       ],
       context: [{ kind: 'STAGE', refId: 'CUSTOMS_ENTRY_FILED_ICEGATE', label: 'E4 · Customs entry filed' }],

@@ -102,8 +102,8 @@
   --sh-escrow-subtle: #ecfdf5;
   --sh-whl: #d97706; /* amber   — validated */
   --sh-whl-subtle: #fffbeb;
-  --sh-wha: #e11d48; /* rose    — validated */
-  --sh-wha-subtle: #fff1f3;
+  --sh-cha: #e11d48; /* rose    — validated */
+  --sh-cha-subtle: #fff1f3;
   --sh-logistics: #475569; /* neutral — deliberate, not a failed hue */
   --sh-logistics-subtle: #f1f5f9;
 
@@ -177,8 +177,8 @@
   --sh-escrow-subtle: #06281f;
   --sh-whl: #b45309;
   --sh-whl-subtle: #2a1d05;
-  --sh-wha: #f43f5e;
-  --sh-wha-subtle: #2c0b14;
+  --sh-cha: #f43f5e;
+  --sh-cha-subtle: #2c0b14;
   --sh-logistics: #94a3b8;
   --sh-logistics-subtle: #1e293b;
 
@@ -249,8 +249,8 @@
   --color-sh-escrow-subtle: var(--sh-escrow-subtle);
   --color-sh-whl: var(--sh-whl);
   --color-sh-whl-subtle: var(--sh-whl-subtle);
-  --color-sh-wha: var(--sh-wha);
-  --color-sh-wha-subtle: var(--sh-wha-subtle);
+  --color-sh-cha: var(--sh-cha);
+  --color-sh-cha-subtle: var(--sh-cha-subtle);
   --color-sh-logistics: var(--sh-logistics);
   --color-sh-logistics-subtle: var(--sh-logistics-subtle);
 
@@ -539,5 +539,31 @@ samp {
   }
   @page {
     margin: 14mm;
+  }
+}
+
+/*
+ * Printing one document from the viewer dialog.
+ *
+ * The classic visibility scope: when the viewer arms printing it stamps
+ * data-print-doc on <body>, everything goes invisible, and the sheet is
+ * repositioned to the page origin. "Save as PDF" in the browser's print
+ * dialog then yields a clean one-document PDF with no PDF library shipped.
+ */
+@media print {
+  body[data-print-doc] * {
+    visibility: hidden;
+  }
+  body[data-print-doc] .doc-sheet,
+  body[data-print-doc] .doc-sheet * {
+    visibility: visible;
+  }
+  body[data-print-doc] .doc-sheet {
+    position: fixed;
+    inset: 0;
+    overflow: visible;
+    border: none;
+    border-radius: 0;
+    max-width: none;
   }
 }

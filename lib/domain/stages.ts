@@ -65,7 +65,7 @@ export const PHASE_DEFS: Record<PhaseId, PhaseDef> = {
     // an operator finds that out.
     plainLabel: 'Shipping and customs',
     description: 'The goods travel to India and clear customs.',
-    owner: 'Supplier → Logistics Partner → Customs Agent',
+    owner: 'Supplier → Logistics Partner → CHA',
   },
   /**
    * Everything that happens while the goods are standing in our warehouse:
@@ -714,9 +714,9 @@ export const STAGE_DEFS: StageDef[] = [
     ownerFor: (ctx) => (weArrangeFreight(ctx) ? 'LOGISTICS' : 'SUPPLIER'),
     expectedHours: 120,
     artifacts: ['Tracking events'],
-    nextAction: 'Engage the customs agent on arrival.',
-    nextActionOwner: 'WHA',
-    nextActionOwnerFor: (ctx) => (weHandleCustoms(ctx) ? 'WHA' : 'SUPPLIER'),
+    nextAction: 'Engage the CHA (customs house agent) on arrival.',
+    nextActionOwner: 'CHA',
+    nextActionOwnerFor: (ctx) => (weHandleCustoms(ctx) ? 'CHA' : 'SUPPLIER'),
     next: ['BORDER_ARRIVAL_WHA_ENGAGED'],
     applies: isImport,
     notApplicableReason: domesticReason,
@@ -725,16 +725,16 @@ export const STAGE_DEFS: StageDef[] = [
     id: 'BORDER_ARRIVAL_WHA_ENGAGED',
     code: 'E3',
     phase: 'E',
-    label: 'Border arrival — Customs Agent engaged',
+    label: 'Border arrival — CHA engaged',
     plainLabel: 'Arrived at customs — agent engaged',
     description:
       'The goods have reached the border and our customs agent has taken over the paperwork.',
     exitCriteria: 'Customs Agent assigned and all documents handed over.',
-    owner: 'WHA',
+    owner: 'CHA',
     expectedHours: 24,
     artifacts: ['Customs Agent engagement record'],
     nextAction: 'File the customs entry.',
-    nextActionOwner: 'WHA',
+    nextActionOwner: 'CHA',
     next: ['CUSTOMS_ENTRY_FILED_ICEGATE'],
     applies: weHandleCustoms,
     notApplicableReason: (ctx) =>
@@ -749,11 +749,11 @@ export const STAGE_DEFS: StageDef[] = [
     description:
       'The customs agent has filed the Bill of Entry with Indian customs, and we track its status.',
     exitCriteria: 'Entry number and filing acknowledgement received.',
-    owner: 'WHA',
+    owner: 'CHA',
     expectedHours: 24,
     artifacts: ['Bill of Entry', 'Supporting documents'],
     nextAction: 'Await assessment, then pay the duty.',
-    nextActionOwner: 'WHA',
+    nextActionOwner: 'CHA',
     next: ['DUTY_ASSESSED_AND_PAID'],
     applies: weHandleCustoms,
     notApplicableReason: (ctx) =>
@@ -772,7 +772,7 @@ export const STAGE_DEFS: StageDef[] = [
     expectedHours: 24,
     artifacts: ['Duty challan', 'Payment receipt'],
     nextAction: 'Await customs release.',
-    nextActionOwner: 'WHA',
+    nextActionOwner: 'CHA',
     next: ['CUSTOMS_CLEARED'],
     applies: weHandleCustoms,
     notApplicableReason: (ctx) =>
@@ -786,11 +786,11 @@ export const STAGE_DEFS: StageDef[] = [
     plainLabel: 'Released by customs',
     description: 'Customs has released the goods. They can now travel to our premises.',
     exitCriteria: 'Out-of-charge / release confirmed.',
-    owner: 'WHA',
+    owner: 'CHA',
     // The goods clear customs on every import, but not always by our agent.
     // Kept visible under DDP because release is what lets them travel to us —
     // only the party doing it changes.
-    ownerFor: (ctx) => (weClearImport(ctx) ? 'WHA' : 'SUPPLIER'),
+    ownerFor: (ctx) => (weClearImport(ctx) ? 'CHA' : 'SUPPLIER'),
     expectedHours: 24,
     artifacts: ['Out-of-charge document'],
     nextAction: 'Receive the goods at our warehouse.',

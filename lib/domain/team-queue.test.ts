@@ -26,12 +26,12 @@ describe('bucketFor — whose desk is it on', () => {
   });
 
   it('is waiting when I own it but the ball is elsewhere', () => {
-    const r = row({ owner: 'ONE_BUY_FINANCE', nextActionOwner: 'WHA' });
+    const r = row({ owner: 'ONE_BUY_FINANCE', nextActionOwner: 'CHA' });
     expect(bucketFor(r, 'ONE_BUY_FINANCE')).toBe('WAITING');
   });
 
   it('is incoming when the step after this one is mine', () => {
-    const r = row({ owner: 'WHA', nextActionOwner: 'WHA', nextStageOwner: 'ONE_BUY_INBOUND' });
+    const r = row({ owner: 'CHA', nextActionOwner: 'CHA', nextStageOwner: 'ONE_BUY_INBOUND' });
     expect(bucketFor(r, 'ONE_BUY_INBOUND')).toBe('INCOMING');
   });
 

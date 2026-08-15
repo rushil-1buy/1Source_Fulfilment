@@ -113,6 +113,7 @@ export function RecordTable({
   pageSize,
   rowNoun,
   primaryAction,
+  onRowClick,
 }: {
   columns: ColumnSpec[];
   rows: RecordRow[];
@@ -125,6 +126,13 @@ export function RecordTable({
   rowNoun?: string;
   /** Create control, rendered in the toolbar's right-hand group. */
   primaryAction?: React.ReactNode;
+  /**
+   * Overrides the default href navigation when a row is clicked.
+   *
+   * For rows that open something in place — a document viewer, a drawer —
+   * rather than navigating away. When set, `href` on the rows is ignored.
+   */
+  onRowClick?: (row: RecordRow) => void;
 }) {
   const router = useRouter();
 
@@ -158,7 +166,7 @@ export function RecordTable({
       data={rows}
       getRowId={(r) => r.id}
       onRowClick={
-        rows.some((r) => r.href) ? (r) => r.href && router.push(r.href) : undefined
+        onRowClick ?? (rows.some((r) => r.href) ? (r) => r.href && router.push(r.href) : undefined)
       }
       searchPlaceholder={searchPlaceholder ?? 'Search…'}
       exportName={exportName ?? 'export'}

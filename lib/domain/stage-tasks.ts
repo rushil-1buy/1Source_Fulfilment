@@ -350,17 +350,17 @@ const ACTIONS: Record<string, ActionSpec[]> = {
     { id: 'track', label: 'Track the shipment', detail: 'Watch for the arrival scan; that is what starts the customs clock.', owner: 'LOGISTICS', doneWhen: 'lastScanOn' },
   ],
   BORDER_ARRIVAL_WHA_ENGAGED: [
-    { id: 'engage-cha', label: 'Engage the customs agent', detail: 'Hand them the full document set. Demurrage starts accruing from arrival, not from when we get round to it.', owner: 'WHA', required: true },
+    { id: 'engage-cha', label: 'Engage the customs agent', detail: 'Hand them the full document set. Demurrage starts accruing from arrival, not from when we get round to it.', owner: 'CHA', required: true },
   ],
   CUSTOMS_ENTRY_FILED_ICEGATE: [
-    { id: 'file-boe', label: 'File the Bill of Entry', detail: 'On ICEGATE, with the CIF value and HSN codes as declared.', owner: 'WHA', required: true, doneWhen: 'beNumber' },
+    { id: 'file-boe', label: 'File the Bill of Entry', detail: 'On ICEGATE, with the CIF value and HSN codes as declared.', owner: 'CHA', required: true, doneWhen: 'beNumber' },
   ],
   DUTY_ASSESSED_AND_PAID: [
     { id: 'check-assessment', label: 'Check the assessed duty against our estimate', detail: 'A large variance usually means a classification dispute, and disputing it after payment is much harder.', required: true },
     { id: 'pay-duty', label: 'Pay the duty', detail: 'BCD and Social Welfare Surcharge are real cost; import IGST is recoverable and must not be booked as cost.', required: true, doneWhen: 'paidOn' },
   ],
   CUSTOMS_CLEARED: [
-    { id: 'get-ooc', label: 'Obtain the Out of Charge', detail: 'The customs release. Without it the goods do not leave the port.', owner: 'WHA', required: true, doneWhen: 'outOfChargeRef' },
+    { id: 'get-ooc', label: 'Obtain the Out of Charge', detail: 'The customs release. Without it the goods do not leave the port.', owner: 'CHA', required: true, doneWhen: 'outOfChargeRef' },
   ],
   GOODS_RECEIVED_INBOUND_AT_1BUY: [
     { id: 'receive-goods', label: 'Receive the goods and raise the GRN', detail: 'Count against the packing list before signing anything.', required: true, doneWhen: 'receivedOn' },

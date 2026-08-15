@@ -106,11 +106,18 @@ export const PNL: DeliverableDef = {
   label: 'Order Profit & Loss',
   plainLabel: 'What we made on this order',
   purpose:
-    'The statement Finance signs for what this order earned — revenue, every landed cost, and the tax we get back kept separate from the tax we do not.',
-  // Before terms are locked the buy price can still move, and a P&L drafted off
-  // a price that changes is a document somebody will quote back at you.
-  readyFromStage: 'TERMS_LOCKED',
-  dueByStage: 'CUSTOMER_INVOICED_AND_SETTLED',
+    'The final statement Finance signs for what this order earned, cut once the customer has settled. Until then, the live cash ledger above tracks the running position.',
+  /*
+   * Drafted at the END of the flow, deliberately.
+   *
+   * A P&L is a statement about what the order earned, and until the customer
+   * has settled, most of its lines are still moving. The running position —
+   * what has actually been paid out and received so far — is the cash ledger
+   * on Finance's order view, which updates itself stage by stage. This
+   * document is the signed final word, cut when the money has stopped moving.
+   */
+  readyFromStage: 'CUSTOMER_INVOICED_AND_SETTLED',
+  dueByStage: 'ORDER_CLOSED',
   sections: SECTIONS,
   fields: FIELDS,
 
