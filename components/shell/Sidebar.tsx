@@ -12,6 +12,7 @@ import {
   ChevronsLeft,
   ClipboardCheck,
   ClipboardList,
+  Bot,
   Database,
   FilePlus2,
   FlaskConical,
@@ -35,6 +36,7 @@ import { usePreferences } from '@/components/providers/Preferences';
 
 const ICONS: Record<string, LucideIcon> = {
   LayoutDashboard,
+  Bot,
   ShoppingCart,
   Banknote,
   PackageOpen,

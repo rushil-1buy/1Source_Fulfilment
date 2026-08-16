@@ -88,6 +88,35 @@ interface WoSpec {
 const SPECS: WoSpec[] = [
 
   /*
+   * The order the autonomous walkthrough is named after.
+   *
+   * Parked at B2, the earliest stage the record can legally occupy — a work
+   * order requires both purchase orders to exist, so A1 is not a state a work
+   * order can be in. The walkthrough narrates from A1 regardless: it is a
+   * simulation of the whole run, not a readout of where this order stands.
+   */
+  {
+    key: 'wo-agentic-demo',
+    alias: 'AGENTIC-DEMO',
+    aliasNo: 119,
+    docNo: 54,
+    customerId: 'c-acme',
+    supplierId: 's-global',
+    paymentMethod: 'ESCROW',
+    testingRequired: true,
+    testScope: 'LOT_SAMPLE',
+    targetStage: 'SUPPLIER_PO_ISSUED',
+    startedDaysAgo: 1,
+    hoursInStage: 3,
+    labId: 'lab-whl-blr',
+    headline: 'Walkthrough — the order the autonomous flow simulation runs against.',
+    lines: [
+      { mpn: 'STM32F407VGT6', qty: 1500, sell: 985, buy: 9.15, testing: true },
+      { mpn: 'W25Q128JVSIQ', qty: 3200, sell: 152, buy: 1.42, testing: true },
+    ],
+  },
+
+  /*
    * The two walkthrough orders.
    *
    * Each is parked at the first step of one leg so that leg can be run start to

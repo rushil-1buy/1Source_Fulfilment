@@ -47,6 +47,7 @@ import {
   type RecordRow,
 } from "@/components/ui/RecordTable";
 import { usePreferences } from "@/components/providers/Preferences";
+import { TeamAutonomyPanel } from "@/components/agentic/TeamAutonomyPanel";
 import { cn } from "@/lib/utils";
 
 /** Shared across every queue, so a row means the same thing on each tab. */
@@ -264,6 +265,11 @@ export function TeamWorkspaceView({
         a narrow width looked broken, and one clean row that moves is calmer
         than two that do not.
       */}
+      {/* What the agent is planned to take on for THIS desk — the same script
+          the walkthrough plays, filtered to their steps. A team asks "what
+          happens to my job?", which deserves an answer on their own screen. */}
+      <TeamAutonomyPanel team={workspace.team} />
+
       <Panel padded={false}>
         <Tabs.Root value={tab} onValueChange={setTab} className="min-w-0">
           <Tabs.List

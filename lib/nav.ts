@@ -83,6 +83,19 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    id: 'agentic',
+    label: null,
+    items: [
+      {
+        href: '/agentic',
+        label: 'Autonomous flow',
+        plainLabel: 'How the agent would run it',
+        icon: 'Bot',
+        hint: 'Walkthrough of the agentic flow — and where it hands back to a person.',
+      },
+    ],
+  },
+  {
     id: 'create',
     label: 'Create',
     items: [
