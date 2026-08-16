@@ -1,32 +1,34 @@
+import { notFound } from 'next/navigation';
 import { db } from '@/lib/db';
+import { getStage } from '@/lib/domain/stages';
 import { PageHeader, PageShell } from '@/components/ui/Layout';
-import { AgenticSimulator } from '@/components/agentic/AgenticSimulator';
+import { AgenticRunner } from '@/components/agentic/AgenticRunner';
 
-/** Reads a live order to name the walkthrough, so it is never prerendered. */
+/** The order genuinely moves here, so nothing about this page may be cached. */
 export const dynamic = 'force-dynamic';
 
 export const metadata = { title: 'Autonomous flow' };
 
 export default async function AgenticPage() {
-  /*
-   * Named after a real order in the system rather than a placeholder.
-   *
-   * The walkthrough is an argument about how THIS platform would run, and
-   * pointing it at an order somebody can also open in the Control Tower is what
-   * keeps it from reading as a slide.
-   */
   const order = await db.workOrder.findFirst({
     where: { alias: 'AGENTIC-DEMO' },
-    select: { alias: true },
+    select: { id: true, alias: true, stage: true },
   });
+  if (!order) notFound();
 
+  const stage = getStage(order.stage);
   return (
     <PageShell width="full">
       <PageHeader
         title="Autonomous fulfilment"
-        description="How the flow runs when an agent works it — and the points where it hands back to a person. A walkthrough, not a live run."
+        description="The agent working a real order, through the real gates. It advances what it is allowed to advance and stops where a person is required."
       />
-      <AgenticSimulator orderAlias={order?.alias ?? 'AGENTIC-DEMO'} />
+      <AgenticRunner
+        orderId={order.id}
+        orderAlias={order.alias}
+        startCode={stage.code}
+        startLabel={stage.label}
+      />
     </PageShell>
   );
 }

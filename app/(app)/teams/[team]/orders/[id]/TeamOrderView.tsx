@@ -50,6 +50,7 @@ import type { EvidenceRecord } from '@/app/(app)/orders/[id]/StageEvidencePanel'
 import { CommunicationTab } from '@/app/(app)/orders/[id]/CommunicationTab';
 import { ESanchitPanel, LiveCashPanel, TeamDocumentsPanel, TeamLiabilityPanel, TeamOrderFactsPanel, type ESanchitState } from './TeamOrderExtras';
 import { DeliverablesPanel } from './DeliverablesPanel';
+import { AgentInThreadNote } from '@/components/agentic/AgentInThreadNote';
 import type { TeamDeliverables } from '@/lib/queries/team-deliverables';
 import { cn, formatDate } from '@/lib/utils';
 
@@ -473,6 +474,11 @@ export function TeamOrderView({
           </Tabs.Content>
 
           <Tabs.Content value="comms" className="min-w-0 p-4 outline-none">
+            {/* The agent sits in the thread, not beside it. Its replies are
+                ordinary messages authored by "Autonomous agent · <team>", each
+                quoting the mail it was drafted from — so the email and the
+                reply read together and either can be audited against the other. */}
+            <AgentInThreadNote team={team} order={order} />
             {/* The order page's own thread, sent as this team. Same component,
                 same records — not a second inbox that would drift from it. */}
             <CommunicationTab order={order} fromTeam={team} />

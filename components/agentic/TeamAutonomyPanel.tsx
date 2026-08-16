@@ -99,7 +99,7 @@ export function TeamAutonomyPanel({ team }: { team: Stakeholder }) {
         href="/agentic"
         className="text-accent-text mt-2.5 inline-flex items-center gap-1.5 text-[12.5px] font-medium hover:underline"
       >
-        Watch the full walkthrough
+        Run the agent on the demo order
         <ArrowUpRight className="size-3.5 shrink-0" strokeWidth={2} aria-hidden />
       </Link>
     </Panel>
