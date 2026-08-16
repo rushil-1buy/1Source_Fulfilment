@@ -5,19 +5,29 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   DESIGN TOKENS — §10.2
-   Neutral spine of deep graphite/ink, ONE accent carrying all primary emphasis,
-   semantic colours reserved strictly for status, and a stakeholder palette used
-   consistently across badges and swimlanes in both themes.
+   DESIGN TOKENS — iWorkbench
+   Retuned to the iWorkbench system: deep navy #1d2e52 as the primary, light
+   neutral page surfaces, and the navy carried literally as the left pane's own
+   surface rather than as an accent applied to it.
+
+   RETUNED RATHER THAN REPLACED, deliberately. Every token NAME here is
+   unchanged and the @theme bridge below is untouched, so several hundred
+   components keep resolving the same utilities — only what those utilities
+   resolve TO has moved. A rewrite that renamed tokens would have been the same
+   visual change with a functional blast radius, which is the one thing this
+   re-skin was not allowed to cost.
+
+   Semantic colours stay reserved strictly for status, and the stakeholder
+   palette stays validated for colour-vision deficiency — see the note on it.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 :root {
   /* ── Neutral spine: 11 steps, #F7F8FA → #0B0E14 ── */
   --neutral-0: #ffffff;
-  --neutral-50: #f7f8fa;
-  --neutral-100: #f0f2f5;
-  --neutral-200: #e8ebf0;
-  --neutral-300: #d8dde6;
+  --neutral-50: #f7f8fa;  /* --background */
+  --neutral-100: #f0f2f5; /* --secondary */
+  --neutral-200: #e2e6eb; /* --border / --input */
+  --neutral-300: #d3d9e0;
   --neutral-400: #b9c1ce;
   --neutral-500: #8b94a5;
   --neutral-600: #6b7486;
@@ -31,12 +41,12 @@
   --surface-1: var(--neutral-0);
   --surface-2: var(--neutral-0);
   --surface-3: var(--neutral-100);
-  --surface-inset: var(--neutral-100);
+  --surface-inset: #eef1f4; /* --muted */
 
   /* ── Text ── */
-  --text-primary: var(--neutral-950);
-  --text-secondary: var(--neutral-700);
-  --text-tertiary: var(--neutral-600);
+  --text-primary: #0f1419;   /* --foreground */
+  --text-secondary: #3d4551;
+  --text-tertiary: #5c6370;  /* --muted-foreground */
   --text-inverse: var(--neutral-0);
 
   /* ── Borders ── */
@@ -44,34 +54,47 @@
   --border-default: var(--neutral-300);
   --border-strong: var(--neutral-400);
 
-  /* ── The single accent ── */
-  --accent: #4f46e5;
-  --accent-hover: #4338ca;
-  --accent-active: #3730a3;
-  --accent-subtle: #eef0ff;
-  --accent-border: #c7cbff;
+  /* ── The single accent: iWorkbench navy ──
+     #1d2e52 is dark enough to carry white text at ~13:1, which is what lets the
+     same value serve as both the emphasis colour here and the literal sidebar
+     surface below — one primary, used two ways, rather than a brand colour and
+     a separate dark chrome that drift apart. */
+  --accent: #1d2e52;
+  --accent-hover: #16233f;
+  --accent-active: #101a2f;
+  --accent-subtle: #eef1f8;  /* --accent, the light-surface tint */
+  --accent-border: #c6d0e6;
   --accent-fg: #ffffff;
-  --accent-text: #4338ca;
+  --accent-text: #1d2e52;
+
+  /* Brand wash + focus glow, per the control spec. */
+  --brand-glow: rgba(29, 46, 82, 0.2);
+  --brand-tint: rgba(29, 46, 82, 0.04);
 
   /* ── Semantic status ── */
-  --success: #047857;
+  /* The system's *-foreground values, not its mid-tones.
+     These tokens are read as TEXT on the matching subtle tint far more often
+     than they are painted as fills, and the mid-tones land at 3.3–4.4:1 there —
+     under the 4.5 a chip label needs. The darker foregrounds clear it and still
+     read correctly as a fill or a dot. */
+  --success: #065f46;
   --success-subtle: #ecfdf5;
   --success-border: #a7f3d0;
   --success-fg: #ffffff;
 
-  --warning: #b45309;
+  --warning: #92400e;
   --warning-subtle: #fffbeb;
   --warning-border: #fde68a;
   --warning-fg: #ffffff;
 
-  --danger: #be123c;
-  --danger-subtle: #fff1f3;
-  --danger-border: #fecdd3;
+  --danger: #b91c1c;
+  --danger-subtle: #fef2f2;
+  --danger-border: #fecaca;
   --danger-fg: #ffffff;
 
-  --info: #0369a1;
-  --info-subtle: #f0f9ff;
-  --info-border: #bae6fd;
+  --info: #1e40af;
+  --info-subtle: #eff6ff;
+  --info-border: #bfdbfe;
   --info-fg: #ffffff;
 
   --muted: #556070;
@@ -92,8 +115,12 @@
      Supplier takes violet (normal-vision ΔE 15.9 from indigo) and Logistics
      takes a deliberate neutral, rather than inventing a hue that only looks
      distinct to people with full colour vision. */
-  --sh-onebuy: #4f46e5; /* indigo  — validated */
-  --sh-onebuy-subtle: #eef0ff;
+  /* 1BUY now carries the brand navy rather than the old indigo. It moves the
+     hue DARKER, which widens its lightness separation from every other
+     stakeholder rather than narrowing it — and each mark still ships its text
+     code and icon, so identity was never colour-alone to begin with. */
+  --sh-onebuy: #1d2e52;
+  --sh-onebuy-subtle: #eef1f8;
   --sh-customer: #0891b2; /* cyan    — validated */
   --sh-customer-subtle: #ecfeff;
   --sh-supplier: #7c3aed; /* violet  — normal-vision safe vs indigo */
@@ -115,6 +142,31 @@
 
   --ring: var(--accent);
   --scrollbar-thumb: var(--neutral-300);
+
+  /* ── Left pane: the signature element ──
+     The sidebar surface IS the primary colour, not a dark neutral tinted
+     towards it. Everything on it is white; the hierarchy comes from opacity. */
+  --sidebar: #1d2e52;
+  --sidebar-foreground: #ffffff;
+  --sidebar-accent: rgba(255, 255, 255, 0.12);
+  --sidebar-border: rgba(255, 255, 255, 0.16);
+  --sidebar-ring: #a3b8e6;
+  --sidebar-gradient-from: #1d2e52;
+  --sidebar-gradient-to: #16233f;
+
+  /* Severity scale — risk and compliance, distinct from workflow status. */
+  --severity-high: #e11d48;
+  --severity-medium: #eab308;
+  --severity-low: #22c55e;
+
+  /* Chart palette. Kept separate from the stakeholder hues on purpose: one
+     answers "which series", the other "which party", and sharing a ramp
+     between them makes a legend mean two things at once. */
+  --chart-1: #2cbf67;
+  --chart-2: #00d2b4;
+  --chart-3: #3b82f6;
+  --chart-4: #8b5cf6;
+  --chart-5: #f59e0b;
 }
 
 .dark {
@@ -133,13 +185,16 @@
   --border-default: #2a3140;
   --border-strong: #3c4553;
 
-  --accent: #6366f1;
-  --accent-hover: #818cf8;
-  --accent-active: #a5b4fc;
-  --accent-subtle: #1b1e3a;
-  --accent-border: #383c74;
+  /* The navy cannot serve as the accent on a dark ground — it would vanish
+     into it. Dark mode takes the sidebar ring colour (#a3b8e6) as its accent
+     family instead: the same hue, lifted until it reads. Chosen, not flipped. */
+  --accent: #5b7bc4;
+  --accent-hover: #7d99d6;
+  --accent-active: #a3b8e6;
+  --accent-subtle: #16233f;
+  --accent-border: #2f4372;
   --accent-fg: #ffffff;
-  --accent-text: #a5b4fc;
+  --accent-text: #a3b8e6;
 
   --success: #10b981;
   --success-subtle: #06281f;
@@ -167,8 +222,8 @@
 
   /* Dark mode is SELECTED, not an automatic flip — its own steps, re-validated
      against the dark surface, all inside dark's narrower L 0.48–0.67 band. */
-  --sh-onebuy: #6366f1;
-  --sh-onebuy-subtle: #1b1e3a;
+  --sh-onebuy: #5b7bc4;
+  --sh-onebuy-subtle: #16233f;
   --sh-customer: #0891b2;
   --sh-customer-subtle: #082f36;
   --sh-supplier: #a855f7;
@@ -181,6 +236,15 @@
   --sh-cha-subtle: #2c0b14;
   --sh-logistics: #94a3b8;
   --sh-logistics-subtle: #1e293b;
+
+  /* Dark keeps the navy sidebar — the brand does not change with the theme,
+     only the page around it does. Deepened slightly so it still separates from
+     a dark page surface. */
+  --sidebar: #16233f;
+  --sidebar-gradient-from: #16233f;
+  --sidebar-gradient-to: #101a2f;
+  --brand-glow: rgba(163, 184, 230, 0.22);
+  --brand-tint: rgba(163, 184, 230, 0.05);
 
   --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 1px rgba(0, 0, 0, 0.3);
   --shadow-2: 0 2px 4px -1px rgba(0, 0, 0, 0.45), 0 4px 8px -2px rgba(0, 0, 0, 0.35);
@@ -257,10 +321,11 @@
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
 
-  /* Radii — 6 / 10 / 14 / full */
-  --radius-sm: 6px;
+  /* Radii — iWorkbench base 0.75rem (12px); sm −4, md −2, lg = base, xl +4. */
+  --radius-sm: 8px;
   --radius-md: 10px;
-  --radius-lg: 14px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
 
   --shadow-e1: var(--shadow-1);
   --shadow-e2: var(--shadow-2);
@@ -566,4 +631,67 @@ samp {
     border-radius: 0;
     max-width: none;
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LEFT PANE — the iWorkbench signature
+   The sidebar's surface is the primary colour itself. Painted here rather than
+   with utilities because the gradient has to beat whatever background class the
+   aside carries, and because every descendant inherits its foreground from one
+   place — a sidebar where some text is white by rule and some by accident is a
+   sidebar that breaks the next time a component is dropped into it.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.sidebar-inner {
+  background: linear-gradient(
+    180deg,
+    var(--sidebar-gradient-from, var(--sidebar)) 0%,
+    var(--sidebar-gradient-to, var(--sidebar)) 100%
+  );
+  border-right: 1px solid var(--sidebar-border);
+  color: var(--sidebar-foreground);
+}
+
+/* Everything inside is white; hierarchy comes from opacity, never from a
+   different hue. These override the app's neutral text utilities, which is the
+   point — the pane is a different world from the page. */
+.sidebar-inner .text-fg,
+.sidebar-inner .text-fg-secondary,
+.sidebar-inner .text-fg-tertiary {
+  color: var(--sidebar-foreground);
+}
+.sidebar-inner .text-fg-secondary { opacity: 0.82; }
+.sidebar-inner .text-fg-tertiary { opacity: 0.62; }
+
+/* Section labels: uppercase, letter-spaced, ~60% white. */
+.sidebar-label {
+  color: rgba(255, 255, 255, 0.62);
+  letter-spacing: 0.1em;
+}
+
+.sidebar-inner .sidebar-divider { background: var(--sidebar-border); }
+.sidebar-divider-b { border-bottom: 1px solid var(--sidebar-border); }
+.sidebar-divider-t { border-top: 1px solid var(--sidebar-border); }
+
+/* Hover and active share one wash. The active row is distinguished by the
+   accent bar and weight, not by a second background — two competing signals
+   for one state reads as two different states. */
+.sidebar-row:hover { background: var(--sidebar-accent); }
+.sidebar-row-active {
+  background: var(--sidebar-accent);
+  font-weight: 600;
+  box-shadow: inset 3px 0 0 0 #ffffff;
+}
+.sidebar-inner :focus-visible {
+  outline: 2px solid var(--sidebar-ring);
+  outline-offset: 1px;
+}
+
+/* ── Controls: navy focus ring + glow, per the control spec ── */
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+  box-shadow: 0 0 0 3px var(--brand-glow);
+  outline: none;
 }

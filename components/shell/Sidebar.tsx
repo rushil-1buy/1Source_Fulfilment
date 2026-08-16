@@ -79,7 +79,7 @@ export function Sidebar({
     <Tooltip.Provider delayDuration={200}>
       <aside
         className={cn(
-          'bg-surface-1 border-line-subtle flex h-dvh shrink-0 flex-col border-r transition-[width] duration-200',
+          'sidebar-inner flex h-dvh shrink-0 flex-col transition-[width] duration-200',
           forceExpanded ? 'w-[268px] max-w-[85vw]' : 'sticky top-0',
           collapsed ? 'w-[64px]' : !forceExpanded && 'w-[248px]',
         )}
@@ -88,14 +88,14 @@ export function Sidebar({
         {/* Brand */}
         <div
           className={cn(
-            'border-line-subtle flex h-14 items-center border-b',
+            'sidebar-divider-b flex h-14 items-center',
             collapsed ? 'justify-center px-2' : 'gap-2.5 px-4',
           )}
         >
           {/* Brand mark. A single numeral rather than an abbreviation — it reads
               as the start of the "1BUY Fulfilment" wordmark beside it. */}
           <div
-            className="bg-accent text-accent-fg grid size-8 shrink-0 place-items-center rounded-[8px] text-[15px] font-bold tracking-tight"
+            className="text-accent grid size-8 shrink-0 place-items-center rounded-[8px] bg-white text-[15px] font-bold tracking-tight"
             aria-hidden
           >
             1
@@ -115,12 +115,12 @@ export function Sidebar({
           {NAV_GROUPS.map((group, gi) => (
             <div key={group.id} className={cn(gi > 0 && 'mt-4')}>
               {group.label && !collapsed && (
-                <div className="text-fg-tertiary px-2.5 pb-1.5 text-[10px] font-semibold tracking-[0.08em] uppercase">
+                <div className="sidebar-label px-2.5 pb-1.5 text-[11px] font-semibold uppercase">
                   {group.label}
                 </div>
               )}
               {group.label && collapsed && gi > 0 && (
-                <div className="bg-line-subtle mx-2 mb-2 h-px" aria-hidden />
+                <div className="sidebar-divider mx-2 mb-2 h-px" aria-hidden />
               )}
               <ul className="space-y-0.5">
                 {group.items.map((item) => {
@@ -135,16 +135,10 @@ export function Sidebar({
                         'group relative flex items-center gap-2.5 rounded-[8px] px-2.5 py-[7px] text-[13px] transition-colors',
                         collapsed && 'justify-center px-0',
                         active
-                          ? 'bg-accent-subtle text-accent-text font-medium'
-                          : 'text-fg-secondary hover:bg-surface-3 hover:text-fg',
+                          ? 'sidebar-row-active'
+                          : 'sidebar-row text-fg-secondary hover:text-fg',
                       )}
                     >
-                      {active && (
-                        <span
-                          className="bg-accent absolute left-0 top-1/2 h-4 w-[2.5px] -translate-y-1/2 rounded-r-full"
-                          aria-hidden
-                        />
-                      )}
                       <Icon className="size-[17px] shrink-0" strokeWidth={active ? 2.2 : 1.8} />
                       {!collapsed && (
                         <span className="truncate">{label(item.label, item.plainLabel)}</span>
@@ -184,7 +178,7 @@ export function Sidebar({
           <button
             type="button"
             onClick={() => setCollapsed((c) => !c)}
-            className="text-fg-tertiary hover:bg-surface-3 hover:text-fg flex w-full items-center gap-2.5 rounded-[8px] px-2.5 py-[7px] text-[13px] transition-colors"
+            className="sidebar-row text-fg-tertiary hover:text-fg flex w-full items-center gap-2.5 rounded-[8px] px-2.5 py-[7px] text-[13px] transition-colors"
             aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
             {collapsed ? (

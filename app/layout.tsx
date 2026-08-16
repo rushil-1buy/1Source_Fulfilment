@@ -1,19 +1,26 @@
 import type { Metadata } from 'next';
-import { Geist, JetBrains_Mono } from 'next/font/google';
+import { Geist_Mono, Plus_Jakarta_Sans } from 'next/font/google';
 import { Toaster } from 'sonner';
 import './globals.css';
 import { PreferencesProvider, THEME_BOOTSTRAP_SCRIPT } from '@/components/providers/Preferences';
 
-const geistSans = Geist({
+/**
+ * iWorkbench sans. The CSS variable keeps its original name so the hundreds of
+ * places already reading --font-geist-sans keep working — renaming the variable
+ * would be a rename with no reader-facing benefit and a large blast radius.
+ */
+const jakartaSans = Plus_Jakarta_Sans({
   variable: '--font-geist-sans',
   subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
   display: 'swap',
 });
 
 /** Mono is reserved for IDs, part numbers, AWBs and reference codes (§10.2). */
-const jetbrainsMono = JetBrains_Mono({
+const geistMono = Geist_Mono({
   variable: '--font-jetbrains-mono',
   subsets: ['latin'],
+  weight: ['400'],
   display: 'swap',
 });
 
@@ -33,7 +40,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       // Next 16 no longer overrides scroll-behavior during navigation unless
       // asked; we want snappy route changes with smooth in-page anchors.
       data-scroll-behavior="smooth"
-      className={`${geistSans.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      className={`${jakartaSans.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>
