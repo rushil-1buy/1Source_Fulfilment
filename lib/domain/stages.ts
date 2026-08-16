@@ -129,6 +129,15 @@ export interface StageContext {
    * requires it.
    */
   incoterms: string;
+  /**
+   * Whether the contract allows money to leave escrow before goods arrive.
+   *
+   * Defaults false everywhere. The partial-release step is gated on it rather
+   * than on "escrow + testing", which is what it used to be — that made an
+   * unusual concession look like the standard path, and a demo of the standard
+   * path showed money moving before anyone had seen the goods.
+   */
+  escrowPartialRelease?: boolean;
   /** The term we SELL on. Reserved for outbound branching; Phase E ignores it. */
   sellIncoterms?: string | null;
 }
@@ -447,7 +456,7 @@ export const STAGE_DEFS: StageDef[] = [
     owner: 'ESCROW',
     expectedHours: 24,
     artifacts: ['Escrow agreement'],
-    nextAction: 'Fund the escrow account.',
+    nextAction: 'Fund the escrow account so the provider can confirm the hold to the supplier.',
     nextActionOwner: 'ONE_BUY_FINANCE',
     next: ['ESCROW_FUNDED'],
     applies: escrowOnly,
@@ -458,10 +467,12 @@ export const STAGE_DEFS: StageDef[] = [
     id: 'ESCROW_FUNDED',
     code: 'C2',
     phase: 'C',
-    label: 'Escrow funded',
-    plainLabel: 'Money placed in escrow',
-    description: 'The money is now sitting with the escrow provider, confirmed and held.',
-    exitCriteria: 'Full order value (or the agreed tranche) confirmed as held.',
+    label: 'Escrow funded — supplier confirmed',
+    plainLabel: 'Money placed in escrow, supplier told',
+    description:
+      'The money is sitting with the escrow provider, and the provider has confirmed to the supplier that it is held. That confirmation is what the supplier ships against — the funds themselves do not move until the goods are received at 1BUY and pass inspection.',
+    exitCriteria:
+      'Full order value confirmed as held, and the escrow provider’s confirmation issued to the supplier.',
     owner: 'ESCROW',
     expectedHours: 48,
     artifacts: ['Funding confirmation'],
@@ -479,18 +490,31 @@ export const STAGE_DEFS: StageDef[] = [
     label: 'Escrow partial release for testing',
     plainLabel: 'Part-payment released for testing',
     description:
-      'A part-payment has been released so the supplier can afford to send parts to the testing lab.',
-    exitCriteria: 'Tranche released and acknowledged by the supplier.',
+      'A part-payment has been released so the supplier can afford to send parts to the testing lab. This runs ONLY where the contract explicitly allows it — the normal arrangement is that escrow confirms the funds are held and nothing leaves until the goods are received at 1BUY.',
+    exitCriteria:
+      'Tranche released and acknowledged by the supplier, against the partial-release clause in the agreed terms.',
     owner: 'ONE_BUY_FINANCE',
     expectedHours: 24,
     artifacts: ['Release instruction', 'Escrow receipt'],
     nextAction: 'Supplier books the courier to the testing lab.',
     nextActionOwner: 'SUPPLIER',
     next: ['TEST_DISPATCH_BOOKED'],
-    applies: (ctx) => escrowOnly(ctx) && ctx.testingRequired,
+    /*
+     * Gated on the negotiated term, not on "escrow + testing".
+     *
+     * Releasing part of the money before the goods land gives up exactly the
+     * leverage escrow exists to create, so it is a concession some suppliers
+     * negotiate and most never get. Keying the step to testing made it look
+     * like the standard path for every tested order, which it is not.
+     */
+    applies: (ctx) => escrowOnly(ctx) && ctx.testingRequired && ctx.escrowPartialRelease === true,
     notApplicableMode: 'HIDDEN',
     notApplicableReason: (ctx) =>
-      !escrowOnly(ctx) ? notEscrowReason(ctx) : noTestingReason(),
+      !escrowOnly(ctx)
+        ? notEscrowReason(ctx)
+        : !ctx.testingRequired
+          ? noTestingReason()
+          : 'The agreed terms do not allow a part-payment before the goods arrive. Escrow confirms the funds are held; nothing is released until the goods are received at 1BUY.',
   },
   {
     id: 'ADVANCE_PAYMENT_TO_SUPPLIER',

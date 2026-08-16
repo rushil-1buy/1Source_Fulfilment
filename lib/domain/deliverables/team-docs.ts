@@ -65,6 +65,8 @@ export const SOURCING_TERMS: DeliverableDef = {
     f('fxRate', 'Exchange rate locked at', 'number', 'commercial', 'The rate the margin was calculated on. Locking it is what stops margin drifting with the market.'),
     f('incoterms', 'Delivery term', 'text', 'commercial', 'Which Incoterm, and therefore who pays for and carries the risk on each leg.', { required: true }),
     f('paymentMethod', 'Payment method', 'text', 'commercial', 'Advance, escrow or credit.'),
+    f('escrowPartialRelease', 'Part-payment before goods arrive', 'boolean', 'commercial', 'Normally no. Escrow confirms the funds are held and the supplier ships against that confirmation; the money follows the goods, not the promise.'),
+    f('escrowPartialReleaseClause', 'Partial-release clause', 'longText', 'commercial', 'Required if the line above is yes — what triggers the tranche, how much, and what happens to it if the goods are rejected later.'),
     f('leadTimeDays', 'Lead time (days)', 'number', 'commercial', 'Days from order to dispatch, as promised.'),
     f('testingRequired', 'Testing required', 'boolean', 'quality', 'Whether an independent laboratory must pass the goods before we release final payment.'),
     f('testScope', 'Test scope', 'text', 'quality', 'Lot sample or full batch.'),
@@ -81,6 +83,8 @@ export const SOURCING_TERMS: DeliverableDef = {
     fxRate: i.fxRate,
     incoterms: i.incoterms,
     paymentMethod: i.paymentMethod,
+    escrowPartialRelease: false,
+    escrowPartialReleaseClause: '',
     leadTimeDays: 0,
     testingRequired: false,
     testScope: '',
@@ -108,6 +112,25 @@ export const SOURCING_TERMS: DeliverableDef = {
         Number(v.leadTimeDays ?? 0) > 0
           ? `${v.leadTimeDays} days to dispatch.`
           : 'No lead time agreed. The customer delivery date cannot be defended without one.',
+    },
+    {
+      /*
+       * A concession with no clause behind it is the exposure, not the
+       * concession. Blocking rather than warning: this is money leaving before
+       * anyone has seen the goods, and "we agreed it verbally" is not a term.
+       */
+      key: 'partialReleaseClause',
+      label: 'Any part-payment is backed by a written clause',
+      status:
+        v.escrowPartialRelease !== true || String(v.escrowPartialReleaseClause ?? '').trim()
+          ? 'PASS'
+          : 'FAIL',
+      detail:
+        v.escrowPartialRelease !== true
+          ? 'No part-payment before the goods arrive — escrow holds until receipt, which is the normal arrangement.'
+          : String(v.escrowPartialReleaseClause ?? '').trim()
+            ? 'Early tranche allowed, and the clause governing it is recorded.'
+            : 'This sheet allows money to leave escrow before the goods arrive but records no clause for it. Write the clause or set it back to no.',
     },
     {
       key: 'termMatch',

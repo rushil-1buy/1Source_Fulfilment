@@ -58,6 +58,14 @@ export interface StageContextSource {
    * outbound disclosure that silently never renders.
    */
   customerPo: { incoterms: string };
+  /**
+   * Whether the contract lets money leave escrow before the goods arrive.
+   *
+   * Optional, unlike the two above, because the safe reading of "absent" is
+   * unambiguous here: no recorded term means no early release. That is the
+   * opposite of the phase-plan case, where absence could mean either thing.
+   */
+  escrowPartialRelease?: boolean | null;
 }
 
 export function stageContextFrom(wo: StageContextSource): StageContext {
@@ -67,6 +75,9 @@ export function stageContextFrom(wo: StageContextSource): StageContext {
     testScope: (wo.testScope as TestScope | null) ?? null,
     incoterms: wo.incoterms,
     sellIncoterms: wo.customerPo.incoterms,
+    // Defaults false when the column is null, which is the safe direction: an
+    // order with no recorded term does not get an early release.
+    escrowPartialRelease: wo.escrowPartialRelease === true,
     // No rows means the standard ladder, which the engine represents as no plan
     // rather than as the default plan — cheaper, and it keeps "unplanned" and
     // "planned back to standard" behaving identically.

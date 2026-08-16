@@ -161,6 +161,8 @@ export const STAGE_EVIDENCE: StageEvidenceDef[] = [
       t('fxSource', 'Rate source', 'Which published rate, and as at when. Needed to defend the figure.', { required: true }),
       sel('escrowFundedBy', 'Who funds the escrow', ['Supplier', '1BUY', 'Both'], 'A negotiated term, not a platform rule. Take it from the signed terms.'),
       sel('escrowBasis', 'Escrow amount is based on', ['Buy value', 'Sell value', 'A custom figure'], 'What the held amount is calculated from.'),
+      yn('escrowPartialRelease', 'Part-payment allowed before goods arrive', 'Normally NO. Escrow confirms to the supplier that the money is held, and nothing leaves until the goods are received at 1BUY — that hold is the leverage. Say yes only where the supplier negotiated an early tranche.'),
+      note('escrowPartialReleaseTerms', 'The partial-release clause, if allowed', 'Required when the answer above is yes: what triggers the tranche, how much, and what happens to it if the goods are later rejected. Money leaving early without a written basis is the exposure itself.'),
     ],
     documents: [doc('signedTerms', 'The agreed terms', 'Whatever both sides signed or confirmed in writing.', true)],
   },

@@ -48,6 +48,7 @@ import { NextActionPanel } from '@/app/(app)/orders/[id]/NextActionPanel';
 import { StageEvidenceDialog } from '@/app/(app)/orders/[id]/StageEvidenceDialog';
 import type { EvidenceRecord } from '@/app/(app)/orders/[id]/StageEvidencePanel';
 import { CommunicationTab } from '@/app/(app)/orders/[id]/CommunicationTab';
+import { ExceptionPanel, type FailedLine } from '@/app/(app)/orders/[id]/ExceptionPanel';
 import { ESanchitPanel, LiveCashPanel, TeamDocumentsPanel, TeamLiabilityPanel, TeamOrderFactsPanel, type ESanchitState } from './TeamOrderExtras';
 import { DeliverablesPanel } from './DeliverablesPanel';
 import { AgentInThreadNote } from '@/components/agentic/AgentInThreadNote';
@@ -141,6 +142,24 @@ export function TeamOrderView({
   const isBlocked = order.status === 'BLOCKED' || Boolean(order.computed.branchStageId);
   // Same source the order page reads it from: the open exception, not a column.
   const blockReason = order.exceptions.find((e) => e.status === 'OPEN')?.reason ?? null;
+  /* Anything still open is a decision somebody owes, so it belongs on a desk
+     rather than only in the Control Tower. */
+  const openExceptions = order.exceptions.filter(
+    (e) => e.status === 'OPEN' || e.status === 'IN_PROGRESS',
+  );
+  /* The parts that actually failed, so the choice is made against evidence
+     rather than against a summary line. */
+  const failedLines: FailedLine[] = order.testRequests
+    .flatMap((tr) => tr.result?.lineResults ?? [])
+    .filter((lr) => lr.failedQty > 0)
+    .map((lr) => ({
+      mpn: lr.mpn,
+      lotRef: lr.lotRef,
+      testedQty: lr.testedQty,
+      passedQty: lr.passedQty,
+      failedQty: lr.failedQty,
+      failureMode: lr.failureMode,
+    }));
 
   const mine = applicableStages(ctx).filter(
     (s) => stageOwner(s, ctx) === team || stageNextActionOwner(s, ctx) === team,
@@ -294,6 +313,30 @@ export function TeamOrderView({
         what the supplier's price already includes — but Inspection does not,
         since nothing they do turns on who booked the freight.
       */}
+      {/*
+        The decision itself, on the desk that has to make it.
+        
+        A blocked order used to show this team WHY it stopped and then send them
+        to the full order to do anything about it — which is the redirect this
+        whole workspace exists to remove. It is the order page's own panel and
+        the same server actions, so a route chosen here is the identical write,
+        with one audit trail.
+      */}
+      {openExceptions.map((e) => (
+        <ExceptionPanel
+          key={e.id}
+          exception={{
+            id: e.id,
+            type: e.type,
+            reason: e.reason,
+            severity: e.severity,
+            offStage: e.offStage,
+            openedAt: e.openedAt,
+          }}
+          failedLines={failedLines}
+        />
+      ))}
+
       {/* Finance watches the money while the order runs; the signable P&L
           waits for the end of the flow. Cash, not goods — see cash-flows.ts. */}
       {team === 'ONE_BUY_FINANCE' && deliverables.input && (

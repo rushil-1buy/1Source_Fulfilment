@@ -603,6 +603,18 @@ model WorkOrder {
   /// between 1BUY and the supplier — it is not a platform-wide constant.
   escrowFundedBy String? // SUPPLIER | ONE_BUY | BOTH — see ESCROW_FUNDERS
   escrowBasis    String? // SELL_VALUE | BUY_VALUE | CUSTOM
+  /// Whether a part-payment may leave escrow BEFORE the goods reach 1BUY.
+  ///
+  /// Normally false, and that is the real-world shape: escrow confirms to the
+  /// supplier that the money is held, the supplier ships against that
+  /// confirmation, and the funds only move once the goods are received and
+  /// inspected. A partial release gives up the leverage the escrow exists to
+  /// create, so it is a term that has to be negotiated and written into the
+  /// contract — never a default the flow assumes.
+  escrowPartialRelease Boolean @default(false)
+  /// The clause agreed when escrowPartialRelease is true. Required with it:
+  /// money leaving early without a contractual basis is the exposure itself.
+  escrowPartialReleaseTerms String?
   /// Set when escrowBasis = CUSTOM. Minor units.
   escrowAgreedAmount Int?
   testingRequired Boolean @default(false)

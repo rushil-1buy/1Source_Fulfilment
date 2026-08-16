@@ -27,6 +27,15 @@ const CTX: StageContext = {
   testingRequired: true,
   testScope: 'LOT_SAMPLE',
   incoterms: 'CIF',
+  /*
+   * Set so the partial-release step exists at all.
+   *
+   * These tests are about the PHASE PLAN and use C3 as a convenient "last stage
+   * of C". That step is now gated on a negotiated term rather than running for
+   * every tested escrow order — the normal arrangement releases nothing until
+   * the goods arrive — so the fixture has to opt into it explicitly.
+   */
+  escrowPartialRelease: true,
 };
 
 /** Build a plan from a sequence string like "A B D C E F G", with * for removed. */
