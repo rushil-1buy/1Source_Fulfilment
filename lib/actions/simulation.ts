@@ -255,7 +255,7 @@ export async function createSimulatedOrder(config: SimConfig): Promise<SimResult
       fromStage: null,
       toStage: 'CUSTOMER_PO_RECEIVED',
       actorLabel: 'Autonomous flow simulator',
-      reason: `Raised from a chosen configuration: ${lines.length} line(s), bought on ${config.buyIncoterms}, sold on ${config.sellIncoterms}, ${config.paymentMethod.toLowerCase()}.`,
+      reason: `Raised from a chosen configuration: ${lines.length} line(s), supplier on ${config.buyIncoterms}, customer on ${config.sellIncoterms}, ${config.paymentMethod.toLowerCase()}.`,
     },
   });
 
@@ -263,7 +263,7 @@ export async function createSimulatedOrder(config: SimConfig): Promise<SimResult
   return {
     ok: true,
     message: `${alias} created.`,
-    detail: `${lines.length} line${lines.length === 1 ? '' : 's'} · bought on ${config.buyIncoterms}, sold on ${config.sellIncoterms} · ${config.paymentMethod.toLowerCase()}${anyTesting ? ` · ${lines.filter((l) => l.testing).length} line(s) going to the laboratory` : ' · no testing'}. It sits at A1 with the whole flow ahead of it.`,
+    detail: `${lines.length} line${lines.length === 1 ? '' : 's'} · supplier on ${config.buyIncoterms}, customer on ${config.sellIncoterms} · ${config.paymentMethod.toLowerCase()}${anyTesting ? ` · ${lines.filter((l) => l.testing).length} line(s) going to the laboratory` : ' · no testing'}. It sits at A1 with the whole flow ahead of it.`,
     orderId: wo.id,
     alias,
   };

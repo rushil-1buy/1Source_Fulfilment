@@ -153,13 +153,22 @@ export function SimulationConfig({ options }: { options: SimOptions }) {
         </label>
       </div>
 
-      {/* ── Terms ──────────────────────────────────────────────────────────── */}
+      {/*
+        ── Terms ────────────────────────────────────────────────────────────
+
+        Named for the party each one governs, and ordered to match the parties
+        above: customer, then supplier. "We buy on" and "We sell on" asked the
+        reader to hold which side of the trade 1BUY is on before the label meant
+        anything — and on the sell contract we are the seller, which is the
+        exact inversion people get wrong. Naming the counterparty removes the
+        step.
+      */}
       <div className="border-line-subtle mt-3 grid min-w-0 gap-3 border-t pt-3 sm:grid-cols-3">
         <label className="min-w-0">
-          <SectionLabel>We buy on</SectionLabel>
+          <SectionLabel>Incoterms to customer</SectionLabel>
           <select
-            value={buyIncoterms}
-            onChange={(e) => setBuyIncoterms(e.target.value)}
+            value={sellIncoterms}
+            onChange={(e) => setSellIncoterms(e.target.value)}
             className={cn(field, 'mt-1')}
           >
             {INCOTERMS.map((c) => (
@@ -170,10 +179,10 @@ export function SimulationConfig({ options }: { options: SimOptions }) {
           </select>
         </label>
         <label className="min-w-0">
-          <SectionLabel>We sell on</SectionLabel>
+          <SectionLabel>Incoterms to supplier</SectionLabel>
           <select
-            value={sellIncoterms}
-            onChange={(e) => setSellIncoterms(e.target.value)}
+            value={buyIncoterms}
+            onChange={(e) => setBuyIncoterms(e.target.value)}
             className={cn(field, 'mt-1')}
           >
             {INCOTERMS.map((c) => (
@@ -206,14 +215,14 @@ export function SimulationConfig({ options }: { options: SimOptions }) {
         default: they say which desk will have work to do and which will not.
       */}
       <div className="bg-surface-2 border-line-subtle mt-3 grid min-w-0 gap-2.5 rounded-[10px] border p-3 sm:grid-cols-2">
-        <KeyValue label={`Inbound leg — bought on ${buyIncoterms}`}>
+        <KeyValue label={`Inbound leg — supplier terms, ${buyIncoterms}`}>
           <span className={inboundOurs ? 'text-fg' : 'text-fg-secondary'}>
             {inboundOurs
               ? 'Ours to book. 1BUY Inbound appoints the carrier and carries the freight cost.'
               : `The supplier's. They have already bought the carriage — Inbound has nothing to appoint.`}
           </span>
         </KeyValue>
-        <KeyValue label={`Outbound leg — sold on ${sellIncoterms}`}>
+        <KeyValue label={`Outbound leg — customer terms, ${sellIncoterms}`}>
           <span className={outboundOurs ? 'text-fg' : 'text-fg-secondary'}>
             {outboundOurs
               ? 'Ours to book. 1BUY Outbound appoints the carrier to the customer.'
@@ -233,7 +242,15 @@ export function SimulationConfig({ options }: { options: SimOptions }) {
           <span className="text-fg-secondary">
             {testedLines === 0
               ? 'No line is marked for testing, so the whole testing phase is skipped.'
-              : `${testedLines} of ${lines.length} line${lines.length === 1 ? '' : 's'} go to the laboratory. The rest ship without it.`}
+              : testedLines === lines.length
+                ? // "1 of 1 line go … the rest ship without it" promised a
+                  // remainder that does not exist, on the commonest setup there is.
+                  `Every line goes to the laboratory${lines.length > 1 ? ` — all ${lines.length} of them` : ''}.`
+                : `${testedLines} of ${lines.length} lines go to the laboratory; the other ${
+                    lines.length - testedLines === 1
+                      ? 'one ships'
+                      : `${lines.length - testedLines} ship`
+                  } without it.`}
           </span>
         </KeyValue>
       </div>
@@ -328,8 +345,8 @@ export function SimulationConfig({ options }: { options: SimOptions }) {
           Create the order
         </Button>
         <span className="text-fg-tertiary text-[11.5px] leading-relaxed">
-          {lines.length} line{lines.length === 1 ? '' : 's'} · bought from{' '}
-          {chosenSupplier?.name ?? '—'} on {buyIncoterms} · sold on {sellIncoterms} ·{' '}
+          {lines.length} line{lines.length === 1 ? '' : 's'} · {chosenSupplier?.name ?? '—'} on{' '}
+          {buyIncoterms} · customer on {sellIncoterms} ·{' '}
           {PAYMENT_METHOD_META[paymentMethod].label.toLowerCase()}. It starts at A1 with the whole
           flow ahead of it.
         </span>

@@ -83,10 +83,10 @@ export function SimulationConsole({
               {active.customer} ← {active.supplier}
             </Chip>
             <Chip tone="neutral" size="sm">
-              Bought on {active.buyIncoterms}
+              Supplier terms · {active.buyIncoterms}
             </Chip>
             <Chip tone="neutral" size="sm">
-              Sold on {active.sellIncoterms ?? '—'}
+              Customer terms · {active.sellIncoterms ?? '—'}
             </Chip>
             <Chip tone="neutral" size="sm">
               {PAYMENT_METHOD_META[active.paymentMethod as PaymentMethod]?.label ??

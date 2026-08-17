@@ -110,13 +110,19 @@ export function DeliveryTermsPanel({ data }: { data: DeliveryTermsData }) {
       <Panel>
         <PanelHeader
           title="Delivery terms, insurance and duty"
-          description="Two sets of terms govern this order — what we bought on and what we sold on. Everything between the two is ours to arrange, insure, clear and pay for."
+          description="Two sets of terms govern this order — the one agreed with the supplier and the one agreed with the customer. Everything between the two is ours to arrange, insure, clear and pay for."
           termKey="incoterms"
         />
 
+        {/*
+          Named for the counterparty, not for our side of the trade.
+
+          Left to right follows the goods, so the supplier term stays first and
+          the arrow keeps its meaning — only the headings change.
+        */}
         <div className="grid gap-2.5 lg:grid-cols-[1fr_auto_1fr] lg:items-stretch">
           <TermCard
-            heading="We buy on"
+            heading="Incoterms to supplier"
             counterparty={data.supplierName}
             def={buy}
             side="BUY"
@@ -125,7 +131,7 @@ export function DeliveryTermsPanel({ data }: { data: DeliveryTermsData }) {
             <ArrowRight className="size-4 lg:rotate-0" aria-hidden />
           </div>
           <TermCard
-            heading="We sell on"
+            heading="Incoterms to customer"
             counterparty={data.customerName}
             def={sell}
             side="SELL"
