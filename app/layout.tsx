@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Script from 'next/script';
 import { Geist_Mono, Plus_Jakarta_Sans } from 'next/font/google';
 import { Toaster } from 'sonner';
 import './globals.css';
@@ -44,27 +45,25 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       suppressHydrationWarning
     >
       <head>
-        {/* Runs before hydration so the correct theme is applied on first paint,
-            with no flash of the wrong one. Blocking and inline on purpose: it has
-            to finish before the first pixel.
+        {/* Runs before hydration so the correct theme, density and motion
+            preference are applied on first paint, with no flash of the wrong
+            one. It has to finish before the first pixel.
 
-            In development React logs "Encountered a script tag while rendering
-            React component" for this. The message is accurate and harmless — the
-            script's work is done during SSR and it has no job on a client render
-            — but it is unavoidable, not unaddressed. React warns in its client
-            createInstance path for ANY script element in the tree, so these were
-            tried and all still warn:
-              • the tag in <body>, raw
-              • the tag in <head>, raw (here)
-              • next/script with strategy="beforeInteractive", in either place
-            The only escapes are a theme flash (async script) or moving all 72
-            dark tokens into a duplicated @media (prefers-color-scheme) block to
-            drive the theme from CSS alone. A correct first paint is worth more
-            than a clean dev console, so the warning stays. */}
-        <script
-          id="theme-bootstrap"
-          dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }}
-        />
+            Delivered through next/script with `beforeInteractive` rather than a
+            raw <script> tag. A raw tag makes React log "Encountered a script tag
+            while rendering React component" on every page in development — its
+            client createInstance path warns for any script element in the tree —
+            and this route sidesteps it because Next injects the content into the
+            initial HTML itself instead of reconciling a script element. Verified
+            on 16.2: theme and density still apply before paint, and the console
+            is clean.
+
+            An earlier note here recorded that this had been tried and still
+            warned. It does not on this version, so the note was wrong to keep
+            trusting; the raw tag is gone. */}
+        <Script id="theme-bootstrap" strategy="beforeInteractive">
+          {THEME_BOOTSTRAP_SCRIPT}
+        </Script>
       </head>
       <body className="bg-surface-0 text-fg min-h-full">
         <PreferencesProvider>

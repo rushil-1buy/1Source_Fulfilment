@@ -25,7 +25,8 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
 import * as Tabs from '@radix-ui/react-tabs';
-import { ArrowLeft, ArrowUpRight, Ban, Clock, ClipboardCheck, FileText, ListChecks, MessageSquare, Package, Truck } from 'lucide-react';
+import * as Dialog from '@radix-ui/react-dialog';
+import { ArrowLeft, ArrowUpRight, Ban, Clock, ClipboardCheck, FileText, ListChecks, MessageSquare, Package, PanelLeft, Truck, X } from 'lucide-react';
 import type { OrderDetail } from '@/lib/queries/order-detail';
 import { normalisePhasePlan } from '@/lib/domain/phase-plan';
 import {
@@ -187,6 +188,51 @@ export function TeamOrderView({
   );
   const doneIds = new Set(order.computed.completedStageIds);
   const outstanding = mine.filter((s) => !doneIds.has(s.id)).length;
+
+  /*
+   * The sections, defined once and rendered twice — the rail on a wide screen,
+   * the drawer on a narrow one. Two hand-maintained lists of the same
+   * navigation is how a section ends up reachable from only one of them.
+   */
+  const sections = [
+    { value: 'steps', icon: ListChecks, label: 'Your steps', count: outstanding },
+    {
+      value: 'order',
+      icon: Package,
+      label: 'Order & items',
+      count: order.customerPo.lines.length,
+    },
+    ...(movesGoods
+      ? [{ value: 'logistics', icon: Truck, label: 'Logistics', count: shipments.length }]
+      : []),
+    {
+      value: 'paperwork',
+      icon: ClipboardCheck,
+      label: 'Your paperwork',
+      count: deliverables.slots.filter((d) => d.latest?.status !== 'APPROVED').length,
+    },
+    {
+      value: 'docs',
+      icon: FileText,
+      label: 'Documents',
+      /*
+       * The SCOPED count, not the order's total. The section shows this desk's
+       * documents; a badge counting all of them would promise twenty-seven and
+       * open on six, which reads as a bug rather than as a filter.
+       */
+      count: order.documents.filter((d) => docConcernsTeam(d.docType, team)).length,
+    },
+    {
+      value: 'comms',
+      icon: MessageSquare,
+      label: 'Communication',
+      count: order.communications.filter((c) => c.entryClass === 'HUMAN').length,
+    },
+  ];
+
+  const [section, setSection] = useState('steps');
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const activeSection = sections.find((t) => t.value === section);
 
   return (
     <PageShell width="full">
@@ -428,51 +474,83 @@ export function TeamOrderView({
         and audit trail.
       */}
       <Panel padded={false}>
-        <Tabs.Root defaultValue="steps" className="min-w-0">
+        {/*
+          ── Side navigation, not a tab strip ──────────────────────────────
+
+          Six sections in a horizontal strip is a scroll on any laptop and a
+          guessing game as to what is off the right edge. Down the side they are
+          all visible at once, the counts line up in a column the eye can read,
+          and adding a seventh costs nothing.
+
+          Below `lg` the same list becomes a drawer rather than being dropped:
+          the sections are the navigation, so hiding them on a narrow screen
+          would leave the order with no way through it.
+        */}
+        <Tabs.Root
+          value={section}
+          onValueChange={setSection}
+          orientation="vertical"
+          className="grid min-w-0 lg:grid-cols-[210px_minmax(0,1fr)]"
+        >
+          {/* The drawer's handle — narrow screens only. */}
+          <div className="border-line-subtle flex min-w-0 items-center gap-2 border-b px-3 py-2 lg:hidden">
+            <Dialog.Root open={drawerOpen} onOpenChange={setDrawerOpen}>
+              <Dialog.Trigger asChild>
+                <button
+                  type="button"
+                  className="border-line-subtle text-fg hover:bg-surface-3 inline-flex min-w-0 items-center gap-2 rounded-[8px] border px-2.5 py-1.5 text-[12.5px] font-medium transition-colors"
+                >
+                  <PanelLeft className="size-4 shrink-0" strokeWidth={2} aria-hidden />
+                  <span className="min-w-0 truncate">{activeSection?.label ?? 'Sections'}</span>
+                  {(activeSection?.count ?? 0) > 0 && (
+                    <span className="bg-accent-subtle text-accent-text tnum rounded-full px-1.5 text-[10.5px]">
+                      {activeSection?.count}
+                    </span>
+                  )}
+                </button>
+              </Dialog.Trigger>
+              <Dialog.Portal>
+                <Dialog.Overlay className="fixed inset-0 z-50 bg-black/55 backdrop-blur-[2px]" />
+                <Dialog.Content className="bg-surface-1 border-line shadow-e4 fixed top-0 left-0 z-50 flex h-full w-[min(84vw,290px)] flex-col border-r">
+                  <div className="border-line-subtle flex items-center gap-2 border-b px-3 py-2.5">
+                    <Dialog.Title className="text-fg min-w-0 flex-1 truncate text-[13px] font-semibold">
+                      {order.alias}
+                    </Dialog.Title>
+                    <Dialog.Close asChild>
+                      <button
+                        type="button"
+                        aria-label="Close"
+                        className="text-fg-tertiary hover:text-fg hover:bg-surface-3 rounded-[7px] p-1.5 transition-colors"
+                      >
+                        <X className="size-4" strokeWidth={2} aria-hidden />
+                      </button>
+                    </Dialog.Close>
+                  </div>
+                  <Dialog.Description className="sr-only">
+                    Sections of this order
+                  </Dialog.Description>
+                  <Tabs.List
+                    aria-label="Sections of this order"
+                    className="flex min-w-0 flex-col gap-0.5 overflow-y-auto p-2"
+                  >
+                    {sections.map((t) => (
+                      <SectionTab key={t.value} {...t} onSelect={() => setDrawerOpen(false)} />
+                    ))}
+                  </Tabs.List>
+                </Dialog.Content>
+              </Dialog.Portal>
+            </Dialog.Root>
+          </div>
+
+          {/* The persistent rail — wide screens. Sticky, so it stays reachable
+              on a long Communication thread. */}
           <Tabs.List
             aria-label="This order, from this team's desk"
-            className="border-line-subtle flex min-w-0 gap-1 overflow-x-auto border-b px-3"
+            className="border-line-subtle hidden min-w-0 flex-col gap-0.5 self-start border-r p-2 lg:sticky lg:top-4 lg:flex"
           >
-            <OrderTab value="steps" icon={ListChecks} label="Your steps" count={outstanding} />
-            <OrderTab
-              value="order"
-              icon={Package}
-              label="Order & items"
-              count={order.customerPo.lines.length}
-            />
-            {movesGoods && (
-              <OrderTab
-                value="logistics"
-                icon={Truck}
-                label="Logistics"
-                count={shipments.length}
-              />
-            )}
-            <OrderTab
-              value="paperwork"
-              icon={ClipboardCheck}
-              label="Your paperwork"
-              count={deliverables.slots.filter((d) => d.latest?.status !== 'APPROVED').length}
-            />
-            <OrderTab
-              value="docs"
-              icon={FileText}
-              label="Documents"
-              /*
-               * The SCOPED count, not the order's total.
-               *
-               * The tab shows this desk's documents; a badge counting all of
-               * them would promise twenty-seven and open on six, which reads as
-               * a bug rather than as a filter.
-               */
-              count={order.documents.filter((d) => docConcernsTeam(d.docType, team)).length}
-            />
-            <OrderTab
-              value="comms"
-              icon={MessageSquare}
-              label="Communication"
-              count={order.communications.filter((c) => c.entryClass === 'HUMAN').length}
-            />
+            {sections.map((t) => (
+              <SectionTab key={t.value} {...t} />
+            ))}
           </Tabs.List>
 
           <Tabs.Content value="steps" className="min-w-0 outline-none">
@@ -634,36 +712,40 @@ export function TeamOrderView({
  * underlined into its border — so moving between the two screens does not mean
  * relearning what a tab looks like.
  */
-function OrderTab({
+function SectionTab({
   value,
   icon: Icon,
   label,
   count,
+  onSelect,
 }: {
   value: string;
   icon: LucideIcon;
   label: string;
   count: number;
+  /** Closes the drawer when the rail is rendered inside one. */
+  onSelect?: () => void;
 }) {
   return (
     <Tabs.Trigger
       value={value}
+      onClick={onSelect}
       className={cn(
-        'group flex shrink-0 items-center gap-1.5 rounded-t-[8px] border-b-2 border-transparent px-3 py-2.5',
-        'text-[12.5px] whitespace-nowrap transition-colors',
+        'group flex w-full min-w-0 items-center gap-2 rounded-[8px] px-2.5 py-2 text-left',
+        'text-[12.5px] transition-colors',
         'text-fg-secondary hover:text-fg hover:bg-surface-3',
-        'data-[state=active]:border-accent data-[state=active]:text-accent-text data-[state=active]:font-medium',
+        'data-[state=active]:bg-accent-subtle data-[state=active]:text-accent-text data-[state=active]:font-medium',
         'focus-visible:ring-accent/40 focus-visible:ring-2 focus-visible:outline-none',
       )}
     >
-      <Icon className="size-3.5 shrink-0" strokeWidth={2} aria-hidden />
-      <span>{label}</span>
+      <Icon className="size-4 shrink-0" strokeWidth={2} aria-hidden />
+      <span className="min-w-0 flex-1 truncate">{label}</span>
       {count > 0 && (
         <span
           className={cn(
-            'tnum rounded-full px-1.5 text-[10.5px] transition-colors',
+            'tnum shrink-0 rounded-full px-1.5 text-[10.5px] transition-colors',
             'bg-surface-3 text-fg-secondary',
-            'group-data-[state=active]:bg-accent-subtle group-data-[state=active]:text-accent-text',
+            'group-data-[state=active]:bg-accent group-data-[state=active]:text-accent-fg',
           )}
         >
           {count}
