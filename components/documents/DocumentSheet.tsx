@@ -27,6 +27,8 @@ import { Printer, X } from 'lucide-react';
 import { Button } from '@/components/ui/Layout';
 import { Chip } from '@/components/ui/Badges';
 import { formatDateTime } from '@/lib/utils';
+import { docFlowFor } from '@/lib/domain/document-flow';
+import { STAKEHOLDER_META } from '@/lib/domain/enums';
 
 export interface SheetDoc {
   id: string;
@@ -89,6 +91,7 @@ export function DocumentSheetDialog({
 
   if (!doc) return null;
   const json = doc.bodyText ? parseJsonBody(doc.bodyText) : null;
+  const flow = docFlowFor(doc.docType);
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -153,6 +156,40 @@ export function DocumentSheetDialog({
                   </div>
                 ))}
               </dl>
+
+              {/*
+                Who owes it and who is waiting on it.
+                
+                Set apart from the reference block above because it is a
+                different kind of fact: that block describes the file, this
+                describes the obligation around it. On a missing or disputed
+                document this is the part somebody acts on.
+              */}
+              {flow && (
+                <div className="border-line-subtle mt-4 border-t pt-3">
+                  <div className="grid grid-cols-1 gap-x-6 gap-y-2 text-[12px] sm:grid-cols-2">
+                    <div className="min-w-0">
+                      <dt className="text-fg-tertiary text-[10px] font-semibold tracking-[0.05em] uppercase">
+                        Provided by
+                      </dt>
+                      <dd className="text-fg mt-0.5 font-medium">
+                        {STAKEHOLDER_META[flow.provider].label}
+                      </dd>
+                    </div>
+                    <div className="min-w-0">
+                      <dt className="text-fg-tertiary text-[10px] font-semibold tracking-[0.05em] uppercase">
+                        Needed by
+                      </dt>
+                      <dd className="text-fg mt-0.5 font-medium">
+                        {flow.requiredBy.length
+                          ? flow.requiredBy.map((r) => STAKEHOLDER_META[r].label).join(', ')
+                          : 'Internal only — nobody outside is waiting on it'}
+                      </dd>
+                    </div>
+                  </div>
+                  <p className="text-fg-secondary mt-2 text-[12px] leading-relaxed">{flow.why}</p>
+                </div>
+              )}
 
               {/* Body */}
               <div className="border-line-subtle mt-4 border-t pt-4">

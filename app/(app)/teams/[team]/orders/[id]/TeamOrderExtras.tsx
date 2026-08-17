@@ -26,6 +26,7 @@ import { incotermFor, responsibilities } from '@/lib/domain/incoterms';
 import { cashPosition } from '@/lib/domain/cash-flows';
 import type { DeliverableInput } from '@/lib/domain/deliverables/types';
 import { getStage } from '@/lib/domain/stages';
+import { docFlowFor } from '@/lib/domain/document-flow';
 import { cn, formatDate } from '@/lib/utils';
 
 /**
@@ -63,11 +64,33 @@ const docLabel = (t: string) => DOC_LABELS[t] ?? t.replace(/_/g, ' ').toLowerCas
 
 const DOC_COLUMNS: ColumnSpec[] = [
   { key: 'title', label: 'Document', mobile: 'primary' },
-  { key: 'kind', label: 'What it is', mobile: 'secondary', width: '210px' },
-  { key: 'step', label: 'Step it belongs to', termKey: 'stage', mobile: 'meta', width: '230px' },
-  { key: 'filedBy', label: 'Filed by', mobile: 'meta', width: '150px' },
+  { key: 'kind', label: 'What it is', mobile: 'secondary', width: '200px' },
+  {
+    /*
+     * Who OWES it, which is not who uploaded it.
+     *
+     * `filedBy` records whoever attached the file — usually us, filing
+     * something a counterparty sent. A chase goes to the party answerable for
+     * producing it, and that party is not knowable from an upload record.
+     */
+    key: 'providedBy',
+    label: 'Provided by',
+    mobile: 'secondary',
+    width: '170px',
+  },
+  {
+    /* The column that turns a gap into a reason to act: "the certificate of
+       origin is missing" is a fact; "and the CHA cannot file the Bill of Entry
+       without it" is a phone call. */
+    key: 'requiredBy',
+    label: 'Needed by',
+    mobile: 'meta',
+    width: '210px',
+  },
+  { key: 'step', label: 'Step it belongs to', termKey: 'stage', mobile: 'meta', width: '210px' },
+  { key: 'filedBy', label: 'Filed by', mobile: 'hidden', width: '150px' },
   { key: 'when', label: 'Filed on', kind: 'datetime', mobile: 'meta', width: '170px' },
-  { key: 'file', label: 'File', kind: 'mono', mobile: 'hidden', width: '200px' },
+  { key: 'file', label: 'File', kind: 'mono', mobile: 'hidden', width: '190px' },
 ];
 
 export interface OrderDoc {
@@ -112,15 +135,24 @@ export function TeamDocumentsPanel({
     );
   }
 
-  const rows: RecordRow[] = docs.map((d) => ({
+  const rows: RecordRow[] = docs.map((d) => {
+    const flow = docFlowFor(d.docType);
+    return {
     id: d.id,
     title: d.title,
     kind: docLabel(d.docType),
+    providedBy: flow ? STAKEHOLDER_META[flow.provider].short : '—',
+    requiredBy: flow
+      ? flow.requiredBy.length
+        ? flow.requiredBy.map((r) => STAKEHOLDER_META[r].short).join(', ')
+        : 'Internal only'
+      : '—',
     step: d.stageId ? `${getStage(d.stageId).code} ${getStage(d.stageId).label}` : 'Not tied to a step',
     filedBy: d.uploadedBy,
     when: d.createdAt,
     file: d.fileName,
-  }));
+    };
+  });
 
   return (
     <div className="min-w-0">
