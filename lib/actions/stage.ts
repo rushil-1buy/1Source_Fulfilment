@@ -415,7 +415,7 @@ export async function advanceStage(
         data: {
           workOrderId: wo.id,
           legType: 'TEST_OUT',
-          carrierCode: 'SFEXP',
+          carrierCode: 'DHL',
           originName: wo.supplierPo.supplier.city,
           originCountry: wo.supplierPo.supplier.country,
           destName: 'Testing Laboratory, Bengaluru',
@@ -542,7 +542,7 @@ export async function advanceStage(
         data: {
           workOrderId: wo.id,
           legType: 'TEST_RETURN',
-          carrierCode: 'SFEXP',
+          carrierCode: 'DHL',
           originName: 'Testing Laboratory, Bengaluru',
           originCountry: 'India',
           destName: wo.supplierPo.supplier.city,

@@ -303,6 +303,8 @@ export interface OrderItem {
   lineTotal: number;
   unitCost: number | null;
   buyCurrency: string;
+  /** Testing is decided per line — some parts on an order go to the lab, some do not. */
+  testingRequired: boolean;
 }
 
 export interface OrderFacts {
@@ -356,6 +358,21 @@ export function TeamOrderFactsPanel({
     { key: 'description', label: 'Description', mobile: 'meta' },
     { key: 'hsnCode', label: 'HSN', kind: 'mono', mobile: 'hidden', width: '110px' },
     { key: 'quantity', label: 'Quantity', kind: 'number', mobile: 'secondary', width: '120px' },
+    {
+      /*
+       * Which parts go to the laboratory, on the line.
+       *
+       * The order-level flag only says the testing phase runs at all; it cannot
+       * say WHICH parts, and that is the question the lab, the warehouse and
+       * the supplier all actually ask. An order can send two of its three lines
+       * and the third would otherwise look tested because the order was.
+       */
+      key: 'testing',
+      label: 'Testing',
+      kind: 'chip',
+      mobile: 'meta',
+      width: '120px',
+    },
     { key: 'uom', label: 'Unit', mobile: 'hidden', width: '80px' },
     { key: 'unitPrice', label: 'Unit price to customer', kind: 'number', mobile: 'meta', width: '170px' },
     { key: 'lineTotal', label: 'Line total', kind: 'money', mobile: 'meta', width: '150px' },
@@ -375,10 +392,12 @@ export function TeamOrderFactsPanel({
     uom: i.uom,
     unitPrice: i.unitPrice,
     lineTotal: i.lineTotal,
+    testing: i.testingRequired ? 'Lab tested' : 'Not tested',
     ...(showCost ? { unitCost: i.unitCost ?? 0 } : {}),
   }));
 
   const totalQty = items.reduce((a, i) => a + i.quantity, 0);
+  const tested = items.filter((i) => i.testingRequired).length;
 
   return (
     <div className="flex min-w-0 flex-col gap-4">
@@ -448,7 +467,11 @@ export function TeamOrderFactsPanel({
       <div className="border-line-subtle min-w-0 border-t pt-4">
         <PanelHeader
           title="Parts on this order"
-          description={`${items.length} line${items.length === 1 ? '' : 's'}, ${totalQty.toLocaleString('en-IN')} pieces in total. Search by part number — this is the list to check goods and paperwork against.`}
+          description={`${items.length} line${items.length === 1 ? '' : 's'}, ${totalQty.toLocaleString('en-IN')} pieces in total${
+            tested > 0
+              ? ` · ${tested} of ${items.length} going to the laboratory`
+              : ' · none going to the laboratory'
+          }. Search by part number — this is the list to check goods and paperwork against.`}
         />
         {items.length === 0 ? (
           <EmptyState

@@ -1162,7 +1162,17 @@ async function buildWorkOrder(spec: WoSpec) {
         legType,
         carrierCode: opts.carrier,
         serviceName: opts.carrier === 'DHL' ? 'EXPRESS WORLDWIDE' : 'Standard',
-        awb: `${opts.carrier === 'DHL' ? '78' : '44'}${pad(spec.aliasNo, 6)}${legType.length}`,
+        /*
+         * One carrier now, so the prefix no longer distinguishes legs — an
+         * explicit per-leg digit does.
+         *
+         * This used to suffix legType.length, which silently collided the
+         * moment both carriers became DHL: TEST_OUT and OUTBOUND are both eight
+         * characters, so the two legs of an order shared an airway bill.
+         */
+        awb: `78${pad(spec.aliasNo, 6)}${
+          { IMPORT: '1', TEST_OUT: '2', TEST_RETURN: '3', OUTBOUND: '4' }[legType] ?? '0'
+        }`,
         originName: opts.from[0],
         originCountry: opts.from[1],
         destName: opts.to[0],
@@ -1207,7 +1217,7 @@ async function buildWorkOrder(spec: WoSpec) {
 
   if (spec.testingRequired && reached('TEST_DISPATCH_BOOKED')) {
     await mkShipment('TEST_OUT', {
-      carrier: 'SFEXP',
+      carrier: 'DHL',
       from: [supplier.city, supplier.country],
       to: ['Testing Laboratory, Bengaluru', 'India'],
       status: reached('PARTS_RECEIVED_AT_WHL') ? 'DELIVERED' : 'IN_TRANSIT',
@@ -1229,7 +1239,7 @@ async function buildWorkOrder(spec: WoSpec) {
 
   if (spec.testingRequired && reached('PARTS_RETURNED_TO_SUPPLIER')) {
     await mkShipment('TEST_RETURN', {
-      carrier: 'SFEXP',
+      carrier: 'DHL',
       from: ['Testing Laboratory, Bengaluru', 'India'],
       to: [supplier.city, supplier.country],
       status: 'DELIVERED',

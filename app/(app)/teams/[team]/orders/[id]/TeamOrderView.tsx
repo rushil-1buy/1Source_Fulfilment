@@ -25,7 +25,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
 import * as Tabs from '@radix-ui/react-tabs';
-import { ArrowLeft, ArrowUpRight, Ban, Clock, ClipboardCheck, FileText, ListChecks, MessageSquare, Package } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, Ban, Clock, ClipboardCheck, FileText, ListChecks, MessageSquare, Package, Truck } from 'lucide-react';
 import type { OrderDetail } from '@/lib/queries/order-detail';
 import { normalisePhasePlan } from '@/lib/domain/phase-plan';
 import {
@@ -49,6 +49,8 @@ import { StageEvidenceDialog } from '@/app/(app)/orders/[id]/StageEvidenceDialog
 import type { EvidenceRecord } from '@/app/(app)/orders/[id]/StageEvidencePanel';
 import { CommunicationTab } from '@/app/(app)/orders/[id]/CommunicationTab';
 import { ExceptionPanel, type FailedLine } from '@/app/(app)/orders/[id]/ExceptionPanel';
+import { TeamLogisticsPanel, type TeamShipment } from '@/components/logistics/TeamLogisticsPanel';
+import { deskMovesGoods } from '@/lib/queries/team-shipments';
 import { ESanchitPanel, LiveCashPanel, TeamDocumentsPanel, TeamLiabilityPanel, TeamOrderFactsPanel, type ESanchitState } from './TeamOrderExtras';
 import { DeliverablesPanel } from './DeliverablesPanel';
 import { AgentInThreadNote } from '@/components/agentic/AgentInThreadNote';
@@ -76,6 +78,7 @@ export function TeamOrderView({
   financeApprovers,
   deliverables,
   eSanchit,
+  shipments = [],
 }: {
   order: OrderDetail;
   team: Stakeholder;
@@ -86,6 +89,14 @@ export function TeamOrderView({
   deliverables: TeamDeliverables;
   /** eSanchit filing state — fetched only for the Inbound desk. */
   eSanchit?: ESanchitState | null;
+  /**
+   * The carrier legs this desk owns, already scoped and already judged late or
+   * not. Both decisions are made on the server: leg scoping because it is
+   * policy, and lateness because it is a fact about the current time — and a
+   * clock read in a client render is impure, and stale the moment the tab is
+   * left open.
+   */
+  shipments?: TeamShipment[];
 }) {
   const { label: pick } = usePreferences();
   const meta = STAKEHOLDER_META[team];
@@ -131,6 +142,8 @@ export function TeamOrderView({
     incoterms: order.incoterms,
     sellIncoterms: order.customerPo.incoterms,
   };
+
+  const movesGoods = deskMovesGoods(team);
 
   const { anchorStageId } = resolveRailAnchor(order.stage);
   const current = getStage(anchorStageId);
@@ -351,6 +364,7 @@ export function TeamOrderView({
         />
       )}
 
+
       {/* The CHA's document portal, on the desk that coordinates the CHA. */}
       {team === 'ONE_BUY_INBOUND' && eSanchit && (
         <ESanchitPanel orderId={order.id} status={eSanchit} />
@@ -381,6 +395,14 @@ export function TeamOrderView({
               label="Order & items"
               count={order.customerPo.lines.length}
             />
+            {movesGoods && (
+              <OrderTab
+                value="logistics"
+                icon={Truck}
+                label="Logistics"
+                count={shipments.length}
+              />
+            )}
             <OrderTab
               value="paperwork"
               icon={ClipboardCheck}
@@ -482,9 +504,16 @@ export function TeamOrderView({
                 // different parties and their line numbering need not agree.
                 unitCost: order.supplierPo.lines.find((sl) => sl.mpn === l.mpn)?.unitPrice ?? null,
                 buyCurrency: order.buyCurrency,
+                testingRequired: l.testingRequired,
               }))}
             />
           </Tabs.Content>
+
+          {movesGoods && (
+            <Tabs.Content value="logistics" className="min-w-0 p-4 outline-none">
+              <TeamLogisticsPanel team={team} shipments={shipments} />
+            </Tabs.Content>
+          )}
 
           {/* What this team must PRODUCE, as opposed to what already exists.
               Kept separate from Documents for that reason: one is a to-do list

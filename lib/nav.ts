@@ -17,6 +17,17 @@ export interface NavGroup {
   id: string;
   label: string | null;
   items: NavItem[];
+  /**
+   * Renders folded, with its heading as the toggle.
+   *
+   * For groups that are occasional rather than daily. Creating a purchase order
+   * happens a few times a week; the queues below it are opened constantly, and
+   * three create links sitting between them and the top push the real work down
+   * the pane for no benefit. Folded by default, one click to open, and it
+   * springs open on its own when you are on one of its pages — so the current
+   * location is never hidden behind a fold.
+   */
+  collapsible?: boolean;
 }
 
 export const NAV_GROUPS: NavGroup[] = [
@@ -98,6 +109,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     id: 'create',
     label: 'Create',
+    collapsible: true,
     items: [
       {
         href: '/create-po',

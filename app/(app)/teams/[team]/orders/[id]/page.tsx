@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { getOrderDetail } from '@/lib/queries/order-detail';
 import { teamDeliverables } from '@/lib/queries/team-deliverables';
 import { eSanchitStatus } from '@/lib/actions/portal-filing';
+import { scopeShipmentsForTeam } from '@/lib/queries/team-shipments';
 import { ROLE_META, STAKEHOLDER_META, TEAM_SLUGS, type Role } from '@/lib/domain/enums';
 import { TeamOrderView } from './TeamOrderView';
 
@@ -40,6 +41,7 @@ export default async function TeamOrderPage({
 
   return (
     <TeamOrderView
+      shipments={scopeShipmentsForTeam(order.shipments, team)}
       order={order}
       team={team}
       slug={slug}

@@ -9,6 +9,7 @@ import {
   Banknote,
   Calculator,
   ChartNoAxesCombined,
+  ChevronRight,
   ChevronsLeft,
   ClipboardCheck,
   ClipboardList,
@@ -69,6 +70,8 @@ export function Sidebar({
 } = {}) {
   const pathname = usePathname();
   const [collapsedState, setCollapsed] = useState(false);
+  /** Collapsible groups the user has opened this session. */
+  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
   const collapsed = forceExpanded ? false : collapsedState;
   const { label } = usePreferences();
 
@@ -112,9 +115,45 @@ export function Sidebar({
 
         {/* Nav */}
         <nav className="flex-1 overflow-y-auto overflow-x-hidden px-2 py-3">
-          {NAV_GROUPS.map((group, gi) => (
+          {NAV_GROUPS.map((group, gi) => {
+            /*
+             * A collapsible group folds unless you are inside it.
+             *
+             * The auto-open matters more than the fold: hiding the page
+             * somebody is currently on would leave the pane with no highlighted
+             * row at all, which reads as broken rather than as tidy. When the
+             * rail itself is collapsed to icons there is no heading to click,
+             * so the fold is ignored and everything shows.
+             */
+            const hasActive = group.items.some((i) => isActive(i));
+            const folded =
+              group.collapsible && !collapsed && !hasActive && !openGroups.has(group.id);
+
+            return (
             <div key={group.id} className={cn(gi > 0 && 'mt-4')}>
-              {group.label && !collapsed && (
+              {group.label && !collapsed && group.collapsible && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setOpenGroups((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(group.id)) next.delete(group.id);
+                      else next.add(group.id);
+                      return next;
+                    })
+                  }
+                  aria-expanded={!folded}
+                  className="sidebar-row sidebar-label flex w-full items-center gap-1 rounded-[6px] px-2.5 py-1 pb-1.5 text-[11px] font-semibold uppercase transition-colors"
+                >
+                  <ChevronRight
+                    className={cn('size-3 shrink-0 transition-transform', !folded && 'rotate-90')}
+                    strokeWidth={2.4}
+                    aria-hidden
+                  />
+                  <span className="truncate">{group.label}</span>
+                </button>
+              )}
+              {group.label && !collapsed && !group.collapsible && (
                 <div className="sidebar-label px-2.5 pb-1.5 text-[11px] font-semibold uppercase">
                   {group.label}
                 </div>
@@ -122,7 +161,7 @@ export function Sidebar({
               {group.label && collapsed && gi > 0 && (
                 <div className="sidebar-divider mx-2 mb-2 h-px" aria-hidden />
               )}
-              <ul className="space-y-0.5">
+              <ul className={cn('space-y-0.5', folded && 'hidden')}>
                 {group.items.map((item) => {
                   const Icon = ICONS[item.icon] ?? ClipboardList;
                   const active = isActive(item);
@@ -171,7 +210,8 @@ export function Sidebar({
                 })}
               </ul>
             </div>
-          ))}
+            );
+          })}
         </nav>
 
         <div className={cn('border-line-subtle border-t p-2', forceExpanded && 'hidden')}>

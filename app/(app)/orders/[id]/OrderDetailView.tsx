@@ -1016,6 +1016,7 @@ function OverviewTab({ order }: { order: OrderDetail }) {
   ];
 
   const totalQty = order.customerPo.lines.reduce((a, l) => a + l.quantity, 0);
+  const testedLines = order.customerPo.lines.filter((l) => l.testingRequired).length;
 
   return (
     <div className="grid min-w-0 grid-cols-1 gap-4">
@@ -1032,7 +1033,9 @@ function OverviewTab({ order }: { order: OrderDetail }) {
         <div className="p-4 pb-0">
           <PanelHeader
             title="Parts on this order"
-            description={`${order.customerPo.lines.length} line${order.customerPo.lines.length === 1 ? '' : 's'}, ${totalQty.toLocaleString('en-IN')} pieces. Prices, margin and lot codes are on Line Items.`}
+            description={`${order.customerPo.lines.length} line${order.customerPo.lines.length === 1 ? '' : 's'}, ${totalQty.toLocaleString('en-IN')} pieces${
+              testedLines > 0 ? ` · ${testedLines} going to the laboratory` : ''
+            }. Prices, margin and lot codes are on Line Items.`}
           />
         </div>
         {order.customerPo.lines.length === 0 ? (
@@ -1052,6 +1055,14 @@ function OverviewTab({ order }: { order: OrderDetail }) {
                 <span className="text-fg-tertiary min-w-0 flex-1 truncate text-[12px]">
                   {l.description}
                 </span>
+                {/* Testing is per line: an order can send two of three parts
+                    to the lab, and the third must not look tested because the
+                    ORDER was. */}
+                {l.testingRequired && (
+                  <Chip tone="info" size="sm">
+                    Lab tested
+                  </Chip>
+                )}
                 <span className="tnum text-fg shrink-0 text-[12.5px] font-medium">
                   {l.quantity.toLocaleString('en-IN')} {l.uom}
                 </span>
