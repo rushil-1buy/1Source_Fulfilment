@@ -1793,6 +1793,15 @@ function DocumentsTab({ order }: { order: OrderDetail }) {
     kind: PrintableKind;
     id: string;
     note: string;
+    /*
+     * The document type this printable IS.
+     *
+     * Two of these share the 'proforma-invoice' kind — ours to the customer and
+     * the supplier's to us — so keying the flow lookup on `kind` credited the
+     * supplier's own invoice to 1BUY Sourcing. The kind says which template
+     * renders it; only this says which document it is.
+     */
+    docType: string;
   }[] = [
     // The work order itself is deliberately absent. It is an internal job sheet,
     // not correspondence, so it lives on the button in this order's header rather
@@ -1803,6 +1812,7 @@ function DocumentsTab({ order }: { order: OrderDetail }) {
       kind: 'purchase-order',
       id: order.supplierPo.id,
       note: 'The voucher the supplier acts on.',
+      docType: 'SUPPLIER_PO',
     },
     ...(order.customerPi
       ? [
@@ -1812,6 +1822,7 @@ function DocumentsTab({ order }: { order: OrderDetail }) {
             kind: 'proforma-invoice' as const,
             id: order.customerPi.id,
             note: 'Our quote. Terms lock when the customer accepts it.',
+            docType: 'CUSTOMER_PI',
           },
         ]
       : []),
@@ -1823,6 +1834,7 @@ function DocumentsTab({ order }: { order: OrderDetail }) {
             kind: 'proforma-invoice' as const,
             id: order.supplierPi.id,
             note: 'What the supplier quoted us, including their bank details for payment.',
+            docType: 'SUPPLIER_PI',
           },
         ]
       : []),
@@ -1845,19 +1857,6 @@ function DocumentsTab({ order }: { order: OrderDetail }) {
    * two differently shaped lists.
    */
   const generatedIds = new Set(generated.map((g) => `${g.kind}:${g.id}`));
-  /*
-   * Our printables, named as the document types everything else knows.
-   *
-   * A Purchase Order raised on our paper and one filed against a stage are the
-   * same document; without this the generated rows would be the only ones in
-   * the register unable to say who is waiting on them.
-   */
-  const PRINTABLE_DOC_TYPE: Record<PrintableKind, string> = {
-    'purchase-order': 'SUPPLIER_PO',
-    'proforma-invoice': 'CUSTOMER_PI',
-    // The work order is ours alone — no counterparty is waiting on it.
-    'work-order': 'PNL',
-  };
   type Row = {
     key: string;
     document: string;
@@ -1901,7 +1900,7 @@ function DocumentsTab({ order }: { order: OrderDetail }) {
       purpose: g.note,
       // Our own printables map onto the same document types the flow map
       // knows, so a Purchase Order reads the same here as it does anywhere else.
-      docTypeForFlow: PRINTABLE_DOC_TYPE[g.kind] ?? null,
+      docTypeForFlow: g.docType,
       sheet: null,
     })),
     ...order.documents

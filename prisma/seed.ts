@@ -1762,6 +1762,53 @@ async function buildWorkOrder(spec: WoSpec) {
   if (hasSupplierPo) docs.push({ docType: 'SUPPLIER_PO', title: `Purchase order ${supPoNo}`, fileName: `${supPoNo}.pdf`, stage: 'SUPPLIER_PO_ISSUED', by: 'Akash Dwivedi' });
   if (hasSupplierPi) docs.push({ docType: 'SUPPLIER_PI', title: `Supplier proforma ${supPiNo}`, fileName: `${supPiNo}.pdf`, stage: 'SUPPLIER_PI_RECEIVED', by: 'Akash Dwivedi' });
   if (reached('TEST_PASSED') || spec.targetStage === 'TEST_FAILED') docs.push({ docType: 'TEST_REPORT', title: `WHL test report (${spec.targetStage === 'TEST_FAILED' ? 'FAIL' : 'PASS'})`, fileName: `WHL-RPT-2026-${pad(spec.aliasNo)}.pdf`, stage: spec.targetStage === 'TEST_FAILED' ? 'TEST_FAILED' : 'TEST_PASSED', by: 'WHL upload' });
+
+  /*
+   * The shipping and financing set, which was missing entirely.
+   *
+   * Every seeded order carried the two purchase orders, the two proformas and
+   * the customs trio — and nothing else. So the register had no commercial
+   * invoice, no packing list, no certificate of origin and no airway bill: the
+   * four documents an import actually turns on, and the first four anybody in
+   * this trade looks for. A bill of entry with no invoice behind it is an entry
+   * filed against nothing.
+   *
+   * Gated on the step that produces each, and on the order's own shape — an
+   * escrow schedule on an order paid by advance would be paperwork for an
+   * arrangement nobody made.
+   */
+  if (reached('PI_ACCEPTED_BY_CUSTOMER'))
+    docs.push({ docType: 'ACCEPTANCE', title: 'Customer acceptance', fileName: `ACC-${custPiNo}.pdf`, stage: 'PI_ACCEPTED_BY_CUSTOMER', by: 'Akash Dwivedi' });
+  if (reached('TERMS_LOCKED'))
+    docs.push({ docType: 'SOURCING_TERMS', title: 'Agreed commercial terms', fileName: `TERMS-${supPoNo}.pdf`, stage: 'TERMS_LOCKED', by: 'Akash Dwivedi' });
+  if (spec.paymentMethod === 'ESCROW' && reached('ESCROW_ACCOUNT_OPENED'))
+    docs.push({ docType: 'ESCROW_AGREEMENT', title: 'Escrow order and terms schedule', fileName: `ESC-${pad(spec.aliasNo, 6)}.pdf`, stage: 'ESCROW_ACCOUNT_OPENED', by: 'Escrow provider' });
+  if (spec.paymentMethod === 'ESCROW' && reached('ESCROW_FUNDED'))
+    docs.push({ docType: 'FUNDING_PROOF', title: 'Confirmation of funds held', fileName: `ESC-FUND-${pad(spec.aliasNo, 6)}.pdf`, stage: 'ESCROW_FUNDED', by: 'Escrow provider' });
+
+  // ── The consignment leaves: the documents that travel with it ────────────
+  if (reached('FULL_SHIPMENT_DISPATCHED_BY_SUPPLIER')) {
+    docs.push({ docType: 'COMMERCIAL_INVOICE', title: 'Commercial invoice', fileName: `CI-${supPiNo}.pdf`, stage: 'FULL_SHIPMENT_DISPATCHED_BY_SUPPLIER', by: 'Supplier upload' });
+    docs.push({ docType: 'PACKING_LIST', title: 'Packing list', fileName: `PL-${supPiNo}.pdf`, stage: 'FULL_SHIPMENT_DISPATCHED_BY_SUPPLIER', by: 'Supplier upload' });
+    docs.push({ docType: 'COO', title: 'Certificate of origin', fileName: `COO-${pad(spec.aliasNo, 6)}.pdf`, stage: 'FULL_SHIPMENT_DISPATCHED_BY_SUPPLIER', by: 'Supplier upload' });
+  }
+  if (reached('IN_TRANSIT_INTERNATIONAL'))
+    docs.push({ docType: 'AWB_LABEL', title: 'Air waybill', fileName: `AWB-4${pad(spec.aliasNo, 7)}.pdf`, stage: 'IN_TRANSIT_INTERNATIONAL', by: 'DHL retrieval' });
+
+  // ── Money out, and the compliance pair it opens ──────────────────────────
+  if (reached('ESCROW_FINAL_RELEASE_AUTHORISED'))
+    docs.push({ docType: 'RELEASE_INSTRUCTION', title: 'Release instruction', fileName: `REL-${pad(spec.aliasNo, 6)}.pdf`, stage: 'ESCROW_FINAL_RELEASE_AUTHORISED', by: 'Ankit Sharma' });
+  if (reached('SUPPLIER_PAID_IN_FULL')) {
+    docs.push({ docType: 'FINAL_REMITTANCE', title: 'Final remittance advice', fileName: `REM-${pad(spec.aliasNo, 6)}.pdf`, stage: 'SUPPLIER_PAID_IN_FULL', by: 'Ankit Sharma' });
+    docs.push({ docType: 'ORM', title: 'Outward Remittance Message', fileName: `ORM-${pad(spec.aliasNo, 6)}.pdf`, stage: 'SUPPLIER_PAID_IN_FULL', by: 'AD bank' });
+  }
+
+  // ── Out the door ────────────────────────────────────────────────────────
+  if (reached('REBRAND_AND_REPACK_IN_PROGRESS'))
+    docs.push({ docType: 'REPACK_SHEET', title: 'Repack sheet', fileName: `RPK-${pad(spec.aliasNo, 6)}.pdf`, stage: 'REBRAND_AND_REPACK_IN_PROGRESS', by: 'Akash Dwivedi' });
+  if (reached('OUT_FOR_DELIVERY'))
+    docs.push({ docType: 'DELIVERY_NOTE', title: 'Delivery note', fileName: `DN-${pad(spec.aliasNo, 6)}.pdf`, stage: 'OUT_FOR_DELIVERY', by: 'Akash Dwivedi' });
+
   if (reached('CUSTOMS_ENTRY_FILED_ICEGATE')) docs.push({ docType: 'BOE', title: `Bill of Entry ${7600000 + spec.aliasNo}`, fileName: `BOE-${7600000 + spec.aliasNo}.pdf`, stage: 'CUSTOMS_ENTRY_FILED_ICEGATE', by: 'CHA agent' });
   if (reached('DUTY_ASSESSED_AND_PAID')) docs.push({ docType: 'DUTY_CHALLAN', title: `Duty challan`, fileName: `CHLN-2026-${pad(spec.aliasNo, 7)}.pdf`, stage: 'DUTY_ASSESSED_AND_PAID', by: 'CHA agent' });
   if (reached('CUSTOMS_CLEARED')) docs.push({ docType: 'OUT_OF_CHARGE', title: 'Out-of-charge document', fileName: `OOC-${7600000 + spec.aliasNo}.pdf`, stage: 'CUSTOMS_CLEARED', by: 'CHA agent' });
