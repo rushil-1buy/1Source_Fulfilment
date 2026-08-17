@@ -47,6 +47,7 @@ import {
   getStage,
   nextStageFor,
   stageNextActionOwner,
+  stageOwner,
 } from '@/lib/domain/stages';
 import { stageContextFrom } from '@/lib/domain/stage-context';
 import { evidenceFor } from '@/lib/domain/stage-evidence';
@@ -333,12 +334,23 @@ export async function runAgenticStep(orderId: string): Promise<RunStepResult> {
 
   const ctx = stageContextFrom(wo as Parameters<typeof stageContextFrom>[0]);
   const current = getStage(wo.stage);
+
+  /*
+   * Two different owners, and the log needs both.
+   *
+   * `stageOwner` is whose step this IS — the desk the agent is standing in for,
+   * and therefore the right attribution for "completed A2 for …". The
+   * next-action owner is who has to move AFTER it, which is who the reply goes
+   * to. Using the next-action owner for both made the log claim A2 was
+   * completed for the customer, when the customer is merely who it was sent to.
+   */
+  const actingTeam = stageOwner(current, ctx);
   const team = stageNextActionOwner(current, ctx);
-  const teamLabel = STAKEHOLDER_META[team].short;
+  const teamLabel = STAKEHOLDER_META[actingTeam].short;
   const base = {
     fromCode: current.code,
     fromLabel: current.label,
-    team,
+    team: actingTeam,
     teamLabel,
     evidenceFilled: [] as string[],
     documentsFiled: [] as string[],
@@ -376,7 +388,7 @@ export async function runAgenticStep(orderId: string): Promise<RunStepResult> {
         note: TOUCH_KIND_NOTE[touch.kind],
         // Finance and the outside parties are the ones the live platform would
         // genuinely have queued. Saying so separates policy from practicality.
-        liveWouldQueue: !isLiveAutonomous(team),
+        liveWouldQueue: !isLiveAutonomous(actingTeam),
       }
     : undefined;
 
@@ -545,7 +557,7 @@ export async function runAgenticStep(orderId: string): Promise<RunStepResult> {
       subject: humanBypass
         ? `Agent advanced to ${next.code} — ${next.label} (human step, bypassed for the simulation)`
         : `Agent advanced to ${next.code} — ${next.label}`,
-      body: `The autonomous agent completed ${current.code} on behalf of ${STAKEHOLDER_META[team].label}${filled.length ? `, recording ${filled.length} evidence field${filled.length === 1 ? '' : 's'}` : ''}${docs.length ? ` and filing ${docs.join(', ')}` : ''}.${
+      body: `The autonomous agent completed ${current.code} on behalf of ${STAKEHOLDER_META[actingTeam].label}${filled.length ? `, recording ${filled.length} evidence field${filled.length === 1 ? '' : 's'}` : ''}${docs.length ? ` and filing ${docs.join(', ')}` : ''}.${
         humanBypass
           ? `\n\nHUMAN STEP — BYPASSED FOR THE SIMULATION. In real life this is ${humanBypass.who}: ${humanBypass.wouldDo} ${humanBypass.note}`
           : ''
