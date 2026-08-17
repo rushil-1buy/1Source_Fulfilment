@@ -50,6 +50,8 @@ import type { EvidenceRecord } from '@/app/(app)/orders/[id]/StageEvidencePanel'
 import { CommunicationTab } from '@/app/(app)/orders/[id]/CommunicationTab';
 import { ExceptionPanel, type FailedLine } from '@/app/(app)/orders/[id]/ExceptionPanel';
 import { TeamLogisticsPanel, type TeamShipment } from '@/components/logistics/TeamLogisticsPanel';
+import { AppointCarrier, AppointEscrow, type LegSlot } from '@/components/logistics/AppointCarrier';
+import { ESCROW_PARTNERS } from '@/lib/domain/portal-agents';
 import { deskMovesGoods } from '@/lib/queries/team-shipments';
 import { ESanchitPanel, LiveCashPanel, TeamDocumentsPanel, TeamLiabilityPanel, TeamOrderFactsPanel, type ESanchitState } from './TeamOrderExtras';
 import { DeliverablesPanel } from './DeliverablesPanel';
@@ -79,6 +81,7 @@ export function TeamOrderView({
   deliverables,
   eSanchit,
   shipments = [],
+  legSlots = [],
 }: {
   order: OrderDetail;
   team: Stakeholder;
@@ -89,6 +92,8 @@ export function TeamOrderView({
   deliverables: TeamDeliverables;
   /** eSanchit filing state — fetched only for the Inbound desk. */
   eSanchit?: ESanchitState | null;
+  /** Which legs this desk may appoint a carrier for, already gated by term. */
+  legSlots?: LegSlot[];
   /**
    * The carrier legs this desk owns, already scoped and already judged late or
    * not. Both decisions are made on the server: leg scoping because it is
@@ -350,6 +355,30 @@ export function TeamOrderView({
         />
       ))}
 
+      {/* Engaging the provider comes before watching the money: there is no
+          cash position until somebody has been appointed to hold it. */}
+      {team === 'ONE_BUY_FINANCE' && (
+        <Panel>
+          <PanelHeader
+            title="Escrow provider"
+            description="Finance appoints who holds the money and opens the account. The provider confirms the hold to the supplier; funds only move once the goods are received at 1BUY."
+          />
+          <AppointEscrow
+            orderId={order.id}
+            paymentMethod={order.paymentMethod}
+            currentProvider={order.escrowAccount?.provider ?? null}
+            escrowRef={order.escrowAccount?.escrowRef ?? null}
+            funded={(order.escrowAccount?.fundedAmount ?? 0) > 0}
+            partners={ESCROW_PARTNERS.map((p) => ({
+              code: p.code,
+              name: p.name,
+              region: p.region,
+              status: p.status,
+            }))}
+          />
+        </Panel>
+      )}
+
       {/* Finance watches the money while the order runs; the signable P&L
           waits for the end of the flow. Cash, not goods — see cash-flows.ts. */}
       {team === 'ONE_BUY_FINANCE' && deliverables.input && (
@@ -511,7 +540,10 @@ export function TeamOrderView({
 
           {movesGoods && (
             <Tabs.Content value="logistics" className="min-w-0 p-4 outline-none">
-              <TeamLogisticsPanel team={team} shipments={shipments} />
+              <div className="flex min-w-0 flex-col gap-4">
+                <AppointCarrier orderId={order.id} slots={legSlots} />
+                <TeamLogisticsPanel team={team} shipments={shipments} />
+              </div>
             </Tabs.Content>
           )}
 
