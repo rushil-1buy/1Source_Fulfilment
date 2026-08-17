@@ -1277,6 +1277,19 @@ model Document {
   provenance   String   @default("MANUAL")
   createdAt    DateTime @default(now())
 
+  /// Review state for documents WE produce, which have a life before they are
+  /// evidence: drafted, edited, approved, then sent to whoever needs them.
+  ///
+  /// FILED is the default and covers everything else — a document a
+  /// counterparty sent us was never our draft and has no approval of ours to
+  /// wait on. Only the ones this platform generates walk the other states.
+  reviewStatus String   @default("FILED") // FILED | DRAFT | APPROVED | SENT
+  approvedBy   String?
+  approvedAt   DateTime?
+  sentAt       DateTime?
+  /// Stakeholder codes the document was sent to, comma-separated.
+  sentTo       String?
+
   workOrderId      String?
   workOrder        WorkOrder? @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
   customerPoId     String?
