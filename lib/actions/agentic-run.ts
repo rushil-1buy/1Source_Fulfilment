@@ -60,6 +60,8 @@ import {
   type TouchKind,
 } from '@/lib/domain/human-touchpoints';
 import { applyStageEffects } from '@/lib/actions/agentic-effects';
+import { renderDocumentBody } from '@/lib/domain/document-bodies';
+import { DOC_CONTEXT_INCLUDE, docContextFrom } from '@/lib/queries/doc-context';
 
 export type RunOutcome = 'ADVANCED' | 'BLOCKED' | 'DONE';
 
@@ -484,6 +486,15 @@ export async function runAgenticStep(orderId: string): Promise<RunStepResult> {
           },
         });
 
+    // Loaded once for the whole step: every document filed here renders from
+    // the same snapshot, so two documents on one step cannot disagree.
+    const docCtx = docContextFrom(
+      await db.workOrder.findUniqueOrThrow({
+        where: { id: wo.id },
+        include: DOC_CONTEXT_INCLUDE,
+      }),
+    );
+
     // Required documents, filed for real against the evidence record.
     for (const d of spec.documents.filter((x) => x.required)) {
       const already = await db.document.findFirst({
@@ -509,7 +520,17 @@ export async function runAgenticStep(orderId: string): Promise<RunStepResult> {
           sizeBytes: 42_000,
           uploadedBy: 'Autonomous agent',
           provenance: 'SYSTEM',
-          bodyText: `${d.label}\nWork order ${wo.alias}\nStage ${current.code} — ${current.label}\n\nFiled by the autonomous agent after reconciling against the order's own records.`,
+          /*
+           * The real document, not a note saying one exists.
+           *
+           * Every agent-filed document used to open to four identical lines,
+           * which taught a viewer that the register was decorative. The
+           * renderer builds each type with the fields its real counterpart
+           * carries, from this order's own parties, parts, values and
+           * references — and the seed uses the same one, so a simulated order
+           * and a seeded order cannot disagree about what an invoice looks like.
+           */
+          bodyText: renderDocumentBody(d.id, docCtx, d.label),
         },
       });
       docs.push(d.label);

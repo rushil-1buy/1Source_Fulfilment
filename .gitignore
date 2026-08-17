@@ -49,3 +49,6 @@ lib/generated/
 # Office lock files
 ~$*
 !.env.example
+
+# Locally exported documents — regenerate with scripts/export-documents.ts
+document-exports/

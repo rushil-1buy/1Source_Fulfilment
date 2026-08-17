@@ -17,6 +17,7 @@ import {
 } from '../lib/domain/stages';
 import { computeGstInvoice, makeRateLookup, type HsnRateRow } from '../lib/tax/gst-engine';
 import { assignAttachments } from '@/lib/domain/message-attachments';
+import { renderDocumentBody, type DocContext } from '@/lib/domain/document-bodies';
 import { computeLandedCost } from '../lib/tax/landed-cost';
 import { amountInWords, convertMinor, pctOf, toMinor } from '../lib/domain/money';
 import { isOneBuy, type Stakeholder } from '../lib/domain/enums';
@@ -1778,39 +1779,78 @@ async function buildWorkOrder(spec: WoSpec) {
   const lineBlock = spec.lines
     .map((l, ix) => `  ${ix + 1}. ${l.mpn} — ${l.qty.toLocaleString('en-IN')} PCS`)
     .join('\n');
-  const sampleBody = (d: { docType: string; title: string }): string => {
-    const head = `${d.title}\nWork order ${canonical}\nCustomer: ${customer.name} · Supplier: ${supplier.name}\n`;
-    switch (d.docType) {
-      case 'CUSTOMER_PO':
-        return `${head}\nPurchase order ${custPoNo}\nParts ordered:\n${lineBlock}\n\nDelivery: as per agreed schedule.\nAuthorised by the customer's procurement desk.`;
-      case 'CUSTOMER_PI':
-        return `${head}\nProforma invoice ${custPiNo} issued against ${custPoNo}.\nParts quoted:\n${lineBlock}\n\nValidity: 14 days. Prices in INR, exclusive of GST.`;
-      case 'SUPPLIER_PO':
-        return `${head}\nPurchase order ${supPoNo} to ${supplier.name}.\nParts:\n${lineBlock}\n\nDelivery term: ${supplier.incoterms}. Currency: ${supplier.currency}.`;
-      case 'SUPPLIER_PI':
-        return `${head}\nSupplier proforma ${supPiNo} against our ${supPoNo}.\nParts confirmed:\n${lineBlock}\n\nBank details verified independently before payment.`;
-      case 'TEST_REPORT':
-        return `${head}\nLaboratory: WHL Bengaluru.\nScope: lot sample. Sample drawn per plan.\nElectrical parameters, marking permanency and decapsulation checks completed.\nVerdict: as recorded on the order.`;
-      case 'BOE':
-        return `${head}\nBill of Entry filed on ICEGATE by the CHA.\nSupporting documents lodged on eSanchit ahead of filing.\nAssessable value and duty as assessed by customs.`;
-      case 'DUTY_CHALLAN':
-        return `${head}\nDuty payment challan.\nBCD, SWS and cess paid; IGST paid and claimable as Input Tax Credit.`;
-      case 'OUT_OF_CHARGE':
-        return `${head}\nOut-of-charge granted. Consignment released from customs control.`;
-      case 'GRN':
-        return `${head}\nGoods receipt note.\nParts received:\n${lineBlock}\n\nCondition on arrival: sound. Put away per storage plan.`;
-      case 'INSPECTION_REPORT':
-        return `${head}\nInbound inspection.\nMarkings verified against ordered parts. Packaging intact.\nVerdict: as recorded on the order.`;
-      case 'POD':
-        return `${head}\nProof of delivery retrieved from the carrier.\nSigned at the customer's receiving dock.`;
-      case 'TAX_INVOICE':
-        return `${head}\nTax invoice raised on the customer with GST as applicable.\nIRN and e-way bill generated where required.`;
-      case 'ORM':
-        return `${head}\nOutward Remittance Message issued by the authorised dealer bank.\nBeneficiary: ${supplier.name}.\nPurpose code: S0101 — advance/payment against import of goods.\n\nThis remittance remains OPEN in IDPMS until the Bill of Entry evidencing the\nimport is filed against it. Reconciling the two is the importer's obligation:\nan outward remittance left unmatched is 1BUY's exposure under FEMA, not the\nbank's and not the supplier's.`;
-      default:
-        return `${head}\nFiled against the order.`;
-    }
+  /*
+   * The seeded documents come from the same renderer the agent uses.
+   *
+   * There used to be a switch here producing two or three lines per type, and a
+   * separate stub in the runner producing four. Two generators drift, and the
+   * first symptom is a demonstration where a seeded order and a simulated one
+   * disagree about what a commercial invoice contains.
+   */
+  const seededCtx: DocContext = {
+    alias: spec.alias ?? canonical,
+    canonicalName: canonical,
+    docDate: at('CUSTOMER_PO_RECEIVED').toISOString(),
+    org: {
+      legalName: ORG.legalName,
+      address: `${ORG.addressLine1}\n${ORG.city} ${ORG.pincode}\n${ORG.country}`,
+      gstin: ORG.gstin,
+      iec: 'AABCS4389M',
+      country: ORG.country,
+    },
+    customer: {
+      name: customer.name,
+      address: `${customer.addressLine1}\n${customer.city} ${customer.pincode}`,
+      gstin: customer.gstin ?? null,
+      contact: customer.contactName,
+    },
+    supplier: {
+      name: supplier.name,
+      country: supplier.country ?? '—',
+      currency: supplier.currency,
+    },
+    refs: {
+      customerPo: custPoNo,
+      supplierPo: supPoNo,
+      customerPi: custPiNo,
+      supplierPi: hasSupplierPi ? supPiNo : null,
+    },
+    terms: {
+      buyIncoterms: supplier.incoterms,
+      // Every seeded customer order sells on DDP; see the customer PO above.
+      sellIncoterms: 'DDP',
+      paymentMethod: spec.paymentMethod,
+      fxRate,
+    },
+    lines: spec.lines.map((l) => {
+      const meta = MPNS.find((m) => m.mpn === l.mpn);
+      return {
+        mpn: l.mpn,
+        manufacturer: meta?.manufacturer ?? '—',
+        description: meta?.description ?? '—',
+        hsnCode: meta?.hsnCode ?? '—',
+        qty: l.qty,
+        uom: 'PCS',
+        unitPriceMinor: toMinor(l.buy, supplier.currency),
+        lineTotalMinor: toMinor(l.qty * l.buy, supplier.currency),
+      };
+    }),
+    buyCurrency: supplier.currency,
+    sellCurrency: 'INR',
+    buyValueMinor: buyValue,
+    sellValueMinor: sellValue,
+    escrow: null,
+    shipment: null,
+    customs: {
+      beNumber: `BE-${7600000 + spec.aliasNo}`,
+      port: 'INBLR4 — Bengaluru Air Cargo',
+      chaLicence: 'CHA/BLR/1147',
+    },
+    invoice: null,
   };
+
+  const sampleBody = (d: { docType: string; title: string }): string =>
+    renderDocumentBody(d.docType, seededCtx, d.title);
 
   await db.document.createMany({
     data: docs.map((d) => ({
