@@ -27,6 +27,8 @@ import { markCommunicationRead } from '@/lib/actions/communication';
 import { STAKEHOLDERS, STAKEHOLDER_META, type Stakeholder } from '@/lib/domain/enums';
 import { exceptionDef } from '@/lib/domain/exceptions';
 import { getStage } from '@/lib/domain/stages';
+import { normaliseDocType } from '@/lib/domain/document-flow';
+import { DocumentSheetDialog, type SheetDoc } from '@/components/documents/DocumentSheet';
 import { cn, formatDateTime, humanDuration, relativeTime } from '@/lib/utils';
 
 type Comm = OrderDetail['communications'][number];
@@ -86,6 +88,8 @@ export function CommunicationTab({
   const [internalOnly, setInternalOnly] = useState(false);
   const [withAttachments, setWithAttachments] = useState(false);
   const [expandedQuotes, setExpandedQuotes] = useState<Set<string>>(new Set());
+  /** The attachment being read, if any — the thread opens its own documents. */
+  const [openAttachment, setOpenAttachment] = useState<SheetDoc | null>(null);
   /** null when closed; otherwise which intent the composer was opened with. */
   const [composer, setComposer] = useState<'LOG' | 'SEND' | null>(null);
 
@@ -517,6 +521,8 @@ export function CommunicationTab({
                     <HumanEntry
                       key={c.id}
                       comm={c}
+                      onOpenAttachment={setOpenAttachment}
+                      orderAlias={order.alias}
                       onReply={openReply}
                       onMarkRead={markRead}
                       quoteOpen={expandedQuotes.has(c.id)}
@@ -560,6 +566,8 @@ export function CommunicationTab({
                     <HumanEntry
                       key={c.id}
                       comm={c}
+                      onOpenAttachment={setOpenAttachment}
+                      orderAlias={order.alias}
                       onReply={openReply}
                       onMarkRead={markRead}
                       quoteOpen={expandedQuotes.has(c.id)}
@@ -579,6 +587,11 @@ export function CommunicationTab({
           ))}
         </div>
       )}
+      <DocumentSheetDialog
+        doc={openAttachment}
+        open={openAttachment !== null}
+        onOpenChange={(o) => !o && setOpenAttachment(null)}
+      />
     </div>
   );
 }
@@ -622,6 +635,8 @@ function HumanEntry({
   onToggleQuote,
   onReply,
   onMarkRead,
+  onOpenAttachment,
+  orderAlias,
 }: {
   comm: Comm;
   quoteOpen: boolean;
@@ -629,6 +644,9 @@ function HumanEntry({
   /** Absent on read-only surfaces; present wherever a desk can answer. */
   onReply?: (comm: Comm) => void;
   onMarkRead?: (comm: Comm) => void;
+  /** Opens an attachment as the document itself. */
+  onOpenAttachment: (doc: SheetDoc) => void;
+  orderAlias: string;
 }) {
   const ChannelIcon = CHANNEL_ICONS[comm.channel] ?? Mail;
   const from = comm.participants.find((p) => p.role === 'FROM');
@@ -737,17 +755,46 @@ function HumanEntry({
           </div>
         )}
 
+        {/*
+          The attachments, and they OPEN.
+
+          A paperclip you cannot click sends the reader to the register to find
+          the document they are already reading about, which is the errand the
+          thread exists to save. Clicking renders the document itself — the same
+          sheet the register opens, so the two views cannot drift.
+        */}
         {comm.attachments.length > 0 && (
           <ul className="mt-2 flex flex-wrap gap-1.5">
             {comm.attachments.map((a) => (
               <li key={a.id}>
-                <span className="border-line-subtle bg-surface-inset flex items-center gap-1.5 rounded-[7px] border px-2 py-1 text-[11px]">
+                <button
+                  type="button"
+                  onClick={() =>
+                    onOpenAttachment({
+                      id: a.id,
+                      docType: a.docType,
+                      kindLabel: docKindLabel(a.docType),
+                      title: a.title,
+                      fileName: a.fileName,
+                      uploadedBy: a.uploadedBy,
+                      createdAt: a.createdAt,
+                      version: a.version,
+                      sizeBytes: a.sizeBytes,
+                      stepLabel: a.stageId ? stepLabelFor(a.stageId) : null,
+                      orderAlias,
+                      bodyText: a.bodyText,
+                    })
+                  }
+                  className="border-line-subtle bg-surface-inset hover:border-accent hover:bg-surface-3 flex items-center gap-1.5 rounded-[7px] border px-2 py-1 text-[11px] transition-colors"
+                >
                   <Paperclip className="text-fg-tertiary size-3 shrink-0" aria-hidden />
-                  <span className="max-w-[180px] truncate font-mono">{a.fileName}</span>
+                  <span className="text-accent-text max-w-[180px] truncate font-mono">
+                    {a.fileName}
+                  </span>
                   <span className="text-fg-tertiary shrink-0">
                     {(a.sizeBytes / 1024).toFixed(0)} KB
                   </span>
-                </span>
+                </button>
               </li>
             ))}
           </ul>
@@ -813,6 +860,22 @@ function HumanEntry({
       </div>
     </li>
   );
+}
+
+/** The document's human name, folded across the naming conventions. */
+function docKindLabel(docType: string): string {
+  const words = normaliseDocType(docType).replace(/_/g, ' ');
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+/** The step an attachment belongs to, named rather than coded. */
+function stepLabelFor(stageId: string): string {
+  try {
+    const s = getStage(stageId);
+    return `${s.code} ${s.label}`;
+  } catch {
+    return stageId;
+  }
 }
 
 function DirectionChip({ direction }: { direction: string }) {

@@ -58,7 +58,23 @@ const DETAIL_INCLUDE = {
     include: {
       participants: true,
       contextChips: true,
-      attachments: { select: { id: true, title: true, fileName: true, sizeBytes: true } },
+      /* Enough for the attachment to OPEN, not merely to be listed. A paperclip
+         that cannot be clicked sends the reader to the register to find the
+         thing they are already looking at. */
+      attachments: {
+        select: {
+          id: true,
+          docType: true,
+          title: true,
+          fileName: true,
+          sizeBytes: true,
+          uploadedBy: true,
+          version: true,
+          createdAt: true,
+          stageId: true,
+          bodyText: true,
+        },
+      },
       loggedBy: { select: { name: true } },
     },
   },

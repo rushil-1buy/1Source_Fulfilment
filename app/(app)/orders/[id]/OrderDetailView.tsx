@@ -54,6 +54,7 @@ import {
   SectionLabel,
 } from '@/components/ui/Layout';
 import { Chip, ProvenanceBadge, StakeholderBadge, StatusChip } from '@/components/ui/Badges';
+import { docFlowFor } from '@/lib/domain/document-flow';
 import { Hint, InfoTooltip } from '@/components/ui/InfoTooltip';
 import {
   ResponsiveFlowRail,
@@ -98,6 +99,9 @@ import {
   type EscrowMilestone,
   type ShipmentLeg,
   type TaxTreatment,
+  isOneBuy,
+  STAKEHOLDER_META,
+  type Stakeholder,
 } from '@/lib/domain/enums';
 import { cn, formatDate, formatDateTime, humanDuration } from '@/lib/utils';
 import { usePreferences } from '@/components/providers/Preferences';
@@ -1778,6 +1782,19 @@ function DocumentsTab({ order }: { order: OrderDetail }) {
    * two differently shaped lists.
    */
   const generatedIds = new Set(generated.map((g) => `${g.kind}:${g.id}`));
+  /*
+   * Our printables, named as the document types everything else knows.
+   *
+   * A Purchase Order raised on our paper and one filed against a stage are the
+   * same document; without this the generated rows would be the only ones in
+   * the register unable to say who is waiting on them.
+   */
+  const PRINTABLE_DOC_TYPE: Record<PrintableKind, string> = {
+    'purchase-order': 'SUPPLIER_PO',
+    'proforma-invoice': 'CUSTOMER_PI',
+    // The work order is ours alone — no counterparty is waiting on it.
+    'work-order': 'PNL',
+  };
   type Row = {
     key: string;
     document: string;
@@ -1791,6 +1808,8 @@ function DocumentsTab({ order }: { order: OrderDetail }) {
     actor: string | null;
     view: { kind: PrintableKind; id: string } | null;
     purpose: string | null;
+    /** What the flow map is looked up by. Null where nothing identifies it. */
+    docTypeForFlow: string | null;
     /**
      * The filed record, for documents that have no printable of their own.
      *
@@ -1817,6 +1836,9 @@ function DocumentsTab({ order }: { order: OrderDetail }) {
       actor: null,
       view: { kind: g.kind, id: g.id },
       purpose: g.note,
+      // Our own printables map onto the same document types the flow map
+      // knows, so a Purchase Order reads the same here as it does anywhere else.
+      docTypeForFlow: PRINTABLE_DOC_TYPE[g.kind] ?? null,
       sheet: null,
     })),
     ...order.documents
@@ -1839,6 +1861,7 @@ function DocumentsTab({ order }: { order: OrderDetail }) {
         actor: d.uploadedBy,
         view: viewerFor(d.docType),
         purpose: null,
+        docTypeForFlow: d.docType,
         sheet: {
           id: d.id,
           docType: d.docType,
@@ -1881,6 +1904,16 @@ function DocumentsTab({ order }: { order: OrderDetail }) {
                 {[
                   ['Document', 'What the paper is'],
                   ['Reference', 'The number it is known by'],
+                  /*
+                   * Who OWES it and who is waiting on it, and whether that is a
+                   * desk of ours or somebody outside.
+                   *
+                   * "Recorded by" further along answers who attached the file,
+                   * which is usually us filing something a counterparty sent —
+                   * a different question, and not the one you ask when a
+                   * document is late.
+                   */
+                  ['Responsible', 'The party answerable for producing it, and who is blocked without it'],
                   ['Origin', 'Raised on our paper, or filed by a stage'],
                   ['Dated', 'When it was filed against this order'],
                   ['File', 'Stored file name, size and revision'],
@@ -1911,6 +1944,9 @@ function DocumentsTab({ order }: { order: OrderDetail }) {
                   </td>
                   <td className="px-3 py-2.5">
                     <MonoId value={r.reference} truncate />
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <DocResponsibility docType={r.docTypeForFlow} />
                   </td>
                   <td className="px-3 py-2.5">
                     <Chip size="sm" tone={r.onOurPaper ? 'accent' : 'neutral'}>
@@ -3521,5 +3557,59 @@ function AuditTab({ order }: { order: OrderDetail }) {
         </table>
       </div>
     </Panel>
+  );
+}
+
+/**
+ * Who owes a document and who cannot work without it.
+ *
+ * Split into ours and theirs because the two lead to different actions: an
+ * internal desk is walked to, a counterparty is written to, and a register that
+ * blurs them makes every late document look like the same kind of problem.
+ */
+function DocResponsibility({ docType }: { docType: string | null }) {
+  const flow = docType ? docFlowFor(docType) : null;
+  if (!flow) {
+    return (
+      <span className="text-fg-tertiary text-[11.5px]">
+        Not on the document map
+      </span>
+    );
+  }
+
+  const providerIsOurs = isOneBuy(flow.provider);
+  const ours = flow.requiredBy.filter((r: Stakeholder) => isOneBuy(r));
+  const theirs = flow.requiredBy.filter((r: Stakeholder) => !isOneBuy(r));
+
+  return (
+    <div className="min-w-0">
+      <div className="flex min-w-0 flex-wrap items-center gap-1">
+        <StakeholderBadge stakeholder={flow.provider} short />
+        <span className="text-fg-tertiary text-[10px]">
+          {providerIsOurs ? 'ours to produce' : 'external — they produce it'}
+        </span>
+      </div>
+      <div className="text-fg-tertiary mt-1 text-[10.5px] leading-relaxed">
+        {flow.requiredBy.length === 0 ? (
+          <>Internal only — nobody is waiting on it</>
+        ) : (
+          <>
+            Needed by{' '}
+            {ours.length > 0 && (
+              <span className="text-fg-secondary font-medium">
+                {ours.map((r: Stakeholder) => STAKEHOLDER_META[r].short).join(', ')}
+              </span>
+            )}
+            {ours.length > 0 && theirs.length > 0 && ' · '}
+            {theirs.length > 0 && (
+              <span className="text-fg-secondary font-medium">
+                {theirs.map((r: Stakeholder) => STAKEHOLDER_META[r].short).join(', ')}{' '}
+                <span className="text-fg-tertiary font-normal">(external)</span>
+              </span>
+            )}
+          </>
+        )}
+      </div>
+    </div>
   );
 }

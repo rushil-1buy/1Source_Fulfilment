@@ -16,9 +16,10 @@ import {
   type StageContext,
 } from '../lib/domain/stages';
 import { computeGstInvoice, makeRateLookup, type HsnRateRow } from '../lib/tax/gst-engine';
+import { assignAttachments } from '@/lib/domain/message-attachments';
 import { computeLandedCost } from '../lib/tax/landed-cost';
 import { amountInWords, convertMinor, pctOf, toMinor } from '../lib/domain/money';
-import { isOneBuy } from '../lib/domain/enums';
+import { isOneBuy, type Stakeholder } from '../lib/domain/enums';
 import { GLOSSARY } from '../lib/glossary';
 import { seedDemoOrder } from './seed-demo-order';
 import {
@@ -1825,6 +1826,56 @@ async function buildWorkOrder(spec: WoSpec) {
       bodyText: sampleBody(d),
     })),
   });
+
+  /*
+   * ── Attach the paperwork to the mail it arrived on ──────────────────────
+   *
+   * A thread confined to one order is only a mailbox if the documents travel
+   * with the messages. Run after both exist, because the assignment needs to
+   * see the whole set: each document goes to the earliest message from the
+   * party who owes it, about the step it belongs to.
+   *
+   * Most documents are attached to nothing, and that is correct — a bill of
+   * entry is filed on a portal, not emailed — so a thread showing paperclips on
+   * a minority of messages is the accurate picture rather than a thin one.
+   */
+  {
+    const [msgs, filed] = await Promise.all([
+      db.communication.findMany({
+        where: { workOrderId: spec.key, entryClass: 'HUMAN' },
+        select: {
+          id: true,
+          occurredAt: true,
+          participants: { where: { role: 'FROM' }, select: { stakeholder: true } },
+          contextChips: { where: { kind: 'STAGE' }, select: { refId: true } },
+        },
+      }),
+      db.document.findMany({
+        where: { workOrderId: spec.key },
+        select: { id: true, docType: true, stageId: true },
+      }),
+    ]);
+
+    const assignment = assignAttachments(
+      msgs.flatMap((m) =>
+        m.participants[0]
+          ? [
+              {
+                id: m.id,
+                from: m.participants[0].stakeholder as Stakeholder,
+                stageId: m.contextChips[0]?.refId ?? null,
+                occurredAt: m.occurredAt,
+              },
+            ]
+          : [],
+      ),
+      filed,
+    );
+
+    for (const [documentId, communicationId] of assignment) {
+      await db.document.update({ where: { id: documentId }, data: { communicationId } });
+    }
+  }
 
   // ── Audit log ─────────────────────────────────────────────────────────────
   await db.auditLogEntry.createMany({
