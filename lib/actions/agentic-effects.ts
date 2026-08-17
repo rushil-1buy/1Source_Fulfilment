@@ -165,7 +165,11 @@ export async function applyStageEffects(orderId: string, stageId: string): Promi
        * partner onto the existing account is the actual work of this step.
        */
       if (wo.escrowAccount) {
-        if (wo.escrowAccount.provider && wo.escrowAccount.provider !== 'TBD') break;
+        // Matched on the PREFIX, not on equality: the gate writes
+        // 'TBD — provider not yet finalised', so an exact 'TBD' comparison
+        // silently decided the provider was already appointed and left every
+        // settled escrow showing a placeholder.
+        if (!wo.escrowAccount.provider.startsWith('TBD')) break;
         await db.escrowAccount.update({
           where: { id: wo.escrowAccount.id },
           data: { provider: partner.code },
