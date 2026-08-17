@@ -20,6 +20,7 @@ import { assessEvidence } from '@/lib/domain/stage-evidence';
 import { OVERRIDE_REASON_MIN, isUsableOverrideReason } from '@/lib/domain/advance-gate';
 import { STAGE_CONTEXT_INCLUDE, stageContextFrom } from '@/lib/domain/stage-context';
 import { obligationsBlocking, type Obligation } from '@/lib/domain/obligations';
+import { eventBlockFor } from '@/lib/domain/inbound-events';
 import {
   STAGE_BY_ID,
   canTransition,
@@ -202,6 +203,37 @@ export async function advanceStage(
   // when there is something on file showing it happened. This checks the stage
   // being LEFT, not the one being entered.
   const leavingEvidence = wo.stageEvidence.find((e) => e.stageId === wo.stage);
+  /*
+   * ── An event that holds the order actually holds it ──────────────────────
+   *
+   * The inbound events panel tells a desk that a customs query or a document
+   * discrepancy "holds the order until it is answered". That was a claim the
+   * platform did not keep: nothing checked, and the order advanced over an open
+   * query as if it had been resolved.
+   *
+   * Checked BEFORE the evidence gate, because it is the more fundamental
+   * refusal — filling in evidence for a step that customs have stopped is work
+   * that may have to be redone, and being told about the query first is what
+   * lets somebody go and answer it.
+   *
+   * Deliberately NOT waivable by an evidence override. The override exists for
+   * paperwork we choose to proceed without; this is a third party refusing to
+   * let the goods move, and no reason typed into our own system changes that.
+   */
+  const holdingNow = await db.inboundEventRecord.findMany({
+    where: { workOrderId: wo.id, status: 'OPEN' },
+    select: { id: true, eventId: true, stageId: true, status: true, effect: true },
+  });
+  const eventBlock = eventBlockFor(holdingNow, wo.stage);
+  if (eventBlock) {
+    return {
+      ok: false,
+      message: eventBlock.message,
+      blockedBy: eventBlock.eventId,
+      detail: eventBlock.detail,
+    };
+  }
+
   const leaving = assessEvidence(
     wo.stage,
     leavingEvidence ? (JSON.parse(leavingEvidence.values) as Record<string, unknown>) : {},

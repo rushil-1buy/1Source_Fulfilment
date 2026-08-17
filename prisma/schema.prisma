@@ -667,6 +667,46 @@ model WorkOrder {
   phasePlan       OrderPhasePlan[]
   deliverables    TeamDeliverable[]
   agenticSteps    AgenticRunStep[]
+  inboundEvents   InboundEventRecord[]
+}
+
+/// Something that happened to a consignment between the steps.
+///
+/// The third category, alongside a stage and an exception. A rolled flight, an
+/// appraiser's query, demurrage running, a carton short on the dock: things
+/// that have to be recorded and usually cost money, but that mostly do not stop
+/// the order. Treating each as an exception would halt an order for a two-day
+/// flight delay; leaving them in somebody's inbox is how they surface as a
+/// margin surprise.
+///
+/// The bearer is stored as it was DERIVED at the time, not as somebody typed
+/// it. If the delivery term on the order is later corrected, the historical
+/// record still says who was on the hook when the event happened — which is the
+/// question a dispute actually asks.
+model InboundEventRecord {
+  id          String    @id @default(cuid())
+  workOrderId String
+  workOrder   WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  /// The catalogue id — see lib/domain/inbound-events.ts.
+  eventId     String
+  /// Where the order stood when it happened.
+  stageId     String
+  note        String?
+  costAmount  Int       @default(0)
+  /// Derived from the delivery term at the moment of recording.
+  bearerParty String
+  bearerWhy   String
+  /// RUNS_ALONGSIDE | HOLDS | ESCALATES
+  effect      String
+  /// OPEN | RESOLVED
+  status      String    @default("OPEN")
+  resolution  String?
+  openedAt    DateTime  @default(now())
+  resolvedAt  DateTime?
+  /// Set where the event escalated into a full exception with routes out.
+  exceptionId String?
+
+  @@index([workOrderId, status])
 }
 
 /// One step of an autonomous run, kept so the log survives a reload.

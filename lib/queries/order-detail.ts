@@ -80,6 +80,9 @@ const DETAIL_INCLUDE = {
   },
   tasks: { orderBy: { createdAt: 'desc' }, include: { owner: { select: { name: true } } } },
   exceptions: { orderBy: { openedAt: 'desc' } },
+  /* The events between the steps — a rolled flight, an appraiser's query,
+     demurrage running. Open ones can hold the order, so they travel with it. */
+  inboundEvents: { orderBy: { openedAt: 'desc' } },
   auditEntries: {
     orderBy: { createdAt: 'desc' },
     include: { actor: { select: { name: true } } },

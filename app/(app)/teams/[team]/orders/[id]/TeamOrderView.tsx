@@ -51,6 +51,7 @@ import type { EvidenceRecord } from '@/app/(app)/orders/[id]/StageEvidencePanel'
 import { CommunicationTab } from '@/app/(app)/orders/[id]/CommunicationTab';
 import { ExceptionPanel, type FailedLine } from '@/app/(app)/orders/[id]/ExceptionPanel';
 import { TeamLogisticsPanel, type TeamShipment } from '@/components/logistics/TeamLogisticsPanel';
+import { InboundEventsPanel } from '@/components/logistics/InboundEventsPanel';
 import { AppointCarrier, AppointEscrow, type LegSlot } from '@/components/logistics/AppointCarrier';
 import { ESCROW_PARTNERS } from '@/lib/domain/portal-agents';
 import { deskMovesGoods } from '@/lib/queries/team-shipments';
@@ -655,6 +656,35 @@ export function TeamOrderView({
               <div className="flex min-w-0 flex-col gap-4">
                 <AppointCarrier orderId={order.id} slots={legSlots} />
                 <TeamLogisticsPanel team={team} shipments={shipments} />
+
+                {/*
+                  The events that happen between the steps.
+
+                  Inbound only: the outbound leg is a domestic movement to a
+                  customer and has an entirely different set of things that go
+                  wrong. Offering an appraiser's query on an outbound consignment
+                  would be offering a control nobody could ever use.
+                */}
+                {team === 'ONE_BUY_INBOUND' && (
+                  <div className="border-line-subtle mt-4 border-t pt-4">
+                    <InboundEventsPanel
+                      orderId={order.id}
+                      currentStage={order.stage}
+                      buyIncoterms={order.incoterms}
+                      openEvents={order.inboundEvents
+                        .filter((e) => e.status === 'OPEN')
+                        .map((e) => ({
+                          id: e.id,
+                          eventId: e.eventId,
+                          stageId: e.stageId,
+                          note: e.note,
+                          bearerParty: e.bearerParty,
+                          effect: e.effect,
+                          openedAt: e.openedAt,
+                        }))}
+                    />
+                  </div>
+                )}
               </div>
             </Tabs.Content>
           )}
