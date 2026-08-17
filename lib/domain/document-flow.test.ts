@@ -6,7 +6,8 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { docFlowFor, normaliseDocType, MAPPED_DOC_TYPES } from './document-flow';
+import { MAPPED_DOC_TYPES, docConcernsTeam, docFlowFor, docRelevanceFor, normaliseDocType } from './document-flow';
+import { STAGE_EVIDENCE } from './stage-evidence';
 import { STAKEHOLDERS } from './enums';
 
 describe('naming conventions all fold onto one key', () => {
@@ -85,5 +86,137 @@ describe('the entries the flow actually turns on', () => {
 
   it('marks the P&L internal — nobody outside is waiting on it', () => {
     expect(docFlowFor('PNL')?.requiredBy).toEqual([]);
+  });
+});
+
+/**
+ * Scoping a desk's register.
+ *
+ * The team documents tab shows a desk only what it owes and what it is blocked
+ * without. That is a boundary, so it is worth testing as one: what gets in,
+ * what stays out, and what happens to a type nobody has mapped.
+ */
+describe('whose document is it', () => {
+  it('lets a desk see what it is answerable for producing', () => {
+    // Sourcing raises the customer proforma, so it is theirs to file.
+    expect(docRelevanceFor('CUSTOMER_PI', 'ONE_BUY_SOURCING')?.relation).toBe('PROVIDES');
+  });
+
+  it('lets a desk see paperwork somebody else filed that it cannot work without', () => {
+    // The whole reason the register is not filtered by "who filed it": the CHA
+    // produces the bill of entry and Finance cannot settle duty without it.
+    const r = docRelevanceFor('BOE', 'ONE_BUY_FINANCE');
+    expect(r?.relation).toBe('REQUIRES');
+    expect(docFlowFor('BOE')?.provider).toBe('CHA');
+  });
+
+  it('keeps another desk’s paperwork off the register', () => {
+    // Outbound neither produces the duty challan nor is blocked by it.
+    expect(docRelevanceFor('DUTY_CHALLAN', 'ONE_BUY_OUTBOUND')).toBeNull();
+    expect(docConcernsTeam('DUTY_CHALLAN', 'ONE_BUY_OUTBOUND')).toBe(false);
+  });
+
+  it('reports a desk that both owes and needs a document as owing it', () => {
+    // Owing is the stronger obligation and the one that puts the desk on the
+    // hook, so it is the relation the row should show.
+    const both = MAPPED_DOC_TYPES.filter((t) => {
+      const f = docFlowFor(t)!;
+      return f.requiredBy.includes(f.provider);
+    });
+    for (const t of both) expect(docRelevanceFor(t, docFlowFor(t)!.provider)?.relation).toBe('PROVIDES');
+  });
+
+  it('hides an unmapped type rather than showing it to everyone', () => {
+    // A type nobody recorded an owner for must not default to visible: that is
+    // how a scoped register quietly stops being scoped.
+    expect(docRelevanceFor('SOME_UNMAPPED_THING', 'ONE_BUY_FINANCE')).toBeNull();
+  });
+
+  it('phrases the note at the desk reading it', () => {
+    expect(docRelevanceFor('CUSTOMER_PI', 'ONE_BUY_SOURCING')?.note).toMatch(/^Yours to produce/);
+    expect(docRelevanceFor('BOE', 'ONE_BUY_FINANCE')?.note).toMatch(/^You need this/);
+  });
+
+  it('leaves every 1BUY desk with something on a full order', () => {
+    // A desk whose register is empty on every possible document would mean the
+    // scoping had swallowed the tab whole.
+    for (const team of [
+      'ONE_BUY_SOURCING',
+      'ONE_BUY_FINANCE',
+      'ONE_BUY_INBOUND',
+      'ONE_BUY_INSPECTION',
+      'ONE_BUY_OUTBOUND',
+    ] as const) {
+      const n = MAPPED_DOC_TYPES.filter((t) => docConcernsTeam(t, team)).length;
+      expect(n, team).toBeGreaterThan(0);
+    }
+  });
+});
+
+/**
+ * Coverage of the evidence gate.
+ *
+ * This is the test that would have caught the gap. Nineteen of the gate's
+ * thirty-five document ids were unmapped, which cost nothing while the register
+ * listed every document and showed a dash in two columns — and became invisible
+ * documents the moment the register started filtering by those same two
+ * columns. A mapping gap is only cosmetic until something depends on it.
+ */
+describe('every document the evidence gate can file is mapped', () => {
+  const gateDocs = STAGE_EVIDENCE.flatMap((s) => s.documents.map((d) => ({ id: d.id, label: d.label })));
+
+  it('resolves every one of them', () => {
+    const unmapped = gateDocs.filter((d) => !docFlowFor(d.id));
+    expect(unmapped.map((d) => `${d.id} (${d.label})`)).toEqual([]);
+  });
+
+  it('gives every one of them at least one 1BUY desk that can see it', () => {
+    // A document no desk can see is a document that vanished from the product.
+    for (const d of gateDocs) {
+      const seenBy = OUR_DESKS.filter((t) => docConcernsTeam(d.id, t));
+      expect(seenBy.length, `${d.id} (${d.label})`).toBeGreaterThan(0);
+    }
+  });
+});
+
+/** The five internal desks that have a scoped register. */
+const OUR_DESKS = [
+  'ONE_BUY_SOURCING',
+  'ONE_BUY_FINANCE',
+  'ONE_BUY_INBOUND',
+  'ONE_BUY_INSPECTION',
+  'ONE_BUY_OUTBOUND',
+] as const;
+
+/**
+ * Names, not identifiers.
+ *
+ * The register is read by a warehouse clerk and a finance analyst, neither of
+ * whom should meet `taxInvoice` on screen. The label table is keyed on the
+ * stored enum; normalising first is what lets the gate's own ids find it.
+ */
+describe('the gate’s ids fold onto the stored enum', () => {
+  it('maps the camelCase ids onto their SCREAMING_SNAKE equivalents', () => {
+    for (const [gate, stored] of [
+      ['taxInvoice', 'TAX_INVOICE'],
+      ['pod', 'POD'],
+      ['packingList', 'PACKING_LIST'],
+      ['inspectionReport', 'INSPECTION_REPORT'],
+      ['testReport', 'TEST_REPORT'],
+    ] as const) {
+      expect(normaliseDocType(gate).toUpperCase(), gate).toBe(stored);
+    }
+  });
+
+  it('resolves both spellings to the same flow', () => {
+    for (const [a, b] of [
+      ['taxInvoice', 'TAX_INVOICE'],
+      ['pod', 'POD'],
+      ['billOfEntry', 'BOE'],
+      ['challan', 'DUTY_CHALLAN'],
+      ['awbDoc', 'AWB_LABEL'],
+    ] as const) {
+      expect(docFlowFor(a), `${a} vs ${b}`).toEqual(docFlowFor(b));
+    }
   });
 });

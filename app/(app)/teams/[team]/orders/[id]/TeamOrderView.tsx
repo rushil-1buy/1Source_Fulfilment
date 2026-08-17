@@ -53,6 +53,7 @@ import { TeamLogisticsPanel, type TeamShipment } from '@/components/logistics/Te
 import { AppointCarrier, AppointEscrow, type LegSlot } from '@/components/logistics/AppointCarrier';
 import { ESCROW_PARTNERS } from '@/lib/domain/portal-agents';
 import { deskMovesGoods } from '@/lib/queries/team-shipments';
+import { docConcernsTeam } from '@/lib/domain/document-flow';
 import { ESanchitPanel, LiveCashPanel, TeamDocumentsPanel, TeamLiabilityPanel, TeamOrderFactsPanel, type ESanchitState } from './TeamOrderExtras';
 import { DeliverablesPanel } from './DeliverablesPanel';
 import { AgentInThreadNote } from '@/components/agentic/AgentInThreadNote';
@@ -442,7 +443,14 @@ export function TeamOrderView({
               value="docs"
               icon={FileText}
               label="Documents"
-              count={order.documents.length}
+              /*
+               * The SCOPED count, not the order's total.
+               *
+               * The tab shows this desk's documents; a badge counting all of
+               * them would promise twenty-seven and open on six, which reads as
+               * a bug rather than as a filter.
+               */
+              count={order.documents.filter((d) => docConcernsTeam(d.docType, team)).length}
             />
             <OrderTab
               value="comms"

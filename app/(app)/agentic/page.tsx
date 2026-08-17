@@ -1,5 +1,6 @@
 import { getStage } from '@/lib/domain/stages';
 import { listSimulations, simulationOptions } from '@/lib/actions/simulation';
+import { agenticRunLog } from '@/lib/actions/agentic-run';
 import { HUMAN_TOUCHPOINTS, summariseTouchpoints } from '@/lib/domain/human-touchpoints';
 import { PageHeader, PageShell, Panel, PanelHeader } from '@/components/ui/Layout';
 import { Chip } from '@/components/ui/Badges';
@@ -17,6 +18,10 @@ export default async function AgenticPage() {
     const s = getStage(r.stage);
     return { ...r, stageCode: s.code, stageLabel: s.label };
   });
+
+  // The run log for the order on screen, so the flow is still there when you
+  // come back to the page rather than only while the tab that ran it is open.
+  const initialLog = sims[0] ? await agenticRunLog(sims[0].id) : [];
 
   // Counted from the touchpoint map itself rather than written into the copy,
   // so the claim on this page cannot drift away from what the run actually does.
@@ -67,7 +72,7 @@ export default async function AgenticPage() {
         </div>
       </Panel>
 
-      <SimulationConsole options={options} sims={sims} />
+      <SimulationConsole options={options} sims={sims} initialLog={initialLog} />
     </PageShell>
   );
 }

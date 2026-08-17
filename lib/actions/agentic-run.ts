@@ -305,6 +305,53 @@ async function handleCorrespondence(
 }
 
 /**
+ * Records a step so the log survives a reload, and returns it unchanged.
+ *
+ * Every outcome is recorded, not only the successful ones: a run that stopped
+ * because the gate refused is exactly the run somebody wants to come back and
+ * read, and a log that quietly dropped its last and most interesting line would
+ * be worse than no log.
+ *
+ * A failure to record must not fail the step. The step already happened — the
+ * order genuinely moved — so throwing here would report a failure that did not
+ * occur and leave the caller believing the order is where it no longer is.
+ */
+async function record(orderId: string, step: RunStepResult): Promise<RunStepResult> {
+  try {
+    const seq = (await db.agenticRunStep.count({ where: { workOrderId: orderId } })) + 1;
+    await db.agenticRunStep.create({
+      data: { workOrderId: orderId, seq, payload: JSON.stringify(step) },
+    });
+  } catch {
+    /* The step stands whether or not the log kept it. */
+  }
+  return step;
+}
+
+/**
+ * The run log for an order, oldest first.
+ *
+ * Read on page load so the flow is there when you come back to it, instead of
+ * having to reset and run it again to see what happened.
+ */
+export async function agenticRunLog(orderId: string): Promise<RunStepResult[]> {
+  const rows = await db.agenticRunStep.findMany({
+    where: { workOrderId: orderId },
+    orderBy: { seq: 'asc' },
+    select: { payload: true },
+  });
+  return rows.flatMap((r) => {
+    try {
+      return [JSON.parse(r.payload) as RunStepResult];
+    } catch {
+      // A row we cannot read is dropped rather than crashing the page — the
+      // log is a record of a demonstration, not something to fail a route on.
+      return [];
+    }
+  });
+}
+
+/**
  * Takes ONE step, so the caller can watch it happen.
  *
  * Deliberately not a loop on the server: a single action that runs the whole
@@ -359,12 +406,12 @@ export async function runAgenticStep(orderId: string): Promise<RunStepResult> {
 
   const next = nextStageFor(wo.stage, ctx);
   if (!next) {
-    return {
+    return record(orderId, {
       ...base,
       outcome: 'DONE',
       did: '',
       reason: 'The order has reached the end of its flow.',
-    };
+    });
   }
 
   /*
@@ -499,7 +546,7 @@ export async function runAgenticStep(orderId: string): Promise<RunStepResult> {
     ...(approverIds ? { approverIds } : {}),
   });
   if (!res.ok) {
-    return {
+    return record(orderId, {
       ...base,
       outcome: 'BLOCKED',
       toCode: next.code,
@@ -515,7 +562,7 @@ export async function runAgenticStep(orderId: string): Promise<RunStepResult> {
       documentsFiled: docs,
       sideEffects: [],
       humanBypass,
-    };
+    });
   }
 
   // The world catches up with the ladder: escrow opened and funded, consignments
@@ -569,7 +616,7 @@ export async function runAgenticStep(orderId: string): Promise<RunStepResult> {
   });
 
   revalidateAll(orderId);
-  return {
+  return record(orderId, {
     ...base,
     outcome: 'ADVANCED',
     toCode: next.code,
@@ -580,7 +627,7 @@ export async function runAgenticStep(orderId: string): Promise<RunStepResult> {
     documentsFiled: docs,
     sideEffects: effects,
     humanBypass,
-  };
+  });
 }
 
 /** Where the walkthrough order is parked, and what Reset returns it to. */

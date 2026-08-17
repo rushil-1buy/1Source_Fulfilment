@@ -666,6 +666,32 @@ model WorkOrder {
   customStages    CustomStage[]
   phasePlan       OrderPhasePlan[]
   deliverables    TeamDeliverable[]
+  agenticSteps    AgenticRunStep[]
+}
+
+/// One step of an autonomous run, kept so the log survives a reload.
+///
+/// The order's own history — transitions, evidence, documents, thread entries —
+/// already records everything the run DID. What it cannot reconstruct is the
+/// run's own account of itself: which steps stood in for a person, what the
+/// gate said when it refused, what changed in the world on each step. Rebuilding
+/// that by parsing prose back out of thread entries would be guesswork, so the
+/// step is stored as it was reported.
+///
+/// Cascades with the work order, so a simulator reset takes the log with it.
+model AgenticRunStep {
+  id          String    @id @default(cuid())
+  workOrderId String
+  workOrder   WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  /// Position in the run, 1-based. Ordered by this rather than by createdAt,
+  /// which ties on a fast run.
+  seq         Int
+  /// The RunStepResult as reported, JSON.
+  payload     String
+  createdAt   DateTime  @default(now())
+
+  @@unique([workOrderId, seq])
+  @@index([workOrderId, seq])
 }
 
 /// Immutable ledger of every stage change — powers the rail's hover detail,

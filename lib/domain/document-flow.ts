@@ -107,12 +107,16 @@ const FLOW: Record<string, DocFlow> = {
   },
   packing_list: {
     provider: 'SUPPLIER',
-    requiredBy: ['CHA', 'ONE_BUY_INBOUND', 'CUSTOMER'],
+    // Inspection counts against it and outbound repacks against it.
+    requiredBy: ['CHA', 'ONE_BUY_INBOUND', 'ONE_BUY_INSPECTION', 'ONE_BUY_OUTBOUND', 'CUSTOMER'],
     why: 'What is in each carton. Customs assess against it and receiving counts against it.',
   },
   coo: {
     provider: 'SUPPLIER',
-    requiredBy: ['CHA'],
+    // Inbound as well as the agent: the CHA files the entry, but Inbound is the
+    // desk that has to be holding this before the file goes over, and a missing
+    // origin certificate is chased by us, not by them.
+    requiredBy: ['CHA', 'ONE_BUY_INBOUND'],
     why: 'Country of origin — decides the duty rate and any preferential treatment.',
   },
   boe: {
@@ -149,8 +153,10 @@ const FLOW: Record<string, DocFlow> = {
   },
   inspection_report: {
     provider: 'ONE_BUY_INSPECTION',
-    requiredBy: ['ONE_BUY_FINANCE', 'CUSTOMER'],
-    why: 'The acceptance decision. The escrow release rests on it.',
+    // Outbound may not repack or ship a lot that has not been accepted, so the
+    // verdict has to be visible to them and not only to the desk that signed it.
+    requiredBy: ['ONE_BUY_FINANCE', 'CUSTOMER', 'ONE_BUY_OUTBOUND'],
+    why: 'The acceptance decision. The escrow release rests on it, and nothing is repacked before it.',
   },
   repack_sheet: {
     provider: 'ONE_BUY_INSPECTION',
@@ -171,8 +177,11 @@ const FLOW: Record<string, DocFlow> = {
   },
   tax_invoice: {
     provider: 'ONE_BUY_FINANCE',
-    requiredBy: ['CUSTOMER'],
-    why: 'What the customer pays against, and what they claim their own input credit on.',
+    // Outbound is on this list because the invoice travels WITH the goods —
+    // a consignment that leaves without it is a compliance problem, not a
+    // paperwork one, so the desk loading the vehicle has to be able to see it.
+    requiredBy: ['CUSTOMER', 'ONE_BUY_OUTBOUND'],
+    why: 'What the customer pays against, what they claim input credit on, and what must travel with the consignment.',
   },
   credit_note: {
     provider: 'ONE_BUY_FINANCE',
@@ -183,6 +192,97 @@ const FLOW: Record<string, DocFlow> = {
     provider: 'ONE_BUY_FINANCE',
     requiredBy: [],
     why: 'Internal. What the order earned, signed once the customer has settled.',
+  },
+
+  /*
+   * ── The evidence-gate documents ────────────────────────────────────────
+   *
+   * These are filed by the stage gate under its own camelCase ids. They were
+   * absent here for as long as the register listed everything and the two
+   * columns simply showed a dash — a cosmetic gap. The moment the register
+   * became a filter, an unmapped type stopped being a dash and became a
+   * document nobody could see. Nineteen of the gate's thirty-five ids were in
+   * that state; a test below now fails if a new one joins them.
+   */
+  acceptance: {
+    provider: 'CUSTOMER',
+    requiredBy: ['ONE_BUY_SOURCING', 'ONE_BUY_FINANCE'],
+    why: 'Their written acceptance of our proforma — what lets us commit to the supplier.',
+  },
+  quotes: {
+    provider: 'ONE_BUY_SOURCING',
+    requiredBy: ['ONE_BUY_FINANCE'],
+    why: 'The comparison behind the supplier choice — what justifies the buy price on the margin.',
+  },
+  funding_proof: {
+    provider: 'ESCROW',
+    requiredBy: ['SUPPLIER', 'ONE_BUY_SOURCING', 'ONE_BUY_FINANCE'],
+    why: 'The provider confirming the funds are held. The supplier ships against this, not against a promise.',
+  },
+  remittance: {
+    provider: 'ONE_BUY_FINANCE',
+    requiredBy: ['SUPPLIER'],
+    why: 'Evidence the advance was sent, so the supplier releases the order into production.',
+  },
+  credit_confirmation: {
+    provider: 'SUPPLIER',
+    requiredBy: ['ONE_BUY_FINANCE', 'ONE_BUY_SOURCING'],
+    why: 'Their written confirmation of the credit line and the days allowed.',
+  },
+  lab_receipt: {
+    provider: 'WHL',
+    requiredBy: ['ONE_BUY_INSPECTION'],
+    why: 'The laboratory acknowledging what it received, counted against what was sent.',
+  },
+  scope_confirmation: {
+    provider: 'ONE_BUY_INSPECTION',
+    requiredBy: ['WHL'],
+    why: 'What the laboratory is to test and against which specification — the report is only as good as this.',
+  },
+  photos: {
+    provider: 'ONE_BUY_INSPECTION',
+    requiredBy: ['ONE_BUY_SOURCING', 'SUPPLIER'],
+    why: 'The condition evidence a claim against the supplier rests on.',
+  },
+  return_docs: {
+    provider: 'WHL',
+    requiredBy: ['ONE_BUY_INSPECTION', 'SUPPLIER'],
+    why: 'Paperwork covering the tested samples going back, so the quantities reconcile.',
+  },
+  commercial_invoice: {
+    provider: 'SUPPLIER',
+    requiredBy: ['CHA', 'ONE_BUY_INBOUND', 'ONE_BUY_FINANCE'],
+    why: 'The value customs assess duty on. An entry cannot be filed without it.',
+  },
+  handover: {
+    provider: 'ONE_BUY_INBOUND',
+    requiredBy: ['CHA'],
+    why: 'Records which originals the agent holds — the answer when an entry stalls for a missing paper.',
+  },
+  final_remittance: {
+    provider: 'ONE_BUY_FINANCE',
+    requiredBy: ['SUPPLIER', 'ESCROW'],
+    why: 'Evidence the balance reached the supplier, closing the escrow against the order.',
+  },
+  before_photos: {
+    provider: 'ONE_BUY_OUTBOUND',
+    requiredBy: ['ONE_BUY_INSPECTION'],
+    why: 'The state of the goods as received, before anything was relabelled or repacked.',
+  },
+  after_photos: {
+    provider: 'ONE_BUY_OUTBOUND',
+    requiredBy: ['ONE_BUY_INSPECTION', 'CUSTOMER'],
+    why: 'What the customer will actually open — the reference if they dispute the packing.',
+  },
+  eway_bill: {
+    provider: 'ONE_BUY_FINANCE',
+    requiredBy: ['ONE_BUY_OUTBOUND', 'LOGISTICS'],
+    why: 'Goods of this value may not move on Indian roads without it. The carrier is stopped without one.',
+  },
+  bank_advice: {
+    provider: 'ONE_BUY_FINANCE',
+    requiredBy: [],
+    why: 'The bank confirming the customer’s payment landed — what closes the receivable.',
   },
 };
 
@@ -199,6 +299,11 @@ const ALIASES: Record<string, string> = {
   signed_terms: 'sourcing_terms',
   ack: 'supplier_po',
   supplier_pi_doc: 'supplier_pi',
+  // The gate names these differently from the seeded types. Same documents.
+  awb_doc: 'awb_label',
+  bill_of_entry: 'boe',
+  challan: 'duty_challan',
+  grn_doc: 'grn',
 };
 
 export function normaliseDocType(raw: string): string {
@@ -216,3 +321,61 @@ export function docFlowFor(rawType: string): DocFlow | null {
 
 /** Every type the map covers — used by a test to catch a typo'd key. */
 export const MAPPED_DOC_TYPES = Object.keys(FLOW);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Whose document is it
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Why a document is on a given desk's register.
+ *
+ * PROVIDES — they are answerable for producing it. If it is missing, the chase
+ *            comes TO them.
+ * REQUIRES — their work is blocked without it. If it is missing, the chase
+ *            goes FROM them.
+ *
+ * The two are worth separating on screen because they imply opposite actions,
+ * and a desk that cannot tell them apart chases its own paperwork.
+ */
+export type DocRelation = 'PROVIDES' | 'REQUIRES';
+
+export interface DocRelevance {
+  relation: DocRelation;
+  /** The one-line reason, phrased at the desk reading it. */
+  note: string;
+}
+
+/**
+ * Whether a document belongs on a desk's register, and why — null where it
+ * does not concern them at all.
+ *
+ * A desk that provides AND requires a document is reported as PROVIDES: owing
+ * it is the stronger obligation, and it is the one that puts the desk on the
+ * hook if it is late.
+ *
+ * An unmapped type returns null rather than being waved through. Showing a
+ * document to every desk because nobody recorded who it is for is how a scoped
+ * register quietly stops being scoped — the caller can count what it hid and
+ * say so, which is honest, where a silent pass-through is not.
+ */
+export function docRelevanceFor(rawType: string, team: Stakeholder): DocRelevance | null {
+  const flow = docFlowFor(rawType);
+  if (!flow) return null;
+
+  if (flow.provider === team) {
+    return {
+      relation: 'PROVIDES',
+      note: flow.requiredBy.length
+        ? `Yours to produce. ${flow.why}`
+        : `Yours to produce, and yours alone to use. ${flow.why}`,
+    };
+  }
+  if (flow.requiredBy.includes(team)) {
+    return { relation: 'REQUIRES', note: `You need this to work. ${flow.why}` };
+  }
+  return null;
+}
+
+/** Whether a document belongs on a desk's register at all. */
+export const docConcernsTeam = (rawType: string, team: Stakeholder): boolean =>
+  docRelevanceFor(rawType, team) !== null;

@@ -291,7 +291,25 @@ const theyClearExportReason = (ctx: StageContext) =>
   `Bought ${termName(ctx)}, so the supplier clears the goods for export before they leave.`;
 
 export const STAGE_DEFS: StageDef[] = [
-  // ── Phase A — Demand Capture ─────────────────────────────────────────────
+  /*
+   * ── Phase A — Demand Capture ───────────────────────────────────────────
+   *
+   * THE ORDER OF THESE STEPS IS THE REAL ONE, and it is not the obvious one.
+   *
+   * The intuitive reading — quote the customer, win the order, then go and find
+   * a supplier — describes a business that sources to order. This one does not.
+   * The supplier is already chosen when the customer's purchase order arrives,
+   * because the availability and the buy price are what the offer was built on.
+   * So the sequence is: the order lands, we place our own order with the
+   * supplier we had already picked, and only then does the sales order go to
+   * the customer.
+   *
+   * That ordering is not cosmetic. Issuing the customer's proforma before our
+   * own purchase order would commit us to a price against a supply we have not
+   * secured, which is the single most expensive mistake available in this
+   * trade — the customer holds us to the price and the supplier is free to
+   * change theirs.
+   */
   {
     id: 'CUSTOMER_PO_RECEIVED',
     code: 'A1',
@@ -304,77 +322,93 @@ export const STAGE_DEFS: StageDef[] = [
     owner: 'ONE_BUY_SOURCING',
     expectedHours: 4,
     artifacts: ['Customer Purchase Order document'],
-    nextAction: 'Raise a Proforma Invoice for the customer.',
-    nextActionOwner: 'ONE_BUY_SOURCING',
-    next: ['PI_ISSUED_TO_CUSTOMER'],
-  },
-  {
-    id: 'PI_ISSUED_TO_CUSTOMER',
-    code: 'A2',
-    phase: 'A',
-    label: 'Proforma Invoice issued to customer',
-    plainLabel: 'Price quote sent to customer',
-    description: 'We have sent the customer our Proforma Invoice — our formal price and terms.',
-    exitCriteria: 'Proforma Invoice issued, sent and timestamped.',
-    owner: 'ONE_BUY_SOURCING',
-    expectedHours: 8,
-    artifacts: ['1BUY Proforma Invoice'],
-    nextAction: 'Chase the customer to confirm the Proforma Invoice.',
-    nextActionOwner: 'CUSTOMER',
-    next: ['PI_ACCEPTED_BY_CUSTOMER'],
-  },
-  {
-    id: 'PI_ACCEPTED_BY_CUSTOMER',
-    code: 'A3',
-    phase: 'A',
-    label: 'Proforma Invoice accepted by customer',
-    plainLabel: 'Customer agreed the quote',
-    description: 'The customer has confirmed our Proforma Invoice, so we can commit to a supplier.',
-    exitCriteria: 'Acceptance recorded with reference and date.',
-    owner: 'CUSTOMER',
-    expectedHours: 48,
-    artifacts: ['Acceptance email or reference'],
-    nextAction: 'Choose an approved supplier from the Approved Vendor List.',
+    nextAction: 'Confirm the supplier this order will be filled from.',
     nextActionOwner: 'ONE_BUY_SOURCING',
     next: ['SUPPLIER_SELECTED_FROM_AVL'],
   },
-
-  // ── Phase B — Sourcing & Commitment ──────────────────────────────────────
   {
     id: 'SUPPLIER_SELECTED_FROM_AVL',
-    code: 'B1',
-    phase: 'B',
-    label: 'Supplier selected from Approved Vendor List',
-    plainLabel: 'Approved supplier chosen',
+    code: 'A2',
+    phase: 'A',
+    label: 'Supplier confirmed from Approved Vendor List',
+    plainLabel: 'Approved supplier confirmed',
+    /*
+     * Confirmed, not chosen. The decision was made before the order arrived —
+     * this step records it against the order and re-checks that the approval
+     * is still live, which is the part that can genuinely fail: an approval
+     * that lapsed since the offer was built is caught here rather than at the
+     * point somebody tries to pay the invoice.
+     */
     description:
-      'A supplier has been picked from the Approved Vendor List. Only approved, unexpired vendors can be used.',
+      'The supplier the offer was built on is confirmed against this order, and their Approved Vendor List standing is re-checked as still live.',
     exitCriteria: 'Approved Vendor List status is Approved and the approval has not expired.',
     owner: 'ONE_BUY_SOURCING',
-    expectedHours: 8,
+    expectedHours: 4,
     artifacts: ['Approved Vendor List record snapshot'],
     nextAction: 'Issue our Purchase Order to the supplier.',
     nextActionOwner: 'ONE_BUY_SOURCING',
     next: ['SUPPLIER_PO_ISSUED'],
   },
+
+  // ── Phase B — Sourcing & Commitment ──────────────────────────────────────
   {
     id: 'SUPPLIER_PO_ISSUED',
-    code: 'B2',
+    code: 'B1',
     phase: 'B',
     label: 'Supplier Purchase Order issued',
     plainLabel: 'Our order sent to supplier',
     description:
-      "We have issued our Purchase Order to the supplier and linked it to the customer's order.",
+      "We have issued our Purchase Order to the supplier and linked it to the customer's order. Supply is secured before we price anything back to the customer.",
     exitCriteria: "Purchase Order issued to supplier; line mapping to the customer's order complete.",
     owner: 'ONE_BUY_SOURCING',
     expectedHours: 8,
     artifacts: ['1BUY Purchase Order'],
+    nextAction: 'Issue the Sales Order / Proforma Invoice to the customer.',
+    nextActionOwner: 'ONE_BUY_SOURCING',
+    next: ['PI_ISSUED_TO_CUSTOMER'],
+  },
+  {
+    id: 'PI_ISSUED_TO_CUSTOMER',
+    code: 'B2',
+    phase: 'B',
+    /*
+     * The customer-facing document, raised only once our own order is placed.
+     *
+     * Called a Sales Order as often as a Proforma Invoice — same paper, and the
+     * label depends on who is reading it — so both names appear here rather
+     * than making a desk translate.
+     */
+    label: 'Sales Order / Proforma Invoice issued to customer',
+    plainLabel: 'Sales order sent to customer',
+    description:
+      'We have sent the customer our Sales Order / Proforma Invoice — our formal price and terms, priced against supply we have already secured.',
+    exitCriteria: 'Sales Order / Proforma Invoice issued, sent and timestamped.',
+    owner: 'ONE_BUY_SOURCING',
+    expectedHours: 8,
+    artifacts: ['1BUY Sales Order / Proforma Invoice'],
+    nextAction: 'Chase the customer to confirm the Sales Order.',
+    nextActionOwner: 'CUSTOMER',
+    next: ['PI_ACCEPTED_BY_CUSTOMER'],
+  },
+  {
+    id: 'PI_ACCEPTED_BY_CUSTOMER',
+    code: 'B3',
+    phase: 'B',
+    label: 'Sales Order accepted by customer',
+    plainLabel: 'Customer agreed the sales order',
+    description:
+      'The customer has confirmed our Sales Order, so both sides of the trade are now committed.',
+    exitCriteria: 'Acceptance recorded with reference and date.',
+    owner: 'CUSTOMER',
+    expectedHours: 48,
+    artifacts: ['Acceptance email or reference'],
     nextAction: 'Agree and lock the commercial terms before the supplier raises their invoice.',
     nextActionOwner: 'ONE_BUY_SOURCING',
     next: ['TERMS_LOCKED'],
   },
   {
     id: 'TERMS_LOCKED',
-    code: 'B3',
+    code: 'B4',
     phase: 'B',
     label: 'Terms locked',
     plainLabel: 'Terms agreed and frozen',
@@ -402,7 +436,7 @@ export const STAGE_DEFS: StageDef[] = [
   },
   {
     id: 'SUPPLIER_PI_RECEIVED',
-    code: 'B4',
+    code: 'B5',
     phase: 'B',
     label: 'Supplier Proforma Invoice received',
     plainLabel: "Supplier's invoice received",
@@ -424,7 +458,7 @@ export const STAGE_DEFS: StageDef[] = [
   },
   {
     id: 'WORK_ORDER_ACTIVE',
-    code: 'B5',
+    code: 'B6',
     phase: 'B',
     label: 'Work order active',
     plainLabel: 'Internal job opened',

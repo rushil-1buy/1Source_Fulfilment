@@ -16,6 +16,7 @@ import Link from 'next/link';
 import { ArrowUpRight, ChevronDown, RotateCcw, Settings2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { resetSimulations } from '@/lib/actions/simulation';
+import type { RunStepResult } from '@/lib/actions/agentic-run';
 import { PAYMENT_METHOD_META, type PaymentMethod } from '@/lib/domain/enums';
 import { Button, Panel, PanelHeader } from '@/components/ui/Layout';
 import { Chip } from '@/components/ui/Badges';
@@ -43,9 +44,12 @@ export interface SimSummary {
 export function SimulationConsole({
   options,
   sims,
+  initialLog,
 }: {
   options: SimOptions;
   sims: SimSummary[];
+  /** The stored log for the active order, so a reload does not lose the run. */
+  initialLog: RunStepResult[];
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -149,6 +153,7 @@ export function SimulationConsole({
           orderAlias={active.alias}
           startCode={active.stageCode}
           startLabel={active.stageLabel}
+          initialLog={initialLog}
         />
       )}
 

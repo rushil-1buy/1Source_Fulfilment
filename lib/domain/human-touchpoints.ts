@@ -83,16 +83,23 @@ export const TOUCH_KIND_NOTE: Record<TouchKind, string> = {
  */
 export const HUMAN_TOUCHPOINTS: Record<string, HumanTouchpoint> = {
   // ── A. Demand capture ────────────────────────────────────────────────────
+  SUPPLIER_SELECTED_FROM_AVL: {
+    kind: 'JUDGEMENT',
+    who: 'Sourcing lead',
+    wouldDo:
+      'Stand behind the supplier the offer was built on — confirming they can still deliver at the price and lead time the quote assumed.',
+  },
   PI_ISSUED_TO_CUSTOMER: {
     kind: 'JUDGEMENT',
     who: 'Sourcing lead',
     wouldDo:
-      'Price the order and commit 1BUY to it. The margin on the proforma is the margin on the trade — it is signed, not calculated.',
+      'Price the sales order and commit 1BUY to it. The margin on it is the margin on the trade — it is signed, not calculated.',
   },
   PI_ACCEPTED_BY_CUSTOMER: {
     kind: 'COUNTERPARTY',
     who: 'The customer',
-    wouldDo: 'Accept the proforma. Nothing on our side moves this; it arrives when they send it.',
+    wouldDo:
+      'Accept the sales order. Nothing on our side moves this; it arrives when they send it.',
   },
 
   // ── B. Sourcing & commitment ─────────────────────────────────────────────

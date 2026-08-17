@@ -56,22 +56,41 @@ export function AgenticRunner({
   orderAlias,
   startCode,
   startLabel,
+  initialLog,
 }: {
   orderId: string;
   orderAlias: string;
   startCode: string;
   startLabel: string;
+  /**
+   * The run so far, read from the database.
+   *
+   * The log used to start empty on every mount, so navigating away and back —
+   * or simply reloading — left an order that had plainly been worked with
+   * nothing on screen to show for it, and the only way to see the flow again
+   * was to reset and run it from scratch. It is seeded here instead.
+   */
+  initialLog: RunStepResult[];
 }) {
   const router = useRouter();
-  const [log, setLog] = useState<RunStepResult[]>([]);
+  const [log, setLog] = useState<RunStepResult[]>(initialLog);
   const [running, setRunning] = useState(false);
   const [busy, setBusy] = useState(false);
   const [position, setPosition] = useState({ code: startCode, label: startLabel });
   const liveRef = useRef<HTMLLIElement>(null);
 
-  /** Stopped for a reason the operator needs to act on, rather than paused. */
   const last = log[log.length - 1];
-  const halted = last && (last.outcome === 'BLOCKED' || last.outcome === 'DONE');
+  /** Nothing left to do — the ladder is finished. */
+  const finished = last?.outcome === 'DONE';
+  /*
+   * The gate refused. Retryable, unlike finished.
+   *
+   * This mattered more once the log persisted: a refusal used to vanish on
+   * reload and re-enable the buttons by accident, so a blocked order that
+   * stayed blocked across reloads would have left the run with no way forward
+   * short of deleting it.
+   */
+  const blocked = last?.outcome === 'BLOCKED';
 
   const step = useCallback(async () => {
     setBusy(true);
@@ -90,10 +109,12 @@ export function AgenticRunner({
   }, [orderId, router]);
 
   useEffect(() => {
-    if (!running || busy || halted) return;
+    // Auto-run never resumes itself through a refusal — that is a loop asking
+    // the same gate the same question. Continuing is the operator's call.
+    if (!running || busy || finished || blocked) return;
     const t = setTimeout(step, TICK_MS);
     return () => clearTimeout(t);
-  }, [running, busy, halted, step, log.length]);
+  }, [running, busy, finished, blocked, step, log.length]);
 
   useEffect(() => {
     if (running) liveRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -135,11 +156,17 @@ export function AgenticRunner({
             variant="primary"
             icon={running ? Pause : Play}
             onClick={() => setRunning((r) => !r)}
-            disabled={busy || halted}
+            disabled={busy || finished}
           >
-            {running ? 'Pause' : log.length === 0 ? 'Run the whole flow' : 'Continue'}
+            {running
+              ? 'Pause'
+              : log.length === 0
+                ? 'Run the whole flow'
+                : blocked
+                  ? 'Try the refused step again'
+                  : 'Continue the run'}
           </Button>
-          <Button variant="secondary" onClick={step} disabled={busy || running || halted}>
+          <Button variant="secondary" onClick={step} disabled={busy || running || finished}>
             Single step
           </Button>
           <Link

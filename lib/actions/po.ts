@@ -442,13 +442,20 @@ export async function createSupplierPo(input: unknown): Promise<ActionResult> {
     },
   });
 
-  // Stage history: the ladder up to and including SUPPLIER_PO_ISSUED.
+  /*
+   * Stage history in the order these things actually happen.
+   *
+   * The supplier is confirmed and our purchase order issued BEFORE the sales
+   * order goes to the customer — supply is secured before a price is committed
+   * to. The customer-facing steps are therefore appended after, not threaded
+   * through the middle, and they only appear once that paperwork exists.
+   */
   const path = [
     'CUSTOMER_PO_RECEIVED',
-    ...(customerPi ? ['PI_ISSUED_TO_CUSTOMER'] : []),
-    ...(customerPi?.status === 'ACCEPTED' ? ['PI_ACCEPTED_BY_CUSTOMER'] : []),
     'SUPPLIER_SELECTED_FROM_AVL',
     'SUPPLIER_PO_ISSUED',
+    ...(customerPi ? ['PI_ISSUED_TO_CUSTOMER'] : []),
+    ...(customerPi?.status === 'ACCEPTED' ? ['PI_ACCEPTED_BY_CUSTOMER'] : []),
   ];
   let prev: string | null = null;
   for (const stageId of path) {

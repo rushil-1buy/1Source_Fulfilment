@@ -26,7 +26,12 @@ import { incotermFor, responsibilities } from '@/lib/domain/incoterms';
 import { cashPosition } from '@/lib/domain/cash-flows';
 import type { DeliverableInput } from '@/lib/domain/deliverables/types';
 import { getStage } from '@/lib/domain/stages';
-import { docFlowFor } from '@/lib/domain/document-flow';
+import {
+  docFlowFor,
+  docRelevanceFor,
+  normaliseDocType,
+  type DocRelevance,
+} from '@/lib/domain/document-flow';
 import { cn, formatDate } from '@/lib/utils';
 
 /**
@@ -60,10 +65,40 @@ const DOC_LABELS: Record<string, string> = {
   OTHER: 'Other',
 };
 
-const docLabel = (t: string) => DOC_LABELS[t] ?? t.replace(/_/g, ' ').toLowerCase();
+/**
+ * A readable name for a document type, whichever vocabulary named it.
+ *
+ * The table above is keyed on the stored enum, but the evidence gate files
+ * under its own camelCase ids — so `pod` and `taxInvoice` missed the table
+ * entirely and fell through to a fallback that printed them verbatim. A
+ * register listing "pod" and "taxinvoice" is the constant leaking again, just
+ * from a different subsystem. Normalising first catches both, and the last
+ * resort now splits the words rather than flattening them.
+ */
+const docLabel = (t: string) => {
+  const direct = DOC_LABELS[t];
+  if (direct) return direct;
+  const key = normaliseDocType(t).toUpperCase();
+  if (DOC_LABELS[key]) return DOC_LABELS[key];
+  const words = normaliseDocType(t).replace(/_/g, ' ');
+  return words.charAt(0).toUpperCase() + words.slice(1);
+};
 
 const DOC_COLUMNS: ColumnSpec[] = [
   { key: 'title', label: 'Document', mobile: 'primary' },
+  {
+    /*
+     * Why this document is on THIS desk's register.
+     *
+     * Owing a document and needing one imply opposite actions — the chase comes
+     * to you, or goes from you — so a register that scopes to a desk has to say
+     * which, or the desk ends up chasing its own paperwork.
+     */
+    key: 'yours',
+    label: 'Why it is yours',
+    mobile: 'secondary',
+    width: '150px',
+  },
   { key: 'kind', label: 'What it is', mobile: 'secondary', width: '200px' },
   {
     /*
@@ -107,12 +142,19 @@ export interface OrderDoc {
 }
 
 /**
- * Every document filed against this order, in one register.
+ * The documents on this order that are THIS desk's business.
  *
- * Deliberately NOT filtered to the team's own steps. A document is evidence
- * about the order, not about a desk: inspection needs the packing list somebody
- * else filed, and finance needs the bill of entry to settle duty. Hiding the
- * rest would make each team re-request paperwork the order already holds.
+ * Scoped by the flow map, not by who filed it or which step it hangs off: a
+ * document is on the register if the desk is answerable for producing it, or if
+ * its own work is blocked without it. That keeps the paperwork another desk
+ * filed but this one needs — inspection needs the packing list, finance needs
+ * the bill of entry — while dropping the documents that are somebody else's
+ * business entirely.
+ *
+ * WHAT IS HIDDEN IS COUNTED, NOT ERASED. A desk seeing four documents on an
+ * order that holds twenty-seven would reasonably conclude the order is thin.
+ * The count of the rest is stated, without listing them, so the register reads
+ * as scoped rather than as short.
  */
 export function TeamDocumentsPanel({
   docs,
@@ -126,40 +168,65 @@ export function TeamDocumentsPanel({
   /** Which document the viewer has open, if any. */
   const [openDoc, setOpenDoc] = useState<OrderDoc | null>(null);
 
+  // Scoped to the desk: produced by them, or blocking them. Everything else on
+  // the order is another desk's business and is counted rather than listed.
+  const mine = docs
+    .map((d) => ({ doc: d, rel: docRelevanceFor(d.docType, team) }))
+    .filter((x): x is { doc: OrderDoc; rel: DocRelevance } => x.rel !== null);
+  const elsewhere = docs.length - mine.length;
+
   if (docs.length === 0) {
     return (
       <EmptyState
         title="No documents filed yet"
-        description="Nothing has been attached to this order. Documents filed as evidence against any step — by any team — appear here."
+        description="Nothing has been attached to this order. Documents you are answerable for, and documents your work depends on, appear here as they are filed."
       />
     );
   }
 
-  const rows: RecordRow[] = docs.map((d) => {
-    const flow = docFlowFor(d.docType);
+  if (mine.length === 0) {
+    return (
+      <EmptyState
+        title="Nothing here is yours yet"
+        description={`${elsewhere} document${elsewhere === 1 ? '' : 's'} ${elsewhere === 1 ? 'is' : 'are'} filed against this order, but none of them are ${STAKEHOLDER_META[team].short}'s to produce and none of them block your work. They belong to other desks.`}
+      />
+    );
+  }
+
+  const rows: RecordRow[] = mine.map(({ doc: d, rel }) => {
+    const flow = docFlowFor(d.docType)!;
     return {
-    id: d.id,
-    title: d.title,
-    kind: docLabel(d.docType),
-    providedBy: flow ? STAKEHOLDER_META[flow.provider].short : '—',
-    requiredBy: flow
-      ? flow.requiredBy.length
+      id: d.id,
+      title: d.title,
+      yours: rel.relation === 'PROVIDES' ? 'Yours to file' : 'You need it',
+      kind: docLabel(d.docType),
+      providedBy: STAKEHOLDER_META[flow.provider].short,
+      requiredBy: flow.requiredBy.length
         ? flow.requiredBy.map((r) => STAKEHOLDER_META[r].short).join(', ')
-        : 'Internal only'
-      : '—',
-    step: d.stageId ? `${getStage(d.stageId).code} ${getStage(d.stageId).label}` : 'Not tied to a step',
-    filedBy: d.uploadedBy,
-    when: d.createdAt,
-    file: d.fileName,
+        : 'Internal only',
+      step: d.stageId
+        ? `${getStage(d.stageId).code} ${getStage(d.stageId).label}`
+        : 'Not tied to a step',
+      filedBy: d.uploadedBy,
+      when: d.createdAt,
+      file: d.fileName,
     };
   });
+
+  const owed = mine.filter((x) => x.rel.relation === 'PROVIDES').length;
 
   return (
     <div className="min-w-0">
       <p className="text-fg-tertiary mb-2.5 text-[11.5px] leading-relaxed">
-        Every document on this order, whoever filed it — {docs.length} in all.{' '}
-        {STAKEHOLDER_META[team].short} sees the whole register, because the paperwork one desk needs
-        is usually the paperwork another one filed.
+        {STAKEHOLDER_META[team].short}&rsquo;s documents on this order — {mine.length} of them:{' '}
+        {owed} {owed === 1 ? 'is' : 'are'} yours to produce, {mine.length - owed}{' '}
+        {mine.length - owed === 1 ? 'is' : 'are'} paperwork your work depends on.{' '}
+        {elsewhere > 0 && (
+          <>
+            The other {elsewhere} on this order {elsewhere === 1 ? 'belongs' : 'belong'} to other
+            desks and {elsewhere === 1 ? 'is' : 'are'} not shown.
+          </>
+        )}
       </p>
       {/* A row IS the document — clicking it opens the sheet, not a route. */}
       <RecordTable
@@ -170,7 +237,7 @@ export function TeamDocumentsPanel({
         exportName="order-documents"
         emptyTitle="No documents match"
         emptyDescription="Nothing on this order matches that search."
-        onRowClick={(r) => setOpenDoc(docs.find((d) => d.id === r.id) ?? null)}
+        onRowClick={(r) => setOpenDoc(mine.find((x) => x.doc.id === r.id)?.doc ?? null)}
       />
       <DocumentSheetDialog
         open={openDoc !== null}

@@ -156,7 +156,7 @@ const ACTIONS: Record<string, ActionSpec[]> = {
       label: 'Check the quoted margin against the floor',
       detail: 'Anything under the margin floor needs sign-off before it leaves the building.',
     },
-    { id: 'send-pi', label: 'Send the proforma to the customer', detail: 'Email or their portal, with the validity date stated.', doneWhen: 'sentOn' },
+    { id: 'send-pi', label: 'Send the sales order to the customer', detail: 'Email or their portal, with the validity date stated. Our own purchase order is already placed, so the price is against secured supply.', doneWhen: 'sentOn' },
   ],
   PI_ACCEPTED_BY_CUSTOMER: [
     {
@@ -173,8 +173,8 @@ const ACTIONS: Record<string, ActionSpec[]> = {
   SUPPLIER_SELECTED_FROM_AVL: [
     {
       id: 'avl-check',
-      label: 'Confirm the supplier is on the Approved Vendor List',
-      detail: 'Buying off-AVL is what puts counterfeit parts into the chain. If they are not on it, they get approved first or we source elsewhere.',
+      label: 'Confirm the supplier is still on the Approved Vendor List',
+      detail: 'The supplier was picked before the order arrived, so what matters here is that their approval has not lapsed since. Buying off-AVL is what puts counterfeit parts into the chain.',
       required: true,
     },
     { id: 'compare-quotes', label: 'Compare at least two quotes where the value warrants it', detail: 'Price, lead time, and whether they hold genuine stock rather than a promise of it.' },
