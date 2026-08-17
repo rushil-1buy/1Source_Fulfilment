@@ -55,6 +55,11 @@ import {
 } from '@/components/ui/Layout';
 import { Chip, ProvenanceBadge, StakeholderBadge, StatusChip } from '@/components/ui/Badges';
 import { docFlowFor } from '@/lib/domain/document-flow';
+import type { RunStepResult } from '@/lib/actions/agentic-run';
+import { SIM_PREFIX } from '@/lib/domain/simulation-config';
+import { OrderSimulationPanel } from '@/components/agentic/OrderSimulationPanel';
+import { outstandingObligations } from '@/lib/domain/obligations';
+import { OutstandingObligations } from '@/components/flow/OutstandingObligations';
 import { Hint, InfoTooltip } from '@/components/ui/InfoTooltip';
 import {
   ResponsiveFlowRail,
@@ -135,9 +140,12 @@ const TAB_GROUPS: { title: string; ids: string[] }[] = [
 export function OrderDetailView({
   order,
   financeApprovers,
+  runLog = [],
 }: {
   order: OrderDetail;
   financeApprovers: FinanceApprover[];
+  /** The agent's account of the run — empty on anything but a simulated order. */
+  runLog?: RunStepResult[];
 }) {
   // Tabs are deep-linkable (?tab=communication) so a colleague can be sent
   // straight to the part of the order being discussed.
@@ -535,6 +543,61 @@ export function OrderDetailView({
           </div>
         </div>
       </header>
+
+      {/*
+        What the order owes, above everything else on the page.
+
+        A deferred payment is invisible by construction — the rail is green past
+        it and the tabs are full — so it gets the top of the screen or it gets
+        found by the supplier's collections desk instead.
+      */}
+      {(() => {
+        const owed = outstandingObligations(
+          rail.ctx,
+          order.stage,
+          order.computed.completedStageIds,
+        );
+        return owed.length > 0 ? (
+          <div className="mb-3 min-w-0">
+            <OutstandingObligations obligations={owed} orderId={order.id} />
+          </div>
+        ) : null;
+      })()}
+
+      {/*
+        ── The simulation controls, on the order they drive ─────────────────
+
+        Above the rail because it is the frame for everything below: a viewer
+        who does not know this order was generated will read the rail as
+        history. Only on SIM- orders — a desk working a real one needs no tour
+        of it, and a reset button has no business on the same screen.
+      */}
+      {order.alias.startsWith(SIM_PREFIX) && (
+        <div className="mb-3 min-w-0">
+          <OrderSimulationPanel
+            orderId={order.id}
+            alias={order.alias}
+            ctx={rail.ctx}
+            currentStage={order.stage}
+            completedStageIds={order.computed.completedStageIds}
+            status={order.status}
+            documents={order.documents.map((d) => ({
+              id: d.id,
+              docType: d.docType,
+              title: d.title,
+              stageId: d.stageId,
+              createdAt: d.createdAt,
+            }))}
+            runLog={runLog}
+            transitions={order.transitions.map((t) => ({
+              toStage: t.toStage,
+              actorLabel: t.actorLabel,
+              reason: t.reason,
+              createdAt: t.createdAt,
+            }))}
+          />
+        </div>
+      )}
 
       {/* ── Rail + next action ───────────────────────────────────────────────
           items-start keeps the two columns top-aligned, and exceptions render

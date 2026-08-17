@@ -1805,6 +1805,8 @@ async function buildWorkOrder(spec: WoSpec) {
         return `${head}\nProof of delivery retrieved from the carrier.\nSigned at the customer's receiving dock.`;
       case 'TAX_INVOICE':
         return `${head}\nTax invoice raised on the customer with GST as applicable.\nIRN and e-way bill generated where required.`;
+      case 'ORM':
+        return `${head}\nOutward Remittance Message issued by the authorised dealer bank.\nBeneficiary: ${supplier.name}.\nPurpose code: S0101 — advance/payment against import of goods.\n\nThis remittance remains OPEN in IDPMS until the Bill of Entry evidencing the\nimport is filed against it. Reconciling the two is the importer's obligation:\nan outward remittance left unmatched is 1BUY's exposure under FEMA, not the\nbank's and not the supplier's.`;
       default:
         return `${head}\nFiled against the order.`;
     }

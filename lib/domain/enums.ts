@@ -28,6 +28,16 @@ export const STAKEHOLDERS = [
   'WHL',
   'CHA',
   'LOGISTICS',
+  /*
+   * The authorised dealer bank.
+   *
+   * Distinct from Finance and from the escrow provider: the bank is the party
+   * that executes an outward remittance and issues the message evidencing it,
+   * and under IDPMS it is the bank that holds us to closing the Bill of Entry
+   * against that remittance. Folding it into Finance would put our own desk
+   * down as the issuer of a document only a bank can issue.
+   */
+  'BANK',
 ] as const;
 export type Stakeholder = (typeof STAKEHOLDERS)[number];
 
@@ -162,6 +172,14 @@ export const STAKEHOLDER_META: Record<
     token: 'cha',
     internal: false,
     mailbox: 'desk@cha-partner.example',
+  },
+  BANK: {
+    label: 'Authorised Dealer Bank',
+    short: 'AD Bank',
+    plainLabel: 'Our bank — moves money across borders',
+    token: 'bank',
+    internal: false,
+    mailbox: 'trade.desk@adbank.example',
   },
   LOGISTICS: {
     label: 'Logistics Partner',

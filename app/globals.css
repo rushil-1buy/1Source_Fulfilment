@@ -133,6 +133,8 @@
   --sh-cha-subtle: #fff1f3;
   --sh-logistics: #475569; /* neutral — deliberate, not a failed hue */
   --sh-logistics-subtle: #f1f5f9;
+  --sh-bank: #7c3aed; /* violet  — unused elsewhere, so the bank reads as its own party */
+  --sh-bank-subtle: #f5f3ff;
 
   /* ── Elevation: 4 subtle layered levels, no heavy drop shadows ── */
   --shadow-1: 0 1px 2px rgba(11, 14, 20, 0.06), 0 1px 1px rgba(11, 14, 20, 0.04);
@@ -236,6 +238,8 @@
   --sh-cha-subtle: #2c0b14;
   --sh-logistics: #94a3b8;
   --sh-logistics-subtle: #1e293b;
+  --sh-bank: #c4b5fd;
+  --sh-bank-subtle: #2e1065;
 
   /* Dark keeps the navy sidebar — the brand does not change with the theme,
      only the page around it does. Deepened slightly so it still separates from
@@ -317,6 +321,8 @@
   --color-sh-cha-subtle: var(--sh-cha-subtle);
   --color-sh-logistics: var(--sh-logistics);
   --color-sh-logistics-subtle: var(--sh-logistics-subtle);
+  --color-sh-bank: var(--sh-bank);
+  --color-sh-bank-subtle: var(--sh-bank-subtle);
 
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;

@@ -937,7 +937,25 @@ export const STAGE_DEFS: StageDef[] = [
     artifacts: ['Signed inspection report'],
     nextAction: 'Authorise the final payment to the supplier.',
     nextActionOwner: 'ONE_BUY_FINANCE',
-    next: ['ESCROW_FINAL_RELEASE_AUTHORISED', 'SUPPLIER_PAID_IN_FULL'],
+    /*
+     * Repacking is offered as a third route, and it is a real one.
+     *
+     * The goods are received and accepted; nothing the warehouse does next
+     * reads the payment. Forcing the release to complete first holds a
+     * customer's delivery hostage to an internal money step, which is a worse
+     * outcome for every party including the supplier waiting to be paid.
+     *
+     * Taking that route does NOT discard the payment: F3 and F4 stay applicable
+     * and become outstanding obligations carried on the order, flagged until
+     * discharged, and the order will not close over them. See
+     * lib/domain/obligations.ts — deferring buys the warehouse time, it does
+     * not forgive the debt.
+     */
+    next: [
+      'ESCROW_FINAL_RELEASE_AUTHORISED',
+      'SUPPLIER_PAID_IN_FULL',
+      'REBRAND_AND_REPACK_IN_PROGRESS',
+    ],
   },
   {
     id: 'ESCROW_FINAL_RELEASE_AUTHORISED',

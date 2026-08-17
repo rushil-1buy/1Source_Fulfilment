@@ -62,6 +62,7 @@ const DOC_LABELS: Record<string, string> = {
   ESCROW_AGREEMENT: 'Escrow agreement',
   RELEASE_INSTRUCTION: 'Release instruction',
   NCR: 'Non-conformance report',
+  ORM: 'Outward Remittance Message',
   OTHER: 'Other',
 };
 

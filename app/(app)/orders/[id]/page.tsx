@@ -3,6 +3,8 @@ import { db } from '@/lib/db';
 import { getOrderDetail } from '@/lib/queries/order-detail';
 import { ROLE_META, type Role } from '@/lib/domain/enums';
 import { OrderDetailView } from './OrderDetailView';
+import { agenticRunLog } from '@/lib/actions/agentic-run';
+import { SIM_PREFIX } from '@/lib/domain/simulation-config';
 
 /**
  * Never prerendered.
@@ -26,9 +28,19 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   ]);
   if (!order) notFound();
 
+  /*
+   * The agent's own account of the run, for simulated orders only.
+   *
+   * Fetched here rather than inside the view so a real order pays nothing for a
+   * panel it will never render — and so the check for "is this a simulation"
+   * lives in one place instead of being re-derived from the alias downstream.
+   */
+  const runLog = order.alias.startsWith(SIM_PREFIX) ? await agenticRunLog(order.id) : [];
+
   return (
     <OrderDetailView
       order={order}
+      runLog={runLog}
       financeApprovers={financeUsers.map((u) => ({
         id: u.id,
         name: u.name,

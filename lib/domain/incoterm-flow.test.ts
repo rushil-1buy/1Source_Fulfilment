@@ -267,7 +267,7 @@ describe('the five 1BUY teams are real, not decorative', () => {
 });
 
 describe('internal vs external is modelled, not guessed from the name', () => {
-  it('has exactly the five 1BUY teams inside and the six counterparties outside', () => {
+  it('has exactly the five 1BUY teams inside and the seven counterparties outside', () => {
     expect(INTERNAL_STAKEHOLDERS).toEqual([
       'ONE_BUY_SOURCING',
       'ONE_BUY_FINANCE',
@@ -282,6 +282,9 @@ describe('internal vs external is modelled, not guessed from the name', () => {
       'WHL',
       'CHA',
       'LOGISTICS',
+      // The authorised dealer bank: it executes outward remittances and issues
+      // the message evidencing them, which is not something our own desk can do.
+      'BANK',
     ]);
   });
 

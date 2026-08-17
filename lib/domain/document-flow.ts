@@ -266,6 +266,29 @@ const FLOW: Record<string, DocFlow> = {
     requiredBy: ['SUPPLIER', 'ESCROW'],
     why: 'Evidence the balance reached the supplier, closing the escrow against the order.',
   },
+
+  /*
+   * ── Outward Remittance Message ─────────────────────────────────────────
+   *
+   * Issued by the authorised dealer bank when money actually leaves India for
+   * the supplier. It is the bank's own message, not ours — which is why the
+   * bank is a party in its own right rather than folded into Finance.
+   *
+   * WHY IT MATTERS, and it is not filing. Under FEMA the import payment and the
+   * import itself have to be reconciled: the AD bank carries every outward
+   * remittance in IDPMS and it stays open until the importer supplies the Bill
+   * of Entry evidencing goods actually arrived against it. The liability for
+   * that closure is 1BUY's, not the bank's and not the supplier's — an
+   * unreconciled remittance is our compliance exposure, and a repeat one is how
+   * an importer loses the ability to remit at all. So the ORM is the document
+   * that pairs with the Bill of Entry, and both desks that hold half of that
+   * pair need to see it.
+   */
+  orm: {
+    provider: 'BANK',
+    requiredBy: ['ONE_BUY_FINANCE', 'ONE_BUY_INBOUND'],
+    why: 'The bank’s message evidencing money sent abroad. It stays open in IDPMS until we produce the Bill of Entry against it — reconciling the two is 1BUY’s obligation, not the bank’s.',
+  },
   before_photos: {
     provider: 'ONE_BUY_OUTBOUND',
     requiredBy: ['ONE_BUY_INSPECTION'],
@@ -302,6 +325,8 @@ const ALIASES: Record<string, string> = {
   ack: 'supplier_po',
   supplier_pi_doc: 'supplier_pi',
   // The gate names these differently from the seeded types. Same documents.
+  outward_remittance_message: 'orm',
+  orm_advice: 'orm',
   awb_doc: 'awb_label',
   bill_of_entry: 'boe',
   challan: 'duty_challan',

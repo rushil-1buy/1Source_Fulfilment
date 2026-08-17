@@ -19,6 +19,7 @@ import { escrowFunderMeta } from '@/lib/domain/enums';
 import { assessEvidence } from '@/lib/domain/stage-evidence';
 import { OVERRIDE_REASON_MIN, isUsableOverrideReason } from '@/lib/domain/advance-gate';
 import { STAGE_CONTEXT_INCLUDE, stageContextFrom } from '@/lib/domain/stage-context';
+import { obligationsBlocking, type Obligation } from '@/lib/domain/obligations';
 import {
   STAGE_BY_ID,
   canTransition,
@@ -1124,6 +1125,22 @@ export async function advanceStage(
       const out = await dhlGetProofOfDelivery({ workOrderId: wo.id, awb: ship.awb ?? ship.id });
       const { data, provenance: p, note } = unwrap(out);
       provenance = p;
+
+      /*
+       * Idempotent, because a stage can legitimately be entered twice.
+       *
+       * An exception branch rejoins the ladder behind where it left, so an
+       * order can arrive here a second time — and a bare create then dies on
+       * the unique podNumber, taking the whole advance with it. The proof of
+       * delivery already on the order IS the proof of delivery; retrieving it
+       * again does not make a second one exist.
+       */
+      const existingPod = await db.proofOfDelivery.findFirst({ where: { workOrderId: wo.id } });
+      if (existingPod) {
+        detail = 'Proof of delivery was already retrieved for this consignment.';
+        break;
+      }
+
       await db.proofOfDelivery.create({
         data: {
           workOrderId: wo.id,
@@ -1166,6 +1183,41 @@ export async function advanceStage(
     }
 
     case 'ORDER_CLOSED': {
+      /*
+       * ── The wall on a deferred payment ────────────────────────────────
+       *
+       * The flow lets the warehouse move past the escrow release so a
+       * customer's delivery is not held hostage to an internal money step.
+       * That is a deferral, not a discharge — and this is where the two come
+       * apart. A supplier who shipped and was never paid is not a paperwork
+       * problem, so the order does not close over one.
+       *
+       * The refusal names what is owed and who owes it, because "cannot close"
+       * without that is a dead end rather than an instruction.
+       */
+      const owed = obligationsBlocking(
+        ctx,
+        wo.stage,
+        (await db.stageTransition.findMany({
+          where: { workOrderId: wo.id },
+          select: { toStage: true },
+        })).map((t) => t.toStage),
+        'ORDER_CLOSED',
+      );
+      if (owed.length > 0) {
+        return {
+          ok: false,
+          message:
+            owed.length === 1
+              ? `${owed[0].code} ${owed[0].label} is still outstanding.`
+              : `${owed.length} steps are still outstanding on this order.`,
+          blockedBy: owed[0].stageId,
+          detail: `${owed
+            .map((o: Obligation) => `${o.code} ${o.label} — ${o.owedByLabel}. ${o.cost}`)
+            .join(' ')} The flow let the warehouse move past ${owed.length === 1 ? 'it' : 'them'} so the customer was not kept waiting; closing the order over ${owed.length === 1 ? 'it' : 'them'} would write the debt off instead.`,
+        };
+      }
+
       await db.workOrder.update({
         where: { id: wo.id },
         data: { status: 'CLOSED', closedAt: new Date() },

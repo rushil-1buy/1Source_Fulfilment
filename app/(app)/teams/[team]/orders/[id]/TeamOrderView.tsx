@@ -54,6 +54,8 @@ import { AppointCarrier, AppointEscrow, type LegSlot } from '@/components/logist
 import { ESCROW_PARTNERS } from '@/lib/domain/portal-agents';
 import { deskMovesGoods } from '@/lib/queries/team-shipments';
 import { docConcernsTeam } from '@/lib/domain/document-flow';
+import { outstandingObligations } from '@/lib/domain/obligations';
+import { OutstandingObligations } from '@/components/flow/OutstandingObligations';
 import { ESanchitPanel, LiveCashPanel, TeamDocumentsPanel, TeamLiabilityPanel, TeamOrderFactsPanel, type ESanchitState } from './TeamOrderExtras';
 import { DeliverablesPanel } from './DeliverablesPanel';
 import { AgentInThreadNote } from '@/components/agentic/AgentInThreadNote';
@@ -341,6 +343,19 @@ export function TeamOrderView({
         the same server actions, so a route chosen here is the identical write,
         with one audit trail.
       */}
+      {/*
+        What the order owes, shown to every desk and not only to the one that
+        owes it. A deferred payment is Finance's to discharge, but the desk
+        working the outbound needs to know the order is carrying one — it is
+        why the order will stop short of closing.
+      */}
+      {(() => {
+        const owed = outstandingObligations(ctx, order.stage, order.computed.completedStageIds);
+        return owed.length > 0 ? (
+          <OutstandingObligations obligations={owed} orderId={order.id} />
+        ) : null;
+      })()}
+
       {openExceptions.map((e) => (
         <ExceptionPanel
           key={e.id}

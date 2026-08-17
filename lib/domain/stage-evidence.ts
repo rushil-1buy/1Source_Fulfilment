@@ -241,7 +241,9 @@ export const STAGE_EVIDENCE: StageEvidenceDef[] = [
       t('paymentRef', 'Transfer reference', 'The bank reference for tracing.', { required: true }),
       yn('supplierConfirmed', 'Supplier confirms receipt', 'Until they confirm, production has not started.', { required: true }),
     ],
-    documents: [doc('remittance', 'Remittance advice', 'The transfer confirmation from our bank.', true)],
+    documents: [doc('remittance', 'Remittance advice', 'The transfer confirmation from our bank.', true),
+      doc('orm', 'Outward Remittance Message (ORM)', 'The AD bank’s message evidencing the advance leaving India. It stays open in IDPMS until the Bill of Entry is filed against it.', true),
+    ],
   },
   {
     stageId: 'CREDIT_TERMS_CONFIRMED',
@@ -473,8 +475,21 @@ export const STAGE_EVIDENCE: StageEvidenceDef[] = [
       d('finalPaymentOn', 'Date of final payment', 'The value date.', { required: true }),
       yn('supplierConfirmed', 'Supplier confirms full settlement', 'Their confirmation closes the buy side and prevents a later claim.', { required: true }),
       note('variance', 'Any difference from the order value', 'Discounts, deductions or claims settled. Explain any gap.'),
+      /*
+       * The ORM reference, captured as a field and not only as an attachment.
+       *
+       * Under IDPMS every outward remittance stays open at the AD bank until we
+       * produce the Bill of Entry against it, and the reconciliation is quoted
+       * by this number. Leaving it inside a PDF means the one identifier the
+       * bank will ask for cannot be searched, which is how a remittance goes
+       * unreconciled until the bank chases it.
+       */
+      t('ormRef', 'Outward Remittance Message reference', 'The AD bank’s ORM number for this payment. The Bill of Entry is reconciled against it in IDPMS.', { required: true }),
     ],
-    documents: [doc('finalRemittance', 'Final remittance advice', 'Proof of the closing payment.', true)],
+    documents: [
+      doc('finalRemittance', 'Final remittance advice', 'Proof of the closing payment.', true),
+      doc('orm', 'Outward Remittance Message (ORM)', 'The AD bank’s message evidencing the money leaving India. It stays open until the Bill of Entry is filed against it — closing that pair is 1BUY’s obligation.', true),
+    ],
   },
 
   // ── Phase G · Value-add and delivery ───────────────────────────────────────
