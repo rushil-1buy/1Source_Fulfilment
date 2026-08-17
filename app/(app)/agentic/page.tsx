@@ -1,34 +1,72 @@
-import { notFound } from 'next/navigation';
-import { db } from '@/lib/db';
 import { getStage } from '@/lib/domain/stages';
-import { PageHeader, PageShell } from '@/components/ui/Layout';
-import { AgenticRunner } from '@/components/agentic/AgenticRunner';
+import { listSimulations, simulationOptions } from '@/lib/actions/simulation';
+import { HUMAN_TOUCHPOINTS, summariseTouchpoints, TOUCH_KIND_NOTE } from '@/lib/domain/human-touchpoints';
+import { PageHeader, PageShell, Panel, PanelHeader } from '@/components/ui/Layout';
+import { Chip } from '@/components/ui/Badges';
+import { SimulationConsole } from '@/components/agentic/SimulationConsole';
 
-/** The order genuinely moves here, so nothing about this page may be cached. */
+/** Orders genuinely move here, so nothing about this page may be cached. */
 export const dynamic = 'force-dynamic';
 
 export const metadata = { title: 'Autonomous flow' };
 
 export default async function AgenticPage() {
-  const order = await db.workOrder.findFirst({
-    where: { alias: 'AGENTIC-DEMO' },
-    select: { id: true, alias: true, stage: true },
-  });
-  if (!order) notFound();
+  const [options, rows] = await Promise.all([simulationOptions(), listSimulations()]);
 
-  const stage = getStage(order.stage);
+  const sims = rows.map((r) => {
+    const s = getStage(r.stage);
+    return { ...r, stageCode: s.code, stageLabel: s.label };
+  });
+
+  // Counted from the touchpoint map itself rather than written into the copy,
+  // so the claim on this page cannot drift away from what the run actually does.
+  const touch = summariseTouchpoints(Object.keys(HUMAN_TOUCHPOINTS));
+
   return (
     <PageShell width="full">
       <PageHeader
         title="Autonomous fulfilment"
-        description="The agent working a real order, through the real gates. It advances what it is allowed to advance and stops where a person is required."
+        description="Configure an order, then watch the agent work it end to end through the real gates — and see exactly where a real person would have been standing."
       />
-      <AgenticRunner
-        orderId={order.id}
-        orderAlias={order.alias}
-        startCode={stage.code}
-        startLabel={stage.label}
-      />
+
+      <Panel>
+        <PanelHeader
+          title="What this demonstrates, and what it does not"
+          description="Worth reading once before the first run, because the interesting claim is a narrow one."
+        />
+        <div className="grid min-w-0 gap-3 sm:grid-cols-2">
+          <div className="min-w-0">
+            <p className="text-fg-secondary text-[12.5px] leading-relaxed">
+              Every step goes through the same machinery a person uses — the same evidence gate, the
+              same documents, the same stage ladder. Nothing is narrated and no check is relaxed. If
+              the platform would refuse a person here, it refuses the agent, and the run stops with
+              the gate&rsquo;s own message.
+            </p>
+          </div>
+          <div className="min-w-0">
+            <p className="text-fg-secondary text-[12.5px] leading-relaxed">
+              <strong className="text-fg font-semibold">
+                {touch.total} steps in this flow need a real person.
+              </strong>{' '}
+              The run passes through them so it can reach the end, and marks every one with who it
+              stood in for and what they would have done. In the live platform the money steps queue
+              for Finance and wait.
+            </p>
+            <div className="mt-2 flex min-w-0 flex-wrap items-center gap-1.5">
+              {touch.byKind.map((k) => (
+                <Chip key={k.kind} tone="warning" size="sm">
+                  {k.count} · {k.label}
+                </Chip>
+              ))}
+            </div>
+            <p className="text-fg-tertiary mt-2 text-[11.5px] leading-relaxed">
+              {TOUCH_KIND_NOTE.PHYSICAL}
+            </p>
+          </div>
+        </div>
+      </Panel>
+
+      <SimulationConsole options={options} sims={sims} />
     </PageShell>
   );
 }

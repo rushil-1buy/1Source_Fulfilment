@@ -15,17 +15,28 @@
  * with the real gates — including the ones nobody remembered when the policy
  * was written.
  *
- * WHERE IT STOPS, and why the distinction is load-bearing:
+ * WHERE A PERSON WOULD HAVE BEEN, and what the run does about it:
  *
- *   HELD    — the next action belongs to Finance. The agent prepares
- *             everything and does not advance. Every check passes; a person is
- *             required by policy, not by failure.
- *   BLOCKED — the platform's own gate refused. That is a real refusal from the
- *             real gate, surfaced verbatim.
- *   DONE    — nothing left to do on this order.
+ * In the live platform Finance is never autonomous — those steps queue and
+ * wait. A demonstration that does the same reaches C1 and stops, having shown
+ * nothing about customs, testing, warehouse or delivery. So this run passes
+ * THROUGH every human step and NAMES each one as it goes: who it would have
+ * been, what they would actually have done, and why software cannot do it.
+ * `lib/domain/human-touchpoints.ts` holds that list, and it is the part of this
+ * feature worth arguing with.
+ *
+ * The two facts are kept apart rather than blurred:
+ *   ADVANCED, no flag  — genuinely the agent's work.
+ *   ADVANCED, flagged  — a person was required; the agent stood in FOR THE
+ *                        SIMULATION ONLY, and the step says so on its face.
+ *   BLOCKED            — the platform's own gate refused. A real refusal from
+ *                        the real gate, surfaced verbatim.
+ *   DONE               — nothing left to do on this order.
  *
  * The agent NEVER passes `evidenceOverrideReason`. An agent that can override
- * the evidence gate does not have a gate.
+ * the evidence gate does not have a gate — and note what that means here: the
+ * bypass is of the PERSON, never of the CHECK. Every flagged step still had to
+ * satisfy the same evidence gate as any other.
  */
 
 import { revalidatePath } from 'next/cache';
@@ -40,9 +51,30 @@ import {
 import { stageContextFrom } from '@/lib/domain/stage-context';
 import { evidenceFor } from '@/lib/domain/stage-evidence';
 import { STAKEHOLDER_META, TEAM_SLUGS, type Stakeholder } from '@/lib/domain/enums';
-import { isAutonomousTeam } from '@/lib/domain/agentic-sim';
+import {
+  isLiveAutonomous,
+  TOUCH_KIND_LABEL,
+  TOUCH_KIND_NOTE,
+  touchpointFor,
+  type TouchKind,
+} from '@/lib/domain/human-touchpoints';
+import { applyStageEffects } from '@/lib/actions/agentic-effects';
 
-export type RunOutcome = 'ADVANCED' | 'HELD' | 'BLOCKED' | 'DONE';
+export type RunOutcome = 'ADVANCED' | 'BLOCKED' | 'DONE';
+
+/** A step a real person would have taken, which the agent stood in for. */
+export interface HumanBypass {
+  kind: TouchKind;
+  kindLabel: string;
+  /** Who it would have been. */
+  who: string;
+  /** What they would actually have done — the act, not the stage name. */
+  wouldDo: string;
+  /** What the kind means for automation generally. */
+  note: string;
+  /** True where the LIVE platform would also have queued this for a person. */
+  liveWouldQueue: boolean;
+}
 
 export interface RunStepResult {
   outcome: RunOutcome;
@@ -57,8 +89,15 @@ export interface RunStepResult {
   teamLabel: string;
   /** What the agent did, in words that match what actually happened. */
   did: string;
-  /** Why it stopped, on HELD or BLOCKED. */
+  /** Why it stopped, on BLOCKED. */
   reason?: string;
+  /**
+   * Set where a real person would have been required. The UI must show this —
+   * a run that passes a human step silently is making a claim it cannot support.
+   */
+  humanBypass?: HumanBypass;
+  /** What changed outside the ladder: escrow funded, consignment booked, POD captured. */
+  sideEffects: string[];
   /** Evidence field ids the agent filled to satisfy the gate. */
   evidenceFilled: string[];
   /** Documents it filed. */
@@ -288,6 +327,7 @@ export async function runAgenticStep(orderId: string): Promise<RunStepResult> {
       reason: 'That order no longer exists.',
       evidenceFilled: [],
       documentsFiled: [],
+      sideEffects: [],
     };
   }
 
@@ -302,30 +342,43 @@ export async function runAgenticStep(orderId: string): Promise<RunStepResult> {
     teamLabel,
     evidenceFilled: [] as string[],
     documentsFiled: [] as string[],
+    sideEffects: [] as string[],
   };
 
   const next = nextStageFor(wo.stage, ctx);
   if (!next) {
-    return { ...base, outcome: 'DONE', did: '', reason: 'The order has reached the end of its flow.' };
+    return {
+      ...base,
+      outcome: 'DONE',
+      did: '',
+      reason: 'The order has reached the end of its flow.',
+    };
   }
 
   /*
-   * The policy gate, checked BEFORE any work is done.
+   * Whether a real person would have stood here.
    *
-   * Finance is never autonomous. Note this tests the team that owns the NEXT
-   * ACTION, not the team that owns the stage — the question is who has to act,
-   * and that is the person the agent would be standing in for.
+   * Read BEFORE the work, so the flag describes the step regardless of how it
+   * turns out — a human step that then fails its gate is still a human step,
+   * and labelling it only on success would quietly under-report them.
+   *
+   * Note what is NOT happening: no check is relaxed, no gate is skipped, no
+   * evidence is overridden. The agent stands in for the PERSON and still has
+   * to satisfy everything the person would have had to satisfy.
    */
-  if (!isAutonomousTeam(team)) {
-    return {
-      ...base,
-      outcome: 'HELD',
-      toCode: next.code,
-      toLabel: next.label,
-      did: `Prepared everything needed to move to ${next.code} and stopped.`,
-      reason: `The next action belongs to ${STAKEHOLDER_META[team].label}. Money is human-supervised by policy — the agent prepares, a person decides. Nothing here has failed a check.`,
-    };
-  }
+  const touch = touchpointFor(wo.stage);
+  const humanBypass: HumanBypass | undefined = touch
+    ? {
+        kind: touch.kind,
+        kindLabel: TOUCH_KIND_LABEL[touch.kind],
+        who: touch.who,
+        wouldDo: touch.wouldDo,
+        note: TOUCH_KIND_NOTE[touch.kind],
+        // Finance and the outside parties are the ones the live platform would
+        // genuinely have queued. Saying so separates policy from practicality.
+        liveWouldQueue: !isLiveAutonomous(team),
+      }
+    : undefined;
 
   // ── Read the mail this step turns on, and answer it ──────────────────────
   const mail = await handleCorrespondence(orderId, wo.stage, team);
@@ -421,17 +474,37 @@ export async function runAgenticStep(orderId: string): Promise<RunStepResult> {
       reason: res.message ?? 'The gate refused the advance.',
       evidenceFilled: filled,
       documentsFiled: docs,
+      sideEffects: [],
+      humanBypass,
     };
   }
 
+  // The world catches up with the ladder: escrow opened and funded, consignments
+  // booked and tracked, proof of delivery captured. Without this the order would
+  // reach "Delivered" with an empty Shipments tab behind it.
+  const effects = await applyStageEffects(wo.id, wo.stage);
+
+  /*
+   * The step's own entry in the order's thread.
+   *
+   * A bypassed human step says so HERE too, not only in the runner's own log —
+   * somebody reading the order's history next month has no access to the run
+   * that produced it, and an unlabelled entry would read as ordinary work.
+   */
   await db.communication.create({
     data: {
       workOrderId: wo.id,
       entryClass: 'SYSTEM',
       channel: 'SYSTEM',
       direction: 'INTERNAL',
-      subject: `Agent advanced to ${next.code} — ${next.label}`,
-      body: `The autonomous agent completed ${current.code} on behalf of ${STAKEHOLDER_META[team].label}${filled.length ? `, recording ${filled.length} evidence field${filled.length === 1 ? '' : 's'}` : ''}${docs.length ? ` and filing ${docs.join(', ')}` : ''}.`,
+      subject: humanBypass
+        ? `Agent advanced to ${next.code} — ${next.label} (human step, bypassed for the simulation)`
+        : `Agent advanced to ${next.code} — ${next.label}`,
+      body: `The autonomous agent completed ${current.code} on behalf of ${STAKEHOLDER_META[team].label}${filled.length ? `, recording ${filled.length} evidence field${filled.length === 1 ? '' : 's'}` : ''}${docs.length ? ` and filing ${docs.join(', ')}` : ''}.${
+        humanBypass
+          ? `\n\nHUMAN STEP — BYPASSED FOR THE SIMULATION. In real life this is ${humanBypass.who}: ${humanBypass.wouldDo} ${humanBypass.note}`
+          : ''
+      }${effects.length ? `\n\n${effects.join(' ')}` : ''}`,
       status: 'CLOSED',
       occurredAt: new Date(),
       systemIcon: 'Bot',
@@ -448,6 +521,8 @@ export async function runAgenticStep(orderId: string): Promise<RunStepResult> {
     repliedTo: mail.inbound,
     evidenceFilled: filled,
     documentsFiled: docs,
+    sideEffects: effects,
+    humanBypass,
   };
 }
 

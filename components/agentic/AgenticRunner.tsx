@@ -11,9 +11,15 @@
  *
  * Which means the interesting outcomes are the ones this component does not
  * control. If the platform's gate refuses, the run stops and shows the gate's
- * own message. If the next action belongs to Finance, it stops because policy
- * says so. Neither is scripted here, and that is the point of running it for
- * real rather than playing a recording.
+ * own message — not a scripted one.
+ *
+ * THE HUMAN STEPS ARE MARKED, NOT HIDDEN. The run passes through steps that in
+ * real life need a person — Finance authorising money, a warehouse clerk
+ * opening a carton, a licensed agent signing a customs entry — because a
+ * walkthrough that halts at the first one never reaches the other thirty. Each
+ * is rendered with its own border, its own badge, and the name of the person it
+ * stood in for. A viewer should come away able to say which steps this could
+ * genuinely take over and which it never could.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -23,17 +29,17 @@ import {
   ArrowUpRight,
   Bot,
   Check,
+  Flag,
   Mail,
   Pause,
   Play,
-  RotateCcw,
   ShieldAlert,
   UserCheck,
+  Zap,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   agenticOrderState,
-  resetAgenticOrder,
   runAgenticStep,
   type RunStepResult,
 } from '@/lib/actions/agentic-run';
@@ -65,7 +71,7 @@ export function AgenticRunner({
 
   /** Stopped for a reason the operator needs to act on, rather than paused. */
   const last = log[log.length - 1];
-  const halted = last && (last.outcome === 'HELD' || last.outcome === 'BLOCKED' || last.outcome === 'DONE');
+  const halted = last && (last.outcome === 'BLOCKED' || last.outcome === 'DONE');
 
   const step = useCallback(async () => {
     setBusy(true);
@@ -93,35 +99,17 @@ export function AgenticRunner({
     if (running) liveRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, [log.length, running]);
 
-  const reset = async () => {
-    setRunning(false);
-    setBusy(true);
-    try {
-      const res = await resetAgenticOrder(orderId);
-      if (res.ok) {
-        setLog([]);
-        toast.success('Order reset', { description: res.message });
-        const state = await agenticOrderState(orderId);
-        if (state) setPosition({ code: state.code, label: state.label });
-        router.refresh();
-      } else {
-        toast.error(res.message);
-      }
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const advanced = log.filter((l) => l.outcome === 'ADVANCED').length;
   const mailsAnswered = log.filter((l) => l.repliedTo).length;
   const docs = log.reduce((a, l) => a + l.documentsFiled.length, 0);
+  const bypassed = log.filter((l) => l.humanBypass).length;
 
   return (
     <div className="flex min-w-0 flex-col gap-4">
       <Panel>
         <PanelHeader
           title="Run the agent on this order"
-          description={`This genuinely advances ${orderAlias} — real evidence, real documents, real replies, through the same gate a person uses. It stops on its own when the next action belongs to Finance.`}
+          description={`This genuinely advances ${orderAlias} — real evidence, real documents, real replies, through the same gate a person uses. It runs the whole flow, and marks every step where a real person would have been.`}
           actions={
             <Chip tone="accent" size="sm" icon={Bot}>
               Live run
@@ -129,7 +117,7 @@ export function AgenticRunner({
           }
         />
 
-        <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-5">
           <KeyValue label="Order is now at">
             <span className="text-fg-tertiary font-mono text-[10.5px]">{position.code}</span>{' '}
             {position.label}
@@ -137,6 +125,9 @@ export function AgenticRunner({
           <KeyValue label="Steps advanced">{advanced}</KeyValue>
           <KeyValue label="Emails answered">{mailsAnswered}</KeyValue>
           <KeyValue label="Documents filed">{docs}</KeyValue>
+          <KeyValue label="Human steps bypassed">
+            <span className={bypassed > 0 ? 'text-warning font-semibold' : undefined}>{bypassed}</span>
+          </KeyValue>
         </div>
 
         <div className="border-line-subtle mt-3 flex min-w-0 flex-wrap items-center gap-2 border-t pt-3">
@@ -146,13 +137,10 @@ export function AgenticRunner({
             onClick={() => setRunning((r) => !r)}
             disabled={busy || halted}
           >
-            {running ? 'Pause' : log.length === 0 ? 'Simulate the agentic flow' : 'Continue'}
+            {running ? 'Pause' : log.length === 0 ? 'Run the whole flow' : 'Continue'}
           </Button>
           <Button variant="secondary" onClick={step} disabled={busy || running || halted}>
             Single step
-          </Button>
-          <Button variant="secondary" icon={RotateCcw} onClick={reset} disabled={busy}>
-            Reset the order
           </Button>
           <Link
             href={`/orders/${orderId}`}
@@ -167,11 +155,18 @@ export function AgenticRunner({
       {log.length === 0 ? (
         <Panel>
           <p className="text-fg-secondary text-[13px] leading-relaxed">
-            Press <strong className="text-fg">Simulate the agentic flow</strong>. The agent will read
-            the mail on each step, reply quoting it, record the evidence the gate requires, file the
-            documents, and advance — until it reaches a step where the next action is
-            Finance&rsquo;s, where it stops and hands over. Everything it does is written to the
-            order, so you can open it afterwards and see the same history from the other side.
+            Press <strong className="text-fg">Run the whole flow</strong>. On each step the agent
+            reads the mail, replies quoting it, records the evidence the gate requires, files the
+            documents and advances — all the way to a closed order. Everything it does is written to
+            the order, so you can open it afterwards and read the same history from the other side.
+          </p>
+          <p className="text-fg-secondary border-line-subtle mt-3 border-t pt-3 text-[13px] leading-relaxed">
+            Steps that in real life need a person are{' '}
+            <strong className="text-fg">passed through and marked</strong>, never skipped quietly.
+            Finance authorising money, a clerk opening a carton, a licensed agent signing a customs
+            entry: each is rendered with the name of whoever the agent stood in for and what they
+            would actually have done. In the live platform those steps queue and wait — here they
+            run so the flow can reach the end.
           </p>
         </Panel>
       ) : (
@@ -196,26 +191,37 @@ function StepRow({
   ref?: React.Ref<HTMLLIElement>;
   orderId: string;
 }) {
-  const tone =
-    r.outcome === 'ADVANCED'
-      ? 'success'
-      : r.outcome === 'HELD'
-        ? 'accent'
-        : r.outcome === 'DONE'
-          ? 'neutral'
-          : 'danger';
-  const Icon = r.outcome === 'ADVANCED' ? Check : r.outcome === 'HELD' ? UserCheck : ShieldAlert;
   const slug = slugForTeam(r.team);
+  const bypass = r.humanBypass;
+
+  /*
+   * A bypassed human step is drawn as its OWN outcome, not as a variant of a
+   * successful one. It advanced, so a green tick would be literally true — and
+   * would bury the single most important thing on the row. Warning tone and a
+   * left rule make the human steps findable by scrolling the log rather than by
+   * reading every line of it.
+   */
+  const tone = r.outcome === 'BLOCKED' ? 'danger' : bypass ? 'warning' : r.outcome === 'DONE' ? 'neutral' : 'success';
+  const Icon = r.outcome === 'BLOCKED' ? ShieldAlert : bypass ? UserCheck : r.outcome === 'DONE' ? Check : Zap;
+  const label =
+    r.outcome === 'BLOCKED'
+      ? 'Gate refused'
+      : r.outcome === 'DONE'
+        ? 'Flow complete'
+        : bypass
+          ? 'Human step — bypassed'
+          : 'Agent did this one';
 
   return (
     <li ref={ref} className="min-w-0">
       <div
         className={cn(
           'bg-surface-1 min-w-0 rounded-[11px] border p-3.5',
-          r.outcome === 'ADVANCED' && 'border-line-subtle',
-          r.outcome === 'HELD' && 'border-accent-border',
-          r.outcome === 'BLOCKED' && 'border-danger-border',
-          r.outcome === 'DONE' && 'border-line-subtle',
+          r.outcome === 'BLOCKED'
+            ? 'border-danger-border'
+            : bypass
+              ? 'border-warning-border border-l-[3px]'
+              : 'border-line-subtle',
         )}
       >
         <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
@@ -227,33 +233,72 @@ function StepRow({
           <span className="text-fg min-w-0 flex-1 text-[13px] font-semibold">
             {r.fromLabel}
             {r.toCode && r.outcome === 'ADVANCED' && (
-              <span className="text-fg-tertiary font-normal"> → {r.toCode} {r.toLabel}</span>
+              <span className="text-fg-tertiary font-normal">
+                {' '}
+                → {r.toCode} {r.toLabel}
+              </span>
             )}
           </span>
           <Chip tone={tone} size="sm" icon={Icon}>
-            {r.outcome === 'ADVANCED'
-              ? 'Agent advanced it'
-              : r.outcome === 'HELD'
-                ? 'Held for Finance'
-                : r.outcome === 'DONE'
-                  ? 'Flow complete'
-                  : 'Gate refused'}
+            {label}
           </Chip>
         </div>
 
         {r.did && <p className="text-fg-secondary mt-2 text-[12.5px] leading-relaxed">{r.did}</p>}
 
+        {/*
+          The person this step stood in for.
+
+          Named, with the specific act they would have performed — "1BUY Finance:
+          transfer the agreed amount into escrow" rather than "human required".
+          The generic sentence about the KIND follows, because that is the part
+          that generalises beyond this one order.
+        */}
+        {bypass && (
+          <div className="bg-warning-subtle border-warning-border mt-2.5 min-w-0 rounded-[9px] border p-2.5">
+            <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+              <Flag className="text-warning size-3.5 shrink-0" strokeWidth={2.2} aria-hidden />
+              <span className="text-warning text-[11px] font-semibold tracking-[0.04em] uppercase">
+                {bypass.kindLabel} — bypassed for the simulation
+              </span>
+              {bypass.liveWouldQueue && (
+                <Chip tone="muted" size="sm">
+                  Live platform would queue this and wait
+                </Chip>
+              )}
+            </div>
+            <p className="text-fg mt-1.5 text-[12.5px] leading-relaxed">
+              <strong className="font-semibold">{bypass.who}</strong> would have done this:{' '}
+              {bypass.wouldDo}
+            </p>
+            <p className="text-fg-secondary mt-1 text-[11.5px] leading-relaxed">{bypass.note}</p>
+          </div>
+        )}
+
+        {r.sideEffects.length > 0 && (
+          <ul className="text-fg-secondary mt-2 flex min-w-0 flex-col gap-1 text-[12px] leading-relaxed">
+            {r.sideEffects.map((e) => (
+              <li key={e} className="flex min-w-0 items-start gap-2">
+                <Check className="text-success mt-0.5 size-3.5 shrink-0" strokeWidth={2.2} aria-hidden />
+                <span className="min-w-0">{e}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+
         {r.repliedTo && (
           <p className="text-fg-secondary mt-1.5 flex items-start gap-2 text-[12px] leading-relaxed">
             <Mail className="text-accent-text mt-0.5 size-3.5 shrink-0" strokeWidth={2} aria-hidden />
             <span>
-              Drafted from{' '}
-              <strong className="text-fg font-medium">&ldquo;{r.repliedTo}&rdquo;</strong> — the
-              reply quotes it, and both sit in the thread on the order{' '}
+              Drafted from <strong className="text-fg font-medium">&ldquo;{r.repliedTo}&rdquo;</strong>{' '}
+              — the reply quotes it, and both sit in the thread on the order{' '}
               {slug && (
                 <>
                   and on{' '}
-                  <Link href={`/teams/${slug}/orders/${orderId}`} className="text-accent-text hover:underline">
+                  <Link
+                    href={`/teams/${slug}/orders/${orderId}`}
+                    className="text-accent-text hover:underline"
+                  >
                     {STAKEHOLDER_META[r.team].short}&rsquo;s communication tab
                   </Link>
                 </>
@@ -270,9 +315,7 @@ function StepRow({
               r.outcome === 'BLOCKED' ? 'text-danger' : 'text-fg',
             )}
           >
-            <strong className="font-semibold">
-              {r.outcome === 'HELD' ? 'Why it stopped: ' : r.outcome === 'BLOCKED' ? 'The gate said: ' : ''}
-            </strong>
+            {r.outcome === 'BLOCKED' && <strong className="font-semibold">The gate said: </strong>}
             {r.reason}
           </p>
         )}
