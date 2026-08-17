@@ -119,9 +119,19 @@ export const STAKEHOLDER_META: Record<
     mailbox: 'outbound.logistics@1buy.ai',
   },
   ONE_BUY_INSPECTION: {
-    label: '1BUY Inspection',
-    short: '1BUY Inspection',
-    plainLabel: 'Our inspection team',
+    label: '1BUY Inspection and Testing',
+    /*
+     * The badge form keeps "& Testing" rather than dropping it.
+     *
+     * The other long team abbreviates cleanly — "1BUY Logistics — inbound"
+     * becomes "1BUY Inbound" without losing anything, because inbound IS the
+     * distinguishing word. Here both words are load-bearing: this desk owns the
+     * laboratory relationship as well as goods-in inspection, and a badge
+     * reading only "Inspection" tells a supplier chasing a test report they
+     * have the wrong team.
+     */
+    short: '1BUY Inspection & Testing',
+    plainLabel: 'Our inspection and testing team',
     token: 'onebuy',
     internal: true,
     mailbox: 'inspection@1buy.ai',

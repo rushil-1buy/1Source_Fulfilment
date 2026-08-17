@@ -79,7 +79,7 @@ export const PHASE_DEFS: Record<PhaseId, PhaseDef> = {
     plainLabel: 'Checking, paying and repacking',
     description:
       'We inspect what arrived, settle with the supplier, then rebrand and repack it ready to go.',
-    owner: '1BUY Inspection + 1BUY Finance + 1BUY Logistics — outbound',
+    owner: '1BUY Inspection and Testing + 1BUY Finance + 1BUY Logistics — outbound',
   },
   /**
    * Everything after the goods leave us. Split out of the old "Value-Add &

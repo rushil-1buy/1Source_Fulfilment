@@ -314,7 +314,7 @@ export const IMPORT_FILE: DeliverableDef = {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 1BUY Inspection — the inspection report and the goods receipt note
+// 1BUY Inspection and Testing — the inspection report and the goods receipt note
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const INSPECTION_REPORT: DeliverableDef = {

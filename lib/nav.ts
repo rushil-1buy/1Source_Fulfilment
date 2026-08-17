@@ -79,7 +79,7 @@ export const NAV_GROUPS: NavGroup[] = [
       },
       {
         href: '/teams/inspection',
-        label: '1BUY Inspection',
+        label: '1BUY Inspection and Testing',
         plainLabel: 'Inspection desk',
         icon: 'ClipboardCheck',
         hint: 'Test scope, inbound inspection and signing the repack off.',
