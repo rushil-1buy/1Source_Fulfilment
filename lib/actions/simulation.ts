@@ -22,35 +22,7 @@ import { db } from '@/lib/db';
 import { CUSTOMERS, MPNS, SUPPLIERS, ORG } from '@/prisma/seed-masters';
 import { TEAM_SLUGS } from '@/lib/domain/enums';
 import { toMinor, convertMinor } from '@/lib/domain/money';
-
-/** Simulated orders all carry this prefix, so a reset can find them. */
-export const SIM_PREFIX = 'SIM-';
-
-export interface SimLine {
-  mpn: string;
-  qty: number;
-  /** Testing is per line — an order may send some parts to a lab and not others. */
-  testing: boolean;
-}
-
-export interface SimConfig {
-  customerId: string;
-  supplierId: string;
-  /** The term we BUY on — governs the inbound leg and who clears import. */
-  buyIncoterms: string;
-  /** The term we SELL on — governs the outbound leg. */
-  sellIncoterms: string;
-  paymentMethod: 'ESCROW' | 'ADVANCE' | 'CREDIT';
-  lines: SimLine[];
-}
-
-export interface SimResult {
-  ok: boolean;
-  message: string;
-  detail?: string;
-  orderId?: string;
-  alias?: string;
-}
+import { SIM_PREFIX, type SimConfig, type SimResult } from '@/lib/domain/simulation-config';
 
 function safeRevalidate(path: string) {
   try {

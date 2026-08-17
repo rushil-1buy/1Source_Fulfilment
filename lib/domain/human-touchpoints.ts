@@ -203,9 +203,9 @@ export const HUMAN_TOUCHPOINTS: Record<string, HumanTouchpoint> = {
   },
   ESCROW_FINAL_RELEASE_AUTHORISED: {
     kind: 'MONEY',
-    who: '1BUY Finance',
+    who: 'Two different 1BUY Finance approvers',
     wouldDo:
-      'Authorise the release of held funds now the goods have been received and accepted. The single largest irreversible act in the flow.',
+      'Authorise the release of held funds now the goods are received and accepted — and it takes TWO of them, because one person releasing the full balance alone is exactly what that control exists to prevent. The single largest irreversible act in the flow.',
   },
   REBRAND_AND_REPACK_IN_PROGRESS: {
     kind: 'PHYSICAL',

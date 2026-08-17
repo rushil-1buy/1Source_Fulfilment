@@ -478,7 +478,26 @@ export const STAGE_DEFS: StageDef[] = [
     artifacts: ['Funding confirmation'],
     nextAction: 'Release the test-enablement tranche so the supplier can send parts for testing.',
     nextActionOwner: 'ONE_BUY_FINANCE',
-    next: ['ESCROW_PARTIAL_RELEASE_FOR_TESTING', 'EXPORT_CLEARED_AT_ORIGIN', 'FULL_SHIPMENT_DISPATCHED_BY_SUPPLIER'],
+    /*
+     * TEST_DISPATCH_BOOKED sits here deliberately, after the partial release
+     * and before the logistics stages.
+     *
+     * Without it, an escrow order that needs testing but has NO partial-release
+     * clause had no route into phase D at all: C3 does not apply, so the picker
+     * fell through to the shipment stages and the testing phase was skipped in
+     * silence. That is the ordinary escrow order — partial release is the rare
+     * concession — so the common case was the broken one. Found by running a
+     * configured order end to end and noticing phase D never happened.
+     *
+     * Ordered so a partial release still comes first where the terms allow it:
+     * the money for the test leg is arranged before the parts are couriered.
+     */
+    next: [
+      'ESCROW_PARTIAL_RELEASE_FOR_TESTING',
+      'TEST_DISPATCH_BOOKED',
+      'EXPORT_CLEARED_AT_ORIGIN',
+      'FULL_SHIPMENT_DISPATCHED_BY_SUPPLIER',
+    ],
     applies: escrowOnly,
     notApplicableMode: 'HIDDEN',
     notApplicableReason: notEscrowReason,

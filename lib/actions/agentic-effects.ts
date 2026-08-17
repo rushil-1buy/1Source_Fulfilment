@@ -136,7 +136,14 @@ export async function applyStageEffects(orderId: string, stageId: string): Promi
       customerPo: { include: { customer: true } },
       supplierPo: { include: { supplier: true } },
     },
-  })) as (Order & { escrowAccount: { id: string; escrowRef: string; agreedAmount: number; fundedAmount: number; releasedAmount: number } | null }) | null;
+  })) as (Order & { escrowAccount: {
+        id: string;
+        escrowRef: string;
+        provider: string;
+        agreedAmount: number;
+        fundedAmount: number;
+        releasedAmount: number;
+      } | null }) | null;
   if (!wo) return [];
 
   const done: string[] = [];
@@ -145,9 +152,27 @@ export async function applyStageEffects(orderId: string, stageId: string): Promi
   switch (stageId) {
     // ── Escrow ───────────────────────────────────────────────────────────────
     case 'ESCROW_ACCOUNT_OPENED': {
-      if (wo.escrowAccount) break;
       const partner = ESCROW_PARTNERS.find((p) => p.status === 'ACTIVE');
       if (!partner) break;
+
+      /*
+       * The C1 gate opens the account itself, with provider 'TBD'.
+       *
+       * So arriving here with an account already present is the NORMAL case,
+       * not the skip case — and an early return left every simulated order
+       * showing "TBD — provider not yet finalised" through to settlement, which
+       * is not a state a funded escrow is ever allowed to be in. Appointing the
+       * partner onto the existing account is the actual work of this step.
+       */
+      if (wo.escrowAccount) {
+        if (wo.escrowAccount.provider && wo.escrowAccount.provider !== 'TBD') break;
+        await db.escrowAccount.update({
+          where: { id: wo.escrowAccount.id },
+          data: { provider: partner.code },
+        });
+        done.push(`Appointed ${partner.name} (${partner.region}) as the escrow provider.`);
+        break;
+      }
       /*
        * The held amount follows the order's agreed basis rather than a typed
        * figure — an escrow held for a number nobody can trace back to the order

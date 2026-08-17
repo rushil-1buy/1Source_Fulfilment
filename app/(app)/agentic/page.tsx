@@ -1,6 +1,6 @@
 import { getStage } from '@/lib/domain/stages';
 import { listSimulations, simulationOptions } from '@/lib/actions/simulation';
-import { HUMAN_TOUCHPOINTS, summariseTouchpoints, TOUCH_KIND_NOTE } from '@/lib/domain/human-touchpoints';
+import { HUMAN_TOUCHPOINTS, summariseTouchpoints } from '@/lib/domain/human-touchpoints';
 import { PageHeader, PageShell, Panel, PanelHeader } from '@/components/ui/Layout';
 import { Chip } from '@/components/ui/Badges';
 import { SimulationConsole } from '@/components/agentic/SimulationConsole';
@@ -60,7 +60,8 @@ export default async function AgenticPage() {
               ))}
             </div>
             <p className="text-fg-tertiary mt-2 text-[11.5px] leading-relaxed">
-              {TOUCH_KIND_NOTE.PHYSICAL}
+              The bypass is of the person, never of the check — every one of those steps still had
+              to satisfy the same evidence gate as any other.
             </p>
           </div>
         </div>

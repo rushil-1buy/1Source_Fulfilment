@@ -457,8 +457,35 @@ export async function runAgenticStep(orderId: string): Promise<RunStepResult> {
     }
   }
 
+  /*
+   * The dual-authorisation control on the final escrow release.
+   *
+   * The gate demands two DIFFERENT people holding the Finance role, and it is
+   * right to: one person releasing the full balance alone is the control that
+   * exists specifically to stop an insider emptying an escrow. The agent cannot
+   * be two people, so the run supplies the two Finance users the platform
+   * already knows — and the step is flagged accordingly, because standing in
+   * for a segregation-of-duties control is the most consequential thing this
+   * simulation does anywhere in the flow.
+   *
+   * Note what is still enforced: the release remains blocked until the inbound
+   * inspection has actually PASSED, and that check the agent never touches. It
+   * had to earn that verdict at F2 like anyone else.
+   */
+  // Keyed on the stage being entered, because that is what `advanceStage`
+  // switches on — a gate belongs to the step it guards, not the one before it.
+  const needsDualApproval = next.id === 'ESCROW_FINAL_RELEASE_AUTHORISED';
+  const approverIds = needsDualApproval
+    ? (await db.user.findMany({ where: { role: 'Finance' }, select: { id: true }, take: 2 })).map(
+        (u) => u.id,
+      )
+    : undefined;
+
   // ── The real advance, through the real gate ──────────────────────────────
-  const res = await advanceStage(wo.id, next.id, { expectedFromStage: wo.stage });
+  const res = await advanceStage(wo.id, next.id, {
+    expectedFromStage: wo.stage,
+    ...(approverIds ? { approverIds } : {}),
+  });
   if (!res.ok) {
     return {
       ...base,
@@ -483,6 +510,24 @@ export async function runAgenticStep(orderId: string): Promise<RunStepResult> {
   // booked and tracked, proof of delivery captured. Without this the order would
   // reach "Delivered" with an empty Shipments tab behind it.
   const effects = await applyStageEffects(wo.id, wo.stage);
+
+  /*
+   * Say the dual-approval stand-in out loud, on the row where it happened.
+   *
+   * The step's own bypass flag describes the step being COMPLETED; this control
+   * guards the step being ENTERED, so without its own line it would be the one
+   * bypass in the whole run that left no trace on screen — and it is the most
+   * consequential one there is.
+   */
+  if (approverIds?.length) {
+    const names = await db.user.findMany({
+      where: { id: { in: approverIds } },
+      select: { name: true },
+    });
+    effects.unshift(
+      `Segregation of duties stood in for: the final release requires two different Finance approvers, and the agent supplied ${names.map((n) => n.name).join(' and ')}. In real life those are two people signing separately — it is the control that stops one person emptying an escrow alone.`,
+    );
+  }
 
   /*
    * The step's own entry in the order's thread.
