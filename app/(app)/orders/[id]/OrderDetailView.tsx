@@ -69,6 +69,7 @@ import { DocumentLink, type PrintableKind } from '@/components/print/DocumentLin
 import { StageEvidencePanel, type EvidenceRecord, type StageOption } from './StageEvidencePanel';
 import { CommunicationTab } from './CommunicationTab';
 import { ExceptionPanel, type FailedLine } from './ExceptionPanel';
+import { DocumentSheetDialog, type SheetDoc } from '@/components/documents/DocumentSheet';
 import { AdvanceControl, type FinanceApprover } from './AdvanceControl';
 import { InsertStepDialog } from './InsertStepDialog';
 import { ManualStepDialog } from './ManualStepDialog';
@@ -1699,6 +1700,8 @@ function Th({
 // ═══════════════════════════════════════════════════════════════════════════
 
 function DocumentsTab({ order }: { order: OrderDetail }) {
+  /** Which filed document the sheet viewer has open, if any. */
+  const [sheetDoc, setSheetDoc] = useState<SheetDoc | null>(null);
   /**
    * The documents this platform produces itself, on paper we control. Each opens
    * in the viewer, so the sheet can be read without leaving the order.
@@ -1777,6 +1780,16 @@ function DocumentsTab({ order }: { order: OrderDetail }) {
     actor: string | null;
     view: { kind: PrintableKind; id: string } | null;
     purpose: string | null;
+    /**
+     * The filed record, for documents that have no printable of their own.
+     *
+     * Most of what a stage files is not something we generate — a bill of
+     * entry, a test report, a proof of delivery. Those used to end the row with
+     * "Not generated here", which is true and useless: the document IS here,
+     * with its content, and a register that cannot open its own rows is a list
+     * of filenames.
+     */
+    sheet: SheetDoc | null;
   };
 
   const rows: Row[] = [
@@ -1793,6 +1806,7 @@ function DocumentsTab({ order }: { order: OrderDetail }) {
       actor: null,
       view: { kind: g.kind, id: g.id },
       purpose: g.note,
+      sheet: null,
     })),
     ...order.documents
       // A filed copy of a document we also generate would be the same sheet
@@ -1814,6 +1828,20 @@ function DocumentsTab({ order }: { order: OrderDetail }) {
         actor: d.uploadedBy,
         view: viewerFor(d.docType),
         purpose: null,
+        sheet: {
+          id: d.id,
+          docType: d.docType,
+          kindLabel: d.docType.replace(/_/g, ' ').toLowerCase(),
+          title: d.title,
+          fileName: d.fileName,
+          uploadedBy: d.uploadedBy,
+          createdAt: d.createdAt,
+          version: d.version,
+          sizeBytes: d.sizeBytes,
+          stepLabel: d.stageId ? `${getStage(d.stageId).code} ${getStage(d.stageId).label}` : null,
+          orderAlias: order.alias,
+          bodyText: d.bodyText,
+        },
       })),
   ];
 
@@ -1913,8 +1941,17 @@ function DocumentsTab({ order }: { order: OrderDetail }) {
                         documentTitle={r.reference}
                         variant="button"
                       />
+                    ) : r.sheet ? (
+                      <button
+                        type="button"
+                        onClick={() => setSheetDoc(r.sheet)}
+                        className="border-line-subtle text-fg-secondary hover:bg-surface-3 hover:text-fg focus-visible:ring-accent/40 inline-flex items-center gap-1.5 rounded-[7px] border px-2 py-1 text-[11.5px] font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none"
+                      >
+                        <FileText className="size-3.5 shrink-0" strokeWidth={2} aria-hidden />
+                        View
+                      </button>
                     ) : (
-                      <span className="text-fg-tertiary text-[11px]">Not generated here</span>
+                      <span className="text-fg-tertiary text-[11px]">No content on file</span>
                     )}
                   </td>
                 </tr>
@@ -1923,6 +1960,15 @@ function DocumentsTab({ order }: { order: OrderDetail }) {
           </table>
         </div>
       )}
+
+      {/* One viewer for every filed document. The team registers already open
+          their rows this way; the Control Tower had no reason to be the place
+          where a register cannot open its own contents. */}
+      <DocumentSheetDialog
+        doc={sheetDoc}
+        open={sheetDoc !== null}
+        onOpenChange={(o) => !o && setSheetDoc(null)}
+      />
     </Panel>
   );
 }
