@@ -864,8 +864,19 @@ export function OrderDetailView({
                   fileName: d.fileName,
                   stageId: d.stageId,
                   createdAt: d.createdAt,
+                  uploadedBy: d.uploadedBy,
+                  version: d.version,
+                  sizeBytes: d.sizeBytes,
+                  bodyText: d.bodyText,
                 }))}
                 manualSteps={order.customStages}
+                orderAlias={order.alias}
+                refs={{
+                  customerPo: order.customerPo.poNumber,
+                  supplierPo: order.supplierPo.poNumber,
+                  customer: order.customerPo.customer.name,
+                  supplier: order.supplierPo.supplier.name,
+                }}
               />
             </Tabs.Content>
 

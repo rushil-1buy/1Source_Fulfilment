@@ -482,15 +482,29 @@ export const STAGE_DEFS: StageDef[] = [
     id: 'ESCROW_ACCOUNT_OPENED',
     code: 'C1',
     phase: 'C',
-    label: 'Escrow account opened',
-    plainLabel: 'Neutral money account opened',
+    /*
+     * An ORDER placed on the escrow, not merely an account opened.
+     *
+     * This is the step people underestimate. Opening the account sounds
+     * administrative; what actually happens is that an order is placed with the
+     * escrow provider carrying the agreed terms between 1BUY and the supplier —
+     * the amount, the currency, and the conditions under which the money is
+     * released. From this point the trade is a placed order with a neutral
+     * third party holding the consideration, and every later step is measured
+     * against the terms written into it. Labelling it "account opened" invited
+     * people to treat the terms as a formality to be settled later, which is
+     * exactly when they get settled badly.
+     */
+    label: 'Order placed on escrow — terms lodged',
+    plainLabel: 'Order placed with the neutral money holder',
     description:
-      'A neutral third party has opened an account to hold the money until both sides have done their part.',
-    exitCriteria: 'Escrow reference generated and both parties onboarded.',
+      'An order has been placed with the escrow provider carrying the agreed terms between 1BUY and the supplier: the amount held, the currency, and the conditions that release it. The trade is now a placed order against those terms.',
+    exitCriteria:
+      'Escrow order reference generated, the release conditions lodged in writing, and both parties onboarded against it.',
     owner: 'ESCROW',
     expectedHours: 24,
-    artifacts: ['Escrow agreement'],
-    nextAction: 'Fund the escrow account so the provider can confirm the hold to the supplier.',
+    artifacts: ['Escrow order and terms schedule'],
+    nextAction: 'Fund the escrow order so the provider can confirm the hold to the supplier.',
     nextActionOwner: 'ONE_BUY_FINANCE',
     next: ['ESCROW_FUNDED'],
     applies: escrowOnly,

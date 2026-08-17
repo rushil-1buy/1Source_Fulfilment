@@ -120,7 +120,7 @@ export const HUMAN_TOUCHPOINTS: Record<string, HumanTouchpoint> = {
     kind: 'MONEY',
     who: '1BUY Finance',
     wouldDo:
-      'Appoint the escrow provider and open the account. Choosing who holds the money is not a clerical act.',
+      'Appoint the provider and place the order on escrow, agreeing the terms it carries — the amount held and what releases it. Choosing who holds the money and on what conditions is not a clerical act.',
   },
   ESCROW_FUNDED: {
     kind: 'MONEY',

@@ -78,9 +78,11 @@ describe('escrow — the account and the order are their own steps', () => {
     expect(t.required).toBe(true);
   });
 
-  it('still leads with the escrow agreement upload', () => {
+  it('still leads with the document that carries the terms', () => {
     expect(tasks[0].kind).toBe('DOCUMENT');
-    expect(tasks[0].label).toMatch(/Escrow agreement/i);
+    // Renamed when C1 became "an order placed on escrow": the attachment is the
+    // order and its schedule of terms, not merely an agreement to open one.
+    expect(tasks[0].label).toMatch(/escrow order and terms/i);
   });
 });
 
@@ -155,7 +157,14 @@ describe('state is derived from the record, never self-reported', () => {
   it('completes the capture row once every required field is filled', () => {
     const states = subTaskStates(
       stageId,
-      { escrowRef: 'X', provider: 'Y', openedOn: '2026-07-30' },
+      {
+        escrowRef: 'X',
+        provider: 'Y',
+        openedOn: '2026-07-30',
+        // Required since C1 became a placed order: the conditions that release
+        // the money are the terms the whole arrangement turns on.
+        releaseConditions: 'Goods received and accepted at 1BUY.',
+      },
       [],
     );
     const capture = states.find((s) => s.kind === 'CAPTURE')!;

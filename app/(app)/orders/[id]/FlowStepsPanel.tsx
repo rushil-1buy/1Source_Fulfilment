@@ -46,6 +46,14 @@ import { evidenceFor } from '@/lib/domain/stage-evidence';
 import { subTaskProgress, subTaskStates, type SubTaskKind } from '@/lib/domain/stage-tasks';
 import { STAKEHOLDER_META, type Stakeholder } from '@/lib/domain/enums';
 import { stageLiability } from '@/lib/domain/stage-liability';
+import { stepBrief } from '@/lib/domain/step-brief';
+import { agentBriefing } from '@/lib/domain/agent-guidance';
+import {
+  AgentCompanionBlock,
+  ResponsibleBlock,
+  StepDocumentsBlock,
+  type FiledDoc,
+} from '@/components/flow/StepBriefBlocks';
 import { Panel, PanelHeader } from '@/components/ui/Layout';
 import { Chip, StakeholderBadge } from '@/components/ui/Badges';
 import { cn, formatDate } from '@/lib/utils';
@@ -64,6 +72,13 @@ export interface FlowDocument {
   fileName: string;
   stageId: string | null;
   createdAt: string;
+  /* Carried so a document can be OPENED from the step it belongs to, rather
+     than sending a desk to the register to find the thing they are reading
+     about. The sheet needs all of it. */
+  uploadedBy?: string;
+  version?: number;
+  sizeBytes?: number;
+  bodyText?: string | null;
 }
 
 export interface FlowEvidence {
@@ -79,6 +94,8 @@ export function FlowStepsPanel({
   evidence,
   documents,
   manualSteps,
+  orderAlias,
+  refs,
   ownerFilter,
 }: {
   currentStage: string;
@@ -88,6 +105,15 @@ export function FlowStepsPanel({
   /** Every document on the order, so each stage can show its own. */
   documents: FlowDocument[];
   manualSteps: ManualStep[];
+  /** Shown on an opened document's letterhead. */
+  orderAlias: string;
+  /** Quoted in any message the agent drafts, so a chase identifies the order. */
+  refs: {
+    customerPo: string;
+    supplierPo: string;
+    customer: string;
+    supplier: string;
+  };
   /**
    * Narrows the list to the steps ONE team touches — either accountable for it
    * or holding its next action.
@@ -196,6 +222,29 @@ export function FlowStepsPanel({
           const manual = manualByStage.get(stage.id) ?? [];
           const isOpen = open === stage.id;
 
+          /*
+           * The brief is the shape of the step; the guidance is what to do
+           * about it here and now.
+           *
+           * Both are pure functions of the stage and the order's state, so
+           * computing them per row costs nothing worth memoising — and tying
+           * them to the render keeps them honest: there is no cached briefing
+           * to go stale against an order that has since moved.
+           */
+          const terms = { buy: ctx.incoterms ?? null, sell: ctx.sellIncoterms ?? null };
+          const brief = stepBrief(stage.id, ctx, terms);
+          const filedHere: FiledDoc[] = stageDocs.map((d) => ({
+            id: d.id,
+            docType: d.docType,
+            title: d.title,
+            fileName: d.fileName,
+            createdAt: d.createdAt,
+            uploadedBy: d.uploadedBy ?? 'Recorded on the order',
+            version: d.version ?? 1,
+            sizeBytes: d.sizeBytes ?? 0,
+            bodyText: d.bodyText ?? null,
+          }));
+
           // One phase heading, before its first stage.
           const showPhase = phaseStarts.has(stage.id);
 
@@ -285,7 +334,10 @@ export function FlowStepsPanel({
                     <span className="font-medium">To leave this stage:</span> {stage.exitCriteria}
                   </p>
 
-                  {/* ── Who is liable, under the term we bought on ────────── */}
+                  {/* ── Who bears this step, and why ──────────────────────── */}
+                  <ResponsibleBlock brief={brief} />
+
+                  {/* ── Who is liable, under the term that governs it ─────── */}
                   <StageLiabilityDisclosure stageId={stage.id} ctx={ctx} />
 
                   {/* ── Sub-tasks ─────────────────────────────────────────── */}
@@ -358,48 +410,29 @@ export function FlowStepsPanel({
                     </ul>
                   </div>
 
-                  {/* ── Documents ─────────────────────────────────────────── */}
-                  <div className="border-line-subtle bg-surface-1 mt-2.5 overflow-hidden rounded-[9px] border">
-                    <div className="text-fg-tertiary border-line-subtle flex items-center gap-1.5 border-b px-2.5 py-1.5 text-[9.5px] font-semibold tracking-[0.05em] uppercase">
-                      <Paperclip className="size-3" strokeWidth={2} aria-hidden />
-                      Documents
-                    </div>
-                    {stageDocs.length > 0 ? (
-                      <ul className="divide-line-subtle/70 divide-y">
-                        {stageDocs.map((d) => (
-                          <li key={d.id} className="flex items-center gap-2 px-2.5 py-1.5">
-                            <FileText className="text-fg-tertiary size-3.5 shrink-0" strokeWidth={2} aria-hidden />
-                            <span className="min-w-0 flex-1">
-                              <span className="text-fg block truncate text-[11.5px]">{d.title}</span>
-                              <span className="text-fg-tertiary block truncate text-[10px]">
-                                {d.fileName}
-                              </span>
-                            </span>
-                            <span className="text-fg-tertiary shrink-0 text-[10px] whitespace-nowrap">
-                              {formatDate(d.createdAt)}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      /* Naming what is MISSING rather than saying "none" — the
-                         difference between a stage with no paperwork and a stage
-                         whose paperwork has not arrived. */
-                      <div className="text-fg-tertiary px-2.5 py-2 text-[11px] leading-relaxed">
-                        {(evidenceFor(stage.id)?.documents.length ?? 0) > 0 ? (
-                          <>
-                            Nothing filed yet. This stage expects:{' '}
-                            {evidenceFor(stage.id)!
-                              .documents.map((d) => d.label)
-                              .join(', ')}
-                            .
-                          </>
-                        ) : (
-                          'This stage produces no paperwork of its own.'
-                        )}
-                      </div>
-                    )}
-                  </div>
+                  {/* ── What this step makes, and what it waits on ─────────── */}
+                  <StepDocumentsBlock brief={brief} filed={filedHere} orderAlias={orderAlias} />
+
+                  {/*
+                    ── The agent's read on it ───────────────────────────────
+
+                    Only on the step the order is actually sitting on. Guidance
+                    against a step already closed is history, and guidance
+                    against one three phases away is speculation; both would
+                    train people to scroll past the one place it is useful.
+                  */}
+                  {isCurrent && (
+                    <AgentCompanionBlock
+                      briefing={agentBriefing({
+                        stageId: stage.id,
+                        ctx,
+                        incoterms: terms,
+                        recorded: ev?.values ?? {},
+                        filed: filedHere.map((f) => f.docType),
+                        refs: { alias: orderAlias, ...refs },
+                      })}
+                    />
+                  )}
 
                   {/* ── Steps added to this order ─────────────────────────── */}
                   {manual.length > 0 && (

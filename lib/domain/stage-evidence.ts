@@ -193,14 +193,22 @@ export const STAGE_EVIDENCE: StageEvidenceDef[] = [
   // ── Phase C · Financial arming ─────────────────────────────────────────────
   {
     stageId: 'ESCROW_ACCOUNT_OPENED',
-    attestation: 'An escrow account exists for this order and both sides know its reference.',
+    attestation:
+      'An order is placed with the escrow provider on the agreed terms, and both sides know its reference.',
     fields: [
-      t('escrowRef', 'Escrow reference', 'The provider’s reference for this order. Everything afterwards is quoted against it.', { required: true }),
+      t('escrowRef', 'Escrow order reference', 'The provider’s reference for this order. Everything afterwards is quoted against it.', { required: true }),
       t('provider', 'Escrow provider', 'Who is holding the money.', { required: true }),
-      d('openedOn', 'Date opened', 'When the account came into existence.', { required: true }),
-      yn('supplierInformed', 'Supplier has the reference', 'They need it to confirm the arrangement before they ship.'),
+      d('openedOn', 'Date the order was placed', 'When the escrow order came into existence.', { required: true }),
+      /*
+       * The release conditions, captured as a field rather than left inside an
+       * attachment. They are what the whole arrangement turns on — a dispute
+       * six weeks from now is argued about this sentence, and a term nobody can
+       * quote without opening a PDF is a term nobody checks.
+       */
+      t('releaseConditions', 'Conditions that release the money', 'In the terms’ own words: what has to be true before the provider pays the supplier. Normally receipt and acceptance of the goods at 1BUY.', { required: true }),
+      yn('supplierInformed', 'Supplier has the reference and the terms', 'They need both to confirm the arrangement before they ship.'),
     ],
-    documents: [doc('escrowAgreement', 'Escrow agreement or confirmation', 'The provider’s written confirmation of the arrangement and its conditions.', true)],
+    documents: [doc('escrowAgreement', 'Escrow order and terms schedule', 'The order placed with the provider and the schedule of terms agreed between 1BUY and the supplier, including what releases the funds.', true)],
   },
   {
     stageId: 'ESCROW_FUNDED',

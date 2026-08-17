@@ -68,8 +68,10 @@ const FLOW: Record<string, DocFlow> = {
   // ── Phase C: money ───────────────────────────────────────────────────────
   escrow_agreement: {
     provider: 'ESCROW',
-    requiredBy: ['ONE_BUY_FINANCE', 'SUPPLIER'],
-    why: 'The terms the funds are held under, and what releases them.',
+    // Sourcing too: they negotiated the terms this schedule records, and they
+    // are the desk the supplier argues with when a release condition is disputed.
+    requiredBy: ['ONE_BUY_FINANCE', 'ONE_BUY_SOURCING', 'SUPPLIER'],
+    why: 'The order placed with the provider and the terms it carries — the amount held, the currency, and what has to be true before the supplier is paid.',
   },
   escrow_release: {
     provider: 'ONE_BUY_FINANCE',
