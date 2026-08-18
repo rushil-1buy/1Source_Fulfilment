@@ -52,6 +52,8 @@ import { CommunicationTab } from '@/app/(app)/orders/[id]/CommunicationTab';
 import { ExceptionPanel, type FailedLine } from '@/app/(app)/orders/[id]/ExceptionPanel';
 import { TeamLogisticsPanel, type TeamShipment } from '@/components/logistics/TeamLogisticsPanel';
 import { InboundEventsPanel } from '@/components/logistics/InboundEventsPanel';
+import { InboundFlowPanel } from '@/components/logistics/InboundFlowPanel';
+import { legAppointability } from '@/lib/domain/appointments';
 import { AppointCarrier, AppointEscrow, type LegSlot } from '@/components/logistics/AppointCarrier';
 import { ESCROW_PARTNERS } from '@/lib/domain/portal-agents';
 import { deskMovesGoods } from '@/lib/queries/team-shipments';
@@ -230,6 +232,9 @@ export function TeamOrderView({
       count: order.communications.filter((c) => c.entryClass === 'HUMAN').length,
     },
   ];
+
+  /* Whether the import leg is ours to book, decided by the term we bought on. */
+  const inboundLeg = legAppointability('IMPORT', order.incoterms, order.customerPo.incoterms);
 
   const [section, setSection] = useState('steps');
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -665,6 +670,47 @@ export function TeamOrderView({
                   wrong. Offering an appraiser's query on an outbound consignment
                   would be offering a control nobody could ever use.
                 */}
+                {/*
+                  Booking, tracking and receipt in one place — the three moments
+                  the desk actually touches the carrier. Above the events panel
+                  because it is the flow; events are what interrupts it.
+                */}
+                {team === 'ONE_BUY_INBOUND' && (
+                  <div className="border-line-subtle mt-4 border-t pt-4">
+                    <InboundFlowPanel
+                      orderId={order.id}
+                      legIsOurs={inboundLeg.ours}
+                      legReason={inboundLeg.reason}
+                      hasGrn={order.grns.length > 0}
+                      lines={order.customerPo.lines.map((l) => ({
+                        mpn: l.mpn,
+                        quantity: l.quantity,
+                      }))}
+                      leg={(() => {
+                        const s = order.shipments.find((x) => x.legType === 'IMPORT');
+                        return s
+                          ? {
+                              awb: s.awb,
+                              carrier: s.carrierCode,
+                              service: s.serviceName,
+                              status: s.status,
+                              pieces: s.pieces,
+                              grossWeightKg: s.grossWeightKg,
+                              estimatedDelivery: s.estimatedDelivery,
+                              deliveredAt: s.deliveredAt,
+                              events: s.events.map((e) => ({
+                                code: e.code,
+                                occurredAt: e.occurredAt,
+                                description: e.description,
+                                location: e.location,
+                              })),
+                            }
+                          : null;
+                      })()}
+                    />
+                  </div>
+                )}
+
                 {team === 'ONE_BUY_INBOUND' && (
                   <div className="border-line-subtle mt-4 border-t pt-4">
                     <InboundEventsPanel
